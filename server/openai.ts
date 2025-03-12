@@ -104,13 +104,12 @@ Important formatting requirements:
 
     // Black Forest Labs Flux model on Replicate
     const output = await replicate.run(
-      "blackforestlabs/flux:bd7a3cc38bc55e4e2b5881fbff6b0db448be246c7a5bfed7fc0ee23a87423db6",
+      "lucataco/flux:ffcf42e962220a0308e46f50c31e1d75f93ce699fbaf5394e9c3de3bcdbef1c9",
       {
         input: {
           prompt: fluxPrompt,
           width: 1024,
           height: 1024,
-          scheduler: "K_EULER",
           num_inference_steps: 50,
           guidance_scale: 7.5
         }
