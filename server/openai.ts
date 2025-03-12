@@ -19,7 +19,7 @@ const replicate = new Replicate({
   auth: process.env.REPLICATE_API_TOKEN,
 });
 
-// Helper function to generate logos based on parameters using Black Forest Flux
+// Helper function to generate logos based on parameters using FLUX1.1 Pro
 export const generateLogo = async (params: {
   brandName: string,
   industry: string,
@@ -81,7 +81,7 @@ export const generateLogo = async (params: {
       throw new Error("Failed to generate logo design description");
     }
     
-    // Create a prompt for Black Forest Flux (via Replicate)
+    // Create a prompt for FLUX1.1 Pro (via Replicate)
     const fluxPrompt = `
 Design a professional, minimal logo for ${brandName}, a ${industry} brand.
 
@@ -102,16 +102,18 @@ Important formatting requirements:
 - Logo should work well in both color and black/white
     `;
 
-    // Black Forest Labs Flux model on Replicate
+    // FLUX1.1 Pro model on Replicate
     const output = await replicate.run(
-      "lucataco/flux:ffcf42e962220a0308e46f50c31e1d75f93ce699fbaf5394e9c3de3bcdbef1c9",
+      "fal-ai/flux:flux-1.1",
       {
         input: {
           prompt: fluxPrompt,
-          width: 1024,
-          height: 1024,
+          width: 768,
+          height: 768,
+          negative_prompt: "low quality, distorted, ugly, bad proportions, text errors, text cut off, spelling errors",
+          scheduler: "K_EULER",
           num_inference_steps: 50,
-          guidance_scale: 7.5
+          guidance_scale: 8.0
         }
       }
     );
@@ -129,12 +131,82 @@ Important formatting requirements:
     }
     
     // Fallback SVG if image generation fails
-    return '<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200"><circle cx="100" cy="100" r="90" stroke="#10B981" stroke-width="8" fill="white"/><path d="M100 30C61.34 30 30 61.34 30 100C30 138.66 61.34 170 100 170C138.66 170 170 138.66 170 100C170 61.34 138.66 30 100 30ZM135 110H110V135C110 140.52 105.52 145 100 145C94.48 145 90 140.52 90 135V110H65C59.48 110 55 105.52 55 100C55 94.48 59.48 90 65 90H90V65C90 59.48 94.48 55 100 55C105.52 55 110 59.48 110 65V90H135C140.52 90 145 94.48 145 100C145 105.52 140.52 110 135 110Z" fill="#10B981"/></svg>';
+    return createFallbackLogo(brandName, colors);
   } catch (error) {
     console.error("Error generating logo:", error);
-    throw new Error("Failed to generate logo");
+    // Return a fallback logo
+    return createFallbackLogo(brandName, colors);
   }
 };
+
+// Helper to create a fallback logo when generation fails
+function createFallbackLogo(brandName: string, colors: string[]): string {
+  // Get first letter of the brand name
+  const initial = brandName.charAt(0).toUpperCase();
+  
+  // Pick a color - either the first one provided or a default
+  const primaryColor = colors && colors.length > 0 ? colors[0] : '#10B981';
+  const secondaryColor = colors && colors.length > 1 ? colors[1] : '#0891B2';
+  
+  // Create a simple circular logo with the first letter
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+    <circle cx="100" cy="100" r="90" fill="${primaryColor}" />
+    <circle cx="100" cy="100" r="70" fill="${secondaryColor}" />
+    <text x="100" y="120" font-family="Arial, sans-serif" font-size="80" font-weight="bold" text-anchor="middle" fill="white">${initial}</text>
+  </svg>`;
+}
+
+// Create a monochrome version of the logo by replacing image with a grayscale version
+function generateMonochromeLogo(logoSvg: string): string {
+  // If the logo is an SVG with an embedded image
+  if (logoSvg.includes('<image href="')) {
+    // Extract the image URL
+    const imageUrlMatch = logoSvg.match(/href="([^"]+)"/);
+    const imageUrl = imageUrlMatch ? imageUrlMatch[1] : '';
+    
+    if (imageUrl) {
+      // Return an SVG with the same image but with a grayscale filter applied
+      return `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+        <filter id="grayscale">
+          <feColorMatrix type="matrix" values="0.3333 0.3333 0.3333 0 0 0.3333 0.3333 0.3333 0 0 0.3333 0.3333 0.3333 0 0 0 0 0 1 0"/>
+        </filter>
+        <image href="${imageUrl}" width="200" height="200" preserveAspectRatio="xMidYMid meet" filter="url(#grayscale)"/>
+      </svg>`;
+    }
+  }
+  
+  // For fallback logos or if there's no image URL, create a manual grayscale version
+  return logoSvg.replace(/#[0-9a-fA-F]{3,6}/g, '#333333');
+}
+
+// Create a reverse color version of the logo (light on dark)
+function generateReverseLogo(logoSvg: string): string {
+  // If the logo is an SVG with an embedded image
+  if (logoSvg.includes('<image href="')) {
+    // Extract the image URL
+    const imageUrlMatch = logoSvg.match(/href="([^"]+)"/);
+    const imageUrl = imageUrlMatch ? imageUrlMatch[1] : '';
+    
+    if (imageUrl) {
+      // Return an SVG with the same image but with an invert filter applied
+      return `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+        <rect width="200" height="200" fill="#111111"/>
+        <filter id="invert">
+          <feColorMatrix type="matrix" values="-1 0 0 0 1 0 -1 0 0 1 0 0 -1 0 1 0 0 0 1 0"/>
+        </filter>
+        <image href="${imageUrl}" width="200" height="200" preserveAspectRatio="xMidYMid meet" filter="url(#invert)"/>
+      </svg>`;
+    }
+  }
+  
+  // For fallback logos or if there's no image URL, create a simple inverted version
+  return logoSvg
+    .replace(/#[0-9a-fA-F]{3,6}/g, (match) => {
+      // Simple inversion - replace with a dark color for light colors and vice versa
+      return match === '#FFFFFF' || match === '#ffffff' ? '#111111' : '#FFFFFF';
+    })
+    .replace(/fill="white"/g, 'fill="black"');
+}
 
 // Generate brand concept with Claude
 export const generateBrandConcept = async (brandInput: BrandInput) => {
@@ -216,12 +288,16 @@ export const generateBrandConcept = async (brandInput: BrandInput) => {
       colors: brandInput.colorPreferences || []
     });
     
+    // Generate monochrome and reverse versions of the logo
+    const monochromeLogo = generateMonochromeLogo(logoSvg);
+    const reverseLogo = generateReverseLogo(logoSvg);
+    
     // Return a properly formatted brand concept
     return {
       logo: {
         primary: logoSvg,
-        monochrome: "",  // To be implemented
-        reverse: ""      // To be implemented
+        monochrome: monochromeLogo,
+        reverse: reverseLogo
       },
       colors: parsed.colors || [
         { name: "Primary", hex: "#10B981", type: "primary" },
