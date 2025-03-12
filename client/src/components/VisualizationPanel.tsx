@@ -31,7 +31,15 @@ const VisualizationPanel = ({ concept, projectId }: VisualizationPanelProps) => 
     colors?: any;
     typography?: any;
     hasChanges: boolean;
-  }>({ hasChanges: false });
+    elementsToRegenerate: {
+      logo?: boolean;
+      typography?: boolean;
+      colors?: boolean;
+    };
+  }>({ 
+    hasChanges: false,
+    elementsToRegenerate: {}
+  });
 
   // Mutation to update a brand concept
   const updateConceptMutation = useMutation({
@@ -92,9 +100,6 @@ const VisualizationPanel = ({ concept, projectId }: VisualizationPanelProps) => 
       queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/concepts`] });
       queryClient.invalidateQueries({ queryKey: [`/api/concepts/${concept?.id}`] });
       
-      // Reset pending changes after successful regeneration
-      setPendingChanges({ hasChanges: false });
-      
       setTimeout(() => {
         setIsRegenerating(false);
         setProgress(0);
@@ -152,24 +157,36 @@ const VisualizationPanel = ({ concept, projectId }: VisualizationPanelProps) => 
       const brandOutputCopy = { ...concept.brandOutput as any };
       brandOutputCopy[type] = updatedData;
       
+      // Determine which elements need regeneration based on what changed
+      const elementsToRegenerate = {
+        // Colors affect logo but not typography
+        ...(type === 'colors' ? { logo: true, colors: true } : {}),
+        // Typography changes only affect typography
+        ...(type === 'typography' ? { typography: true } : {})
+      };
+      
       // Update the local state to track pending changes
       setPendingChanges(prev => ({
         ...prev,
         [type]: updatedData,
-        hasChanges: true
+        hasChanges: true,
+        elementsToRegenerate: {
+          ...prev.elementsToRegenerate,
+          ...elementsToRegenerate
+        }
       }));
       
-      // Show a toast notification informing the user to click "Regenerate All"
+      // Show a toast notification informing the user to click "Apply Changes"
       toast({
         title: `${type.charAt(0).toUpperCase() + type.slice(1)} updated`,
-        description: "Click 'Regenerate All' to apply these changes to the concept.",
+        description: "Click 'Apply Changes' to regenerate affected elements.",
       });
       
       return;
     }
   };
   
-  // Handle the "Regenerate All" action
+  // Handle the "Apply Changes" action
   const handleRegenerateAll = async () => {
     if (!concept || !projectId || !pendingChanges.hasChanges) {
       if (!pendingChanges.hasChanges) {
@@ -188,13 +205,13 @@ const VisualizationPanel = ({ concept, projectId }: VisualizationPanelProps) => 
       return;
     }
     
-    // Apply all pending changes in sequence
+    // Apply pending changes in sequence, but only regenerate affected elements
     setIsRegenerating(true);
     setProgress(10);
     
     try {
-      // Apply typography changes if any
-      if (pendingChanges.typography) {
+      // Apply typography changes if needed
+      if (pendingChanges.elementsToRegenerate.typography && pendingChanges.typography) {
         await regenerateElementMutation.mutateAsync({
           conceptId: concept.id,
           elementType: 'typography',
@@ -204,8 +221,8 @@ const VisualizationPanel = ({ concept, projectId }: VisualizationPanelProps) => 
         });
       }
       
-      // Apply color changes if any
-      if (pendingChanges.colors) {
+      // Apply color changes if needed
+      if (pendingChanges.elementsToRegenerate.colors && pendingChanges.colors) {
         await regenerateElementMutation.mutateAsync({
           conceptId: concept.id,
           elementType: 'colors',
@@ -215,8 +232,22 @@ const VisualizationPanel = ({ concept, projectId }: VisualizationPanelProps) => 
         });
       }
       
+      // Regenerate logo if colors were changed
+      if (pendingChanges.elementsToRegenerate.logo) {
+        await regenerateElementMutation.mutateAsync({
+          conceptId: concept.id,
+          elementType: 'logo',
+          newValues: null, // Logo doesn't need specific values as it's generated based on the brand concept
+          brandInputs: concept.brandInputs,
+          projectId: projectId
+        });
+      }
+      
       // Reset pending changes
-      setPendingChanges({ hasChanges: false });
+      setPendingChanges({ 
+        hasChanges: false,
+        elementsToRegenerate: {}
+      });
       
       toast({
         title: "All changes applied",
