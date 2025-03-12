@@ -23,10 +23,9 @@ const BrandElementsOverview = ({ brandOutput }: BrandElementsOverviewProps) => {
       <div className="p-8 border-b md:border-b-0 md:border-r border-gray-200 flex flex-col items-center justify-center">
         <div className="w-32 h-32 flex items-center justify-center bg-white rounded-xl shadow-sm mb-4">
           {brandOutput?.logo?.primary ? (
-            <img 
-              src={brandOutput.logo.primary} 
-              alt="Primary Logo" 
-              className="w-24 h-24 object-contain"
+            <div 
+              dangerouslySetInnerHTML={{ __html: brandOutput.logo.primary }}
+              className="w-24 h-24"
             />
           ) : (
             <svg className="w-24 h-24" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">

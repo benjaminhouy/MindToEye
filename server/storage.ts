@@ -50,10 +50,52 @@ export class MemStorage implements IStorage {
     });
     
     // Add a sample project for testing
-    this.createProject({
+    const project = {
+      id: 1,
       name: 'Solystra',
       clientName: 'Sample Client',
-      userId: 1
+      userId: 1,
+      createdAt: new Date()
+    };
+    this.projects.set(project.id, project);
+    this.projectIdCounter = 2;
+
+    // Add a sample brand concept for testing
+    this.createBrandConcept({
+      projectId: project.id,
+      name: 'Initial Concept',
+      isActive: true,
+      brandInputs: {
+        brandName: 'Solystra',
+        industry: 'Renewable Energy',
+        description: 'A cutting-edge renewable energy company focused on solar solutions',
+        values: [
+          { id: '1', value: 'Sustainability' },
+          { id: '2', value: 'Innovation' },
+          { id: '3', value: 'Reliability' }
+        ],
+        designStyle: 'modern',
+        colorPreferences: ['blue', 'orange', 'white']
+      },
+      brandOutput: {
+        logo: {
+          primary: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200"><circle cx="100" cy="100" r="80" fill="#1E40AF"/><path d="M100 30C61.34 30 30 61.34 30 100C30 138.66 61.34 170 100 170C138.66 170 170 138.66 170 100C170 61.34 138.66 30 100 30ZM100 150C67.77 150 42 124.23 42 92C42 59.77 67.77 34 100 34C132.23 34 158 59.77 158 92C158 124.23 132.23 150 100 150Z" fill="#F97316"/><circle cx="100" cy="100" r="30" fill="#FFFFFF"/></svg>',
+          monochrome: '',
+          reverse: ''
+        },
+        colors: [
+          { name: 'Primary Blue', hex: '#1E40AF', type: 'primary' },
+          { name: 'Energy Orange', hex: '#F97316', type: 'secondary' },
+          { name: 'Pure White', hex: '#FFFFFF', type: 'accent' },
+          { name: 'Deep Navy', hex: '#0F172A', type: 'base' }
+        ],
+        typography: {
+          headings: 'Montserrat',
+          body: 'Open Sans'
+        },
+        logoDescription: 'A modern and bold logo representing solar energy and innovation',
+        mockups: []
+      }
     });
   }
 

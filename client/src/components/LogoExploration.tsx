@@ -38,10 +38,9 @@ const LogoExploration = ({ brandOutput }: LogoExplorationProps) => {
           <div className="border border-primary-100 rounded-lg p-4 bg-white shadow-sm">
             <div className="h-24 flex items-center justify-center bg-white mb-3">
               {brandOutput?.logo?.primary ? (
-                <img 
-                  src={brandOutput.logo.primary} 
-                  alt="Primary Logo" 
-                  className="w-20 h-20 object-contain"
+                <div 
+                  dangerouslySetInnerHTML={{ __html: brandOutput.logo.primary }}
+                  className="w-20 h-20 mx-auto"
                 />
               ) : (
                 logoVariants.primary
@@ -67,10 +66,9 @@ const LogoExploration = ({ brandOutput }: LogoExplorationProps) => {
           <div className="border border-gray-200 rounded-lg p-4 bg-white shadow-sm">
             <div className="h-24 flex items-center justify-center bg-white mb-3">
               {brandOutput?.logo?.monochrome ? (
-                <img 
-                  src={brandOutput.logo.monochrome} 
-                  alt="Monochrome Logo" 
-                  className="w-20 h-20 object-contain"
+                <div 
+                  dangerouslySetInnerHTML={{ __html: brandOutput.logo.monochrome }}
+                  className="w-20 h-20 mx-auto"
                 />
               ) : (
                 logoVariants.monochrome
@@ -96,10 +94,9 @@ const LogoExploration = ({ brandOutput }: LogoExplorationProps) => {
           <div className="border border-gray-200 rounded-lg p-4 bg-white shadow-sm">
             <div className="h-24 flex items-center justify-center bg-emerald-500 mb-3 rounded">
               {brandOutput?.logo?.reverse ? (
-                <img 
-                  src={brandOutput.logo.reverse} 
-                  alt="Reverse Logo" 
-                  className="w-20 h-20 object-contain"
+                <div 
+                  dangerouslySetInnerHTML={{ __html: brandOutput.logo.reverse }}
+                  className="w-20 h-20 mx-auto"
                 />
               ) : (
                 logoVariants.reverse
