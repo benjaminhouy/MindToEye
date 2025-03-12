@@ -51,8 +51,8 @@ const MockupExamples = ({ brandOutput }: MockupExamplesProps) => {
                   </svg>
                 </div>
                 <div className="relative">
-                  <h4 className="text-base font-bold">EcoVision</h4>
-                  <p className="text-xs text-white/90 mt-1">Sustainable Technology Solutions</p>
+                  <h4 className="text-base font-bold">{brandOutput?.brandName || 'Brand Name'}</h4>
+                  <p className="text-xs text-white/90 mt-1">{brandOutput?.tagline || brandOutput?.industry || 'Brand Tagline'}</p>
                 </div>
               </div>
               <div className="pt-3 pb-1">
@@ -80,8 +80,8 @@ const MockupExamples = ({ brandOutput }: MockupExamplesProps) => {
                     <path d="M100 30C61.34 30 30 61.34 30 100C30 138.66 61.34 170 100 170C138.66 170 170 138.66 170 100C170 61.34 138.66 30 100 30ZM135 110H110V135C110 140.52 105.52 145 100 145C94.48 145 90 140.52 90 135V110H65C59.48 110 55 105.52 55 100C55 94.48 59.48 90 65 90H90V65C90 59.48 94.48 55 100 55C105.52 55 110 59.48 110 65V90H135C140.52 90 145 94.48 145 100C145 105.52 140.52 110 135 110Z" fill="#10B981"/>
                   </svg>
                   <div className="ml-2">
-                    <h4 className="text-sm font-bold text-gray-900">EcoVision</h4>
-                    <p className="text-xs text-gray-500">Sustainable Technology Solutions</p>
+                    <h4 className="text-sm font-bold text-gray-900">{brandOutput?.brandName || 'Brand Name'}</h4>
+                    <p className="text-xs text-gray-500">{brandOutput?.tagline || brandOutput?.industry || 'Brand Tagline'}</p>
                   </div>
                 </div>
                 <div className="p-3">
@@ -93,7 +93,7 @@ const MockupExamples = ({ brandOutput }: MockupExamplesProps) => {
                   <div className="h-3 bg-gray-200 rounded-full w-4/5"></div>
                 </div>
                 <div className="bg-emerald-50 p-2 text-xs text-emerald-800 border-t border-emerald-100">
-                  123 Eco Way, Green City, EC 12345 | www.ecovision.com | 555-123-4567
+                  123 Business Ave, Suite 101 | www.{brandOutput?.brandName?.toLowerCase().replace(/\s+/g, '') || 'brand'}.com | 555-123-4567
                 </div>
               </div>
             </div>
@@ -119,9 +119,9 @@ const MockupExamples = ({ brandOutput }: MockupExamplesProps) => {
                   </div>
                   
                   <div className="mt-2 pt-2 border-t border-gray-200 text-xs text-gray-700">
-                    <p>EcoVision Technologies</p>
+                    <p>{brandOutput?.brandName || 'Brand Name'} Technologies</p>
                     <p>+1 (555) 123-4567</p>
-                    <p>sarah@ecovision.com</p>
+                    <p>contact@{brandOutput?.brandName?.toLowerCase().replace(/\s+/g, '') || 'brand'}.com</p>
                     <div className="flex space-x-2 mt-2">
                       <svg className="h-4 w-4 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
                         <path d="M13.397 20.997v-8.196h2.765l.411-3.209h-3.176V7.548c0-.926.258-1.56 1.587-1.56h1.684V3.127A22.336 22.336 0 0014.201 3c-2.444 0-4.122 1.492-4.122 4.231v2.355H7.332v3.209h2.753v8.202h3.312z"></path>
@@ -167,7 +167,7 @@ const MockupExamples = ({ brandOutput }: MockupExamplesProps) => {
                   </div>
                   <div className="h-16 rounded bg-emerald-500 flex items-center justify-center mb-2">
                     <div className="text-center text-white text-xs font-bold">
-                      Sustainable Technology<br/>Solutions
+                      {brandOutput?.tagline || brandOutput?.industry || 'Brand Tagline'}
                     </div>
                   </div>
                   <div className="space-y-2 mb-2">
