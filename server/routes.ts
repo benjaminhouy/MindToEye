@@ -784,6 +784,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
             monochrome: monochromeLogo,
             reverse: reverseLogo
           };
+          
+          // Update the logo description in the brand output to match the custom description
+          if (customDescription) {
+            brandOutput.logoDescription = customDescription;
+          }
         } catch (error: any) {
           console.error("Error regenerating logo:", error);
           return res.status(500).json({
