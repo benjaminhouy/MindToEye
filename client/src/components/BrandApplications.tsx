@@ -84,7 +84,7 @@ const BrandApplications = ({ brandOutput, onElementEdit }: BrandApplicationsProp
                   <div className="flex flex-col items-center justify-center h-full p-6 text-white">
                     <div className="w-16 h-16 mb-2" dangerouslySetInnerHTML={{ __html: logoSvg }} />
                     <h3 className="text-xl font-medium mb-1" style={{ fontFamily: typography.headings }}>
-                      {brandOutput?.brandName || "Brand Name"}
+                      {brandOutput?.brandName || brandOutput?.brandInputs?.brandName || "Brand"}
                     </h3>
                     <p className="text-xs text-center opacity-80" style={{ fontFamily: typography.body }}>
                       PREMIUM QUALITY PRODUCTS
@@ -114,7 +114,7 @@ const BrandApplications = ({ brandOutput, onElementEdit }: BrandApplicationsProp
                       <div className="flex items-center">
                         <div className="w-12 h-12 mr-4" dangerouslySetInnerHTML={{ __html: logoSvg }} />
                         <h3 className="text-xl font-medium" style={{ fontFamily: typography.headings, color: baseColor }}>
-                          {brandOutput?.brandName || "Brand Name"}
+                          {brandOutput?.brandName || brandOutput?.brandInputs?.brandName || "Brand"}
                         </h3>
                       </div>
                       <div className="text-xs text-right text-gray-500" style={{ fontFamily: typography.body }}>
@@ -221,7 +221,7 @@ const BrandApplications = ({ brandOutput, onElementEdit }: BrandApplicationsProp
                 </div>
                 <div>
                   <div className="text-sm font-medium" style={{ fontFamily: typography.headings }}>
-                    {brandOutput?.brandName || "Brand Name"}
+                    {brandOutput?.brandName || brandOutput?.brandInputs?.brandName || "Brand"}
                   </div>
                   <div className="text-xs text-gray-500" style={{ fontFamily: typography.body }}>
                     Sponsored · 2h
