@@ -6,7 +6,7 @@ import {
   insertBrandConceptSchema,
   insertProjectSchema
 } from "@shared/schema";
-import { generateBrandConcept } from "./openai";
+import { generateBrandConcept, generateLogo } from "./openai";
 import { ZodError } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -139,7 +139,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const brandInput = brandInputSchema.parse(req.body);
       
-      // Call the OpenAI service to generate a brand concept
+      // Call the AI service to generate a brand concept
       const brandOutput = await generateBrandConcept(brandInput);
       
       res.json({ 
@@ -153,6 +153,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.error("Error generating brand concept:", error);
       res.status(500).json({ error: "Failed to generate brand concept" });
+    }
+  });
+  
+  // Logo generation route
+  app.post("/api/generate-logo", async (req: Request, res: Response) => {
+    try {
+      const { brandName, industry, description, values, style, colors } = req.body;
+      
+      if (!brandName || !industry) {
+        return res.status(400).json({ error: "Brand name and industry are required" });
+      }
+      
+      // Call the AI service to generate a logo
+      const logo = await generateLogo({
+        brandName,
+        industry,
+        description,
+        values,
+        style,
+        colors
+      });
+      
+      res.json({ 
+        success: true,
+        logo
+      });
+    } catch (error) {
+      console.error("Error generating logo:", error);
+      res.status(500).json({ error: "Failed to generate logo" });
     }
   });
 
