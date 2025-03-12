@@ -42,9 +42,19 @@ const COMMON_FONTS = [
   "Lobster", "Caveat", "Sacramento", "Righteous", "Permanent Marker",
   "Fredoka One", "Staatliches", "Monoton", "Baloo", "Satisfy",
   
+  // Tech & Modern fonts
+  "Audiowide", "Orbitron", "Exo", "Exo 2", "Rajdhani", "Quantico", "Teko",
+  "Aldrich", "Syncopate", "Michroma", "Electrolize", "Sarpanch", "Oxanium",
+  "Jura", "Russo One", "Chakra Petch", "Saira Stencil One", "Unica One",
+  
+  // Creative & Unique fonts
+  "Poiret One", "Julius Sans One", "Amatic SC", "Handlee", "Kalam",
+  "Indie Flower", "Patrick Hand", "Architects Daughter", "Shadows Into Light",
+  "Rock Salt", "Gloria Hallelujah", "Kaushan Script", "Neucha", "Fredericka the Great",
+  
   // Monospace fonts
   "Courier", "Courier New", "Roboto Mono", "IBM Plex Mono", "Source Code Pro",
-  "Space Mono", "Fira Code", "JetBrains Mono", "Inconsolata"
+  "Space Mono", "Fira Code", "JetBrains Mono", "Inconsolata", "VT323"
 ];
 
 const BrandElementsOverview = ({ brandOutput, onElementEdit }: BrandElementsOverviewProps) => {
@@ -245,9 +255,11 @@ const BrandElementsOverview = ({ brandOutput, onElementEdit }: BrandElementsOver
                 <SelectTrigger className="w-full h-8 text-sm">
                   <SelectValue placeholder={typography.headings} />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="max-h-80 overflow-y-auto">
                   {COMMON_FONTS.map(font => (
-                    <SelectItem key={font} value={font}>{font}</SelectItem>
+                    <SelectItem key={font} value={font}>
+                      <span style={{ fontFamily: `'${font}', sans-serif` }}>{font}</span>
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -264,9 +276,11 @@ const BrandElementsOverview = ({ brandOutput, onElementEdit }: BrandElementsOver
                 <SelectTrigger className="w-full h-8 text-sm">
                   <SelectValue placeholder={typography.body} />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="max-h-80 overflow-y-auto">
                   {COMMON_FONTS.map(font => (
-                    <SelectItem key={font} value={font}>{font}</SelectItem>
+                    <SelectItem key={font} value={font}>
+                      <span style={{ fontFamily: `'${font}', sans-serif` }}>{font}</span>
+                    </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
