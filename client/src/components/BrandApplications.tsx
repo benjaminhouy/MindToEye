@@ -1,9 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useToast } from "@/hooks/use-toast";
-import { EditIcon, RefreshCw } from "lucide-react";
+import { EditIcon, RefreshCw, ImageIcon } from "lucide-react";
+import { apiRequest } from "@/lib/queryClient";
 
 interface BrandApplicationsProps {
   brandOutput: any;
@@ -14,6 +15,8 @@ const BrandApplications = ({ brandOutput, onElementEdit }: BrandApplicationsProp
   const { toast } = useToast();
   const [regenerating, setRegenerating] = useState(false);
   const [activeTab, setActiveTab] = useState("stationery"); // Default active tab
+  const [billboardImage, setBillboardImage] = useState<string | null>(null);
+  const [generateBillboardLoading, setGenerateBillboardLoading] = useState(false);
 
   // Get colors from brandOutput or use defaults
   const colorScheme = brandOutput?.colors || [
@@ -68,6 +71,61 @@ const BrandApplications = ({ brandOutput, onElementEdit }: BrandApplicationsProp
       });
     } finally {
       setRegenerating(false);
+    }
+  };
+  
+  // Generate billboard image using Flux AI via Replicate
+  const generateBillboard = async () => {
+    const brandName = brandOutput?.brandName || brandOutput?.brandInputs?.brandName || "Brand";
+    const description = brandOutput?.brandInputs?.description || "Premium quality products";
+    
+    try {
+      setGenerateBillboardLoading(true);
+      toast({
+        title: "Generating billboard mockup",
+        description: "Using Flux AI to create a realistic billboard design...",
+      });
+      
+      // Prepare the prompt for the billboard
+      const promptText = `
+        Create a modern billboard design for ${brandName}.
+        The billboard should show the brand logo prominently along with
+        the tagline "${description.substring(0, 50)}${description.length > 50 ? '...' : ''}".
+        Use colors: ${primaryColor}, ${secondaryColor}.
+        The billboard should be shown in an urban setting with other buildings visible.
+        Make the design look realistic and professional.
+      `;
+      
+      // Make API request to generate the billboard
+      const response = await apiRequest('POST', '/api/generate-logo', {
+        prompt: promptText,
+        brandName: brandName
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to generate billboard image');
+      }
+      
+      const result = await response.json();
+      
+      if (result.logoSvg) {
+        setBillboardImage(result.logoSvg);
+        toast({
+          title: "Billboard created!",
+          description: "Your AI-generated billboard is ready for client presentation.",
+        });
+      } else {
+        throw new Error('No billboard image received from API');
+      }
+    } catch (error) {
+      console.error("Error generating billboard:", error);
+      toast({
+        title: "Generation failed",
+        description: "Could not generate billboard image. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setGenerateBillboardLoading(false);
     }
   };
 
@@ -261,6 +319,102 @@ const BrandApplications = ({ brandOutput, onElementEdit }: BrandApplicationsProp
                 <div className="flex justify-between text-gray-500 text-sm">
                   <span>42 Likes</span>
                   <span>7 Comments</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  // Render advertising mockups with billboard
+  const renderAdvertising = () => (
+    <div className="relative">
+      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+        <div className="flex items-center justify-center mb-8">
+          <div className="w-full max-w-4xl">
+            <div className="flex flex-col items-center gap-6">
+              {/* Billboard mockup */}
+              <div className="w-full p-4 border border-gray-200 rounded-md shadow-md">
+                <div className="mb-3 flex justify-between items-center">
+                  <h3 className="text-lg font-medium" style={{ fontFamily: typography.headings }}>
+                    Billboard Design
+                  </h3>
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    onClick={generateBillboard}
+                    disabled={generateBillboardLoading}
+                    className="flex items-center gap-1"
+                  >
+                    {generateBillboardLoading ? (
+                      <RefreshCw className="w-4 h-4 mr-1 animate-spin" />
+                    ) : (
+                      <ImageIcon className="w-4 h-4 mr-1" />
+                    )}
+                    {billboardImage ? "Regenerate" : "Generate"} Billboard
+                  </Button>
+                </div>
+                
+                <div className="aspect-[2/1] bg-gray-100 rounded-md overflow-hidden">
+                  {billboardImage ? (
+                    <div className="h-full w-full flex items-center justify-center p-2">
+                      <div 
+                        className="w-full h-full"
+                        dangerouslySetInnerHTML={{ __html: billboardImage }}
+                      />
+                    </div>
+                  ) : (
+                    <div className="h-full w-full flex flex-col items-center justify-center p-4">
+                      <div className="w-16 h-16 mb-4 opacity-30" dangerouslySetInnerHTML={{ __html: logoSvg }} />
+                      <p className="text-gray-500 text-center max-w-md text-sm" style={{ fontFamily: typography.body }}>
+                        Generate a realistic billboard design for this brand using our AI.
+                        {generateBillboardLoading && (
+                          <span className="block mt-2 text-xs">
+                            Creating billboard design with Flux AI... This may take a moment.
+                          </span>
+                        )}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              {/* Urban poster mockup */}
+              <div className="w-full p-4 border border-gray-200 rounded-md shadow-md">
+                <h3 className="text-lg font-medium mb-3" style={{ fontFamily: typography.headings }}>
+                  Urban Poster Display
+                </h3>
+                <div className="aspect-[4/3] bg-gray-100 rounded-md overflow-hidden relative">
+                  {/* Background urban scene */}
+                  <div className="absolute inset-0 bg-gray-800 flex items-center justify-center">
+                    <div className="w-full h-full" style={{
+                      backgroundImage: "url('https://images.unsplash.com/photo-1517666669-45c3e262b513?auto=format&fit=crop&q=80&w=1200&h=800')", 
+                      backgroundSize: 'cover',
+                      backgroundPosition: 'center',
+                      opacity: 0.7
+                    }}></div>
+                  </div>
+                  
+                  {/* Poster on wall */}
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="w-1/2 h-2/3 bg-white shadow-2xl transform perspective-700 rotate-y-6 skew-y-1" style={{
+                      boxShadow: '8px 8px 24px rgba(0, 0, 0, 0.4)'
+                    }}>
+                      <div className="w-full h-full p-4 flex flex-col items-center justify-center"
+                           style={{ background: `linear-gradient(135deg, ${primaryColor} 0%, ${secondaryColor} 100%)` }}>
+                        <div className="w-1/2 h-1/3 mb-4" dangerouslySetInnerHTML={{ __html: logoSvg }} />
+                        <h3 className="text-xl font-bold mb-2 text-white text-center" style={{ fontFamily: typography.headings }}>
+                          {brandOutput?.brandName || brandOutput?.brandInputs?.brandName || "Brand"}
+                        </h3>
+                        <p className="text-xs text-white opacity-90 text-center" style={{ fontFamily: typography.body }}>
+                          {brandOutput?.brandInputs?.description?.substring(0, 50) || "Premium quality products"}
+                          {(brandOutput?.brandInputs?.description?.length || 0) > 50 ? '...' : ''}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
