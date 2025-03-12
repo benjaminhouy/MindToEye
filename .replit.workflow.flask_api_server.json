@@ -1,0 +1,8 @@
+{
+  "name": "Flask API Server",
+  "command": "python simple_flask_test.py",
+  "persistent": true,
+  "restartOn": {
+    "files": ["simple_flask_test.py"]
+  }
+}
