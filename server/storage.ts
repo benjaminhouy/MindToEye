@@ -49,20 +49,29 @@ export class MemStorage implements IStorage {
       password: 'demo123'
     });
     
-    // Add a sample project for testing
-    const project = {
+    // Add sample projects for testing
+    const project1 = {
       id: 1,
       name: 'Solystra',
       clientName: 'Sample Client',
       userId: 1,
       createdAt: new Date()
     };
-    this.projects.set(project.id, project);
-    this.projectIdCounter = 2;
+    this.projects.set(project1.id, project1);
+    
+    const project2 = {
+      id: 2,
+      name: 'NexGen Fintech',
+      clientName: 'Financial Innovations Inc.',
+      userId: 1,
+      createdAt: new Date()
+    };
+    this.projects.set(project2.id, project2);
+    this.projectIdCounter = 3;
 
-    // Add a sample brand concept for testing
+    // Add sample brand concepts for testing
     this.createBrandConcept({
-      projectId: project.id,
+      projectId: project1.id,
       name: 'Initial Concept',
       isActive: true,
       brandInputs: {
@@ -99,6 +108,50 @@ export class MemStorage implements IStorage {
         contactTitle: 'Chief Innovation Officer',
         contactPhone: '+1 (415) 555-8729',
         address: '123 Solar Way, San Francisco, CA 94110',
+        mockups: []
+      }
+    });
+    
+    // Add a concept for the second project
+    this.createBrandConcept({
+      projectId: project2.id,
+      name: 'Financial Tech Concept',
+      isActive: true,
+      brandInputs: {
+        brandName: 'NexGen Fintech',
+        industry: 'Financial Technology',
+        description: 'A revolutionary fintech platform that simplifies banking and investments',
+        values: [
+          { id: '1', value: 'Security' },
+          { id: '2', value: 'Innovation' },
+          { id: '3', value: 'Accessibility' },
+          { id: '4', value: 'Transparency' }
+        ],
+        designStyle: 'minimalist',
+        colorPreferences: ['navy', 'gold', 'teal']
+      },
+      brandOutput: {
+        logo: {
+          primary: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200"><rect x="40" y="40" width="120" height="120" fill="#0A2342" rx="10" ry="10"/><path d="M75 80L100 60L125 80L125 120L75 120L75 80Z" fill="#E8C547"/><path d="M85 100L115 100" stroke="#20A39E" stroke-width="6" stroke-linecap="round"/><path d="M85 110L105 110" stroke="#20A39E" stroke-width="6" stroke-linecap="round"/></svg>',
+          monochrome: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200"><filter id="grayscale"><feColorMatrix type="matrix" values="0.3333 0.3333 0.3333 0 0 0.3333 0.3333 0.3333 0 0 0.3333 0.3333 0.3333 0 0 0 0 0 1 0"/></filter><rect x="40" y="40" width="120" height="120" fill="#333333" rx="10" ry="10"/><path d="M75 80L100 60L125 80L125 120L75 120L75 80Z" fill="#666666"/><path d="M85 100L115 100" stroke="#999999" stroke-width="6" stroke-linecap="round"/><path d="M85 110L105 110" stroke="#999999" stroke-width="6" stroke-linecap="round"/></svg>',
+          reverse: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="200" height="200"><rect width="200" height="200" fill="#111111"/><rect x="40" y="40" width="120" height="120" fill="#FFFFFF" rx="10" ry="10"/><path d="M75 80L100 60L125 80L125 120L75 120L75 80Z" fill="#111111"/><path d="M85 100L115 100" stroke="#444444" stroke-width="6" stroke-linecap="round"/><path d="M85 110L105 110" stroke="#444444" stroke-width="6" stroke-linecap="round"/></svg>'
+        },
+        colors: [
+          { name: 'Navy Blue', hex: '#0A2342', type: 'primary' },
+          { name: 'Gold', hex: '#E8C547', type: 'secondary' },
+          { name: 'Teal', hex: '#20A39E', type: 'accent' },
+          { name: 'Charcoal', hex: '#222222', type: 'base' }
+        ],
+        typography: {
+          headings: 'Poppins',
+          body: 'Roboto'
+        },
+        logoDescription: 'A minimalist logo representing security and financial growth',
+        tagline: 'Banking for the Digital Age',
+        contactName: 'Jordan Chen',
+        contactTitle: 'Director of Client Relations',
+        contactPhone: '+1 (415) 555-2390',
+        address: '485 Financial District Ave, San Francisco, CA 94104',
         mockups: []
       }
     });
