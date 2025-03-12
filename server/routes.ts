@@ -172,14 +172,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       log("Sending request to Replicate with test prompt...");
       const output = await testReplicate.run(
-        "black-forest-labs/flux:1",
+        "black-forest-labs/flux-pro",
         {
           input: {
             prompt: testPrompt,
             width: 1024,
             height: 1024,
             negative_prompt: "low quality, distorted",
-            prompt_strength: 7.5,
             num_outputs: 1,
             num_inference_steps: 25
           }

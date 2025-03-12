@@ -107,14 +107,13 @@ IMPORTANT REQUIREMENTS:
     let imageOutput;
     try {
       imageOutput = await replicate.run(
-        "black-forest-labs/flux:1",
+        "black-forest-labs/flux-pro",
         {
           input: {
             prompt: fluxPrompt,
             width: 1024, 
             height: 1024,
             negative_prompt: "low quality, distorted, ugly, bad proportions, text errors, text cut off, spelling errors",
-            prompt_strength: 7.5,
             num_outputs: 1,
             num_inference_steps: 25
           }
