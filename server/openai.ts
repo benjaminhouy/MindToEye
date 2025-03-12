@@ -4,8 +4,9 @@ import { BrandInput } from "@shared/schema";
 // Using Claude Sonnet 3.5 model from Anthropic as requested
 const CLAUDE_MODEL = "claude-3-sonnet-20240229";
 
-// Random value between 0.7 and 1.4 to add variability to responses
-const getRandomTemperature = () => 0.7 + Math.random() * 0.7;
+// Random value between 0.3 and 0.9 to add variability to responses
+// (Claude API requires temperature between 0 and 1)
+const getRandomTemperature = () => 0.3 + Math.random() * 0.6;
 
 // Initialize Anthropic with API key from environment
 const anthropic = new Anthropic({
