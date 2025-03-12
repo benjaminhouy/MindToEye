@@ -178,8 +178,8 @@ const VisualizationPanel = ({ concept, projectId }: VisualizationPanelProps) => 
       
       // Show a toast notification informing the user to click "Apply Changes"
       toast({
-        title: `${type.charAt(0).toUpperCase() + type.slice(1)} updated`,
-        description: "Click 'Apply Changes' to regenerate affected elements.",
+        title: `${type.charAt(0).toUpperCase() + type.slice(1)} updated instantly`,
+        description: "Click 'Apply Changes' to regenerate visualizations. Changes ready for client preview.",
       });
       
       return;
@@ -250,8 +250,8 @@ const VisualizationPanel = ({ concept, projectId }: VisualizationPanelProps) => 
       });
       
       toast({
-        title: "All changes applied",
-        description: "The brand concept has been successfully updated with all your changes.",
+        title: "Changes applied successfully",
+        description: "Brand visualizations updated and ready for client presentation. Review time saved!",
       });
     } catch (error) {
       console.error("Error applying all changes:", error);
@@ -314,15 +314,20 @@ const VisualizationPanel = ({ concept, projectId }: VisualizationPanelProps) => 
               </span>
             </div>
             <div className="flex space-x-2">
-              <Button 
-                variant={pendingChanges.hasChanges ? "default" : "outline"}
-                size="sm"
-                onClick={handleRegenerateAll}
-                className={pendingChanges.hasChanges ? "bg-green-600 hover:bg-green-700" : ""}
-              >
-                <RefreshCwIcon className="mr-1 h-4 w-4" />
-                {pendingChanges.hasChanges ? "Apply Changes" : "Regenerate All"}
-              </Button>
+              <div className="flex flex-col items-end">
+                <Button 
+                  variant={pendingChanges.hasChanges ? "default" : "outline"}
+                  size="sm"
+                  onClick={handleRegenerateAll}
+                  className={pendingChanges.hasChanges ? "bg-green-600 hover:bg-green-700" : ""}
+                >
+                  <RefreshCwIcon className="mr-1 h-4 w-4" />
+                  {pendingChanges.hasChanges ? "Apply Changes" : "Regenerate All"}
+                </Button>
+                {pendingChanges.hasChanges && (
+                  <span className="text-xs text-green-700 mt-1">Fast visualization updates ready</span>
+                )}
+              </div>
               <Button 
                 variant="outline" 
                 size="sm"

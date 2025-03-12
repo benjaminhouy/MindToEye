@@ -148,15 +148,15 @@ const BrandElementsOverview = ({ brandOutput, onElementEdit }: BrandElementsOver
               try {
                 if (onElementEdit) {
                   toast({
-                    title: "Regenerating logo",
-                    description: "Please wait while we generate a new logo...",
+                    title: "Regenerating logo instantly",
+                    description: "Creating a professional logo design for client review...",
                   });
                   
                   await onElementEdit('logo', null);
                   
                   toast({
                     title: "Logo regenerated",
-                    description: "A new logo has been generated successfully.",
+                    description: "New logo ready for client presentation! Approve designs faster.",
                   });
                 }
               } catch (error) {
@@ -182,9 +182,9 @@ const BrandElementsOverview = ({ brandOutput, onElementEdit }: BrandElementsOver
               variant="ghost" 
               size="sm" 
               onClick={editingColor !== null ? saveColorChanges : () => setEditingColor(0)}
-              className="text-xs px-2 h-7"
+              className={`text-xs px-2 h-7 ${editingColor === null ? "text-blue-600 hover:text-blue-700" : ""}`}
             >
-              {editingColor !== null ? "Save" : "Edit"}
+              {editingColor !== null ? "Save" : <><EditIcon className="h-3 w-3 mr-1" /> Edit Colors</>}
             </Button>
           )}
         </div>
@@ -231,9 +231,9 @@ const BrandElementsOverview = ({ brandOutput, onElementEdit }: BrandElementsOver
               variant="ghost" 
               size="sm"
               onClick={editingTypography ? saveTypographyChanges : () => setEditingTypography(true)}
-              className="text-xs px-2 h-7"
+              className={`text-xs px-2 h-7 ${editingTypography === false ? "text-blue-600 hover:text-blue-700" : ""}`}
             >
-              {editingTypography ? "Save" : "Edit"}
+              {editingTypography ? "Save" : <><EditIcon className="h-3 w-3 mr-1" /> Edit Fonts</>}
             </Button>
           )}
         </div>
