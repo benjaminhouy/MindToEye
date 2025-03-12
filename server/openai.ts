@@ -103,18 +103,18 @@ IMPORTANT REQUIREMENTS:
 - Do not add any watermarks or signatures
     `;
 
-    // FLUX model on Replicate (using stable model ID)
+    // FLUX 1.1 Pro model on Replicate
     const output = await replicate.run(
-      "stability-ai/sdxl:39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b",
+      "blackforestlabs/flux:1.1-pro",
       {
         input: {
           prompt: fluxPrompt,
-          width: 768,
+          width: 768, 
           height: 768,
           negative_prompt: "low quality, distorted, ugly, bad proportions, text errors, text cut off, spelling errors",
-          scheduler: "K_EULER",
           num_inference_steps: 50,
-          guidance_scale: 8.0
+          guidance_scale: 7.5,
+          seed: Math.floor(Math.random() * 1000000)
         }
       }
     );
