@@ -567,6 +567,7 @@ const BrandApplications = ({ brandOutput, onElementEdit }: BrandApplicationsProp
           <TabsTrigger value="stationery">Stationery</TabsTrigger>
           <TabsTrigger value="social">Social Media</TabsTrigger>
           <TabsTrigger value="merchandise">Merchandise</TabsTrigger>
+          <TabsTrigger value="advertising">Advertising</TabsTrigger>
         </TabsList>
         <TabsContent value="stationery">
           {renderStationery()}
@@ -576,6 +577,9 @@ const BrandApplications = ({ brandOutput, onElementEdit }: BrandApplicationsProp
         </TabsContent>
         <TabsContent value="merchandise">
           {renderMerchandise()}
+        </TabsContent>
+        <TabsContent value="advertising">
+          {renderAdvertising()}
         </TabsContent>
       </Tabs>
     </div>
