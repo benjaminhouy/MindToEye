@@ -528,7 +528,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Clone the current brand output
-      const brandOutput = { ...existingConcept.brandOutput };
+      const brandOutput = JSON.parse(JSON.stringify(existingConcept.brandOutput));
       
       // Based on elementType, merge the new values
       if (elementType === 'colors') {
@@ -554,12 +554,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         brandOutput
       });
       
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error regenerating brand element:", error);
       res.status(500).json({ 
         success: false, 
         message: "Failed to regenerate brand element", 
-        error: error.message 
+        error: error?.message || String(error)
       });
     }
   });

@@ -145,6 +145,7 @@ const ProjectWorkspace = () => {
               <div className="lg:col-span-9 space-y-6">
                 <VisualizationPanel 
                   concept={activeConcept}
+                  projectId={Number(params?.id)}
                 />
               </div>
             </div>
