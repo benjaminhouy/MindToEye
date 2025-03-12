@@ -535,10 +535,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
         brandOutput.colors = newValues;
       } else if (elementType === 'typography') {
         brandOutput.typography = newValues;
+      } else if (elementType === 'logo') {
+        // For logo regeneration, we need to call the FLUX API
+        try {
+          // Import the generateLogo function
+          const { generateLogo, generateMonochromeLogo, generateReverseLogo } = await import('./openai');
+          
+          // Generate a new logo using the current brand input
+          const logoSvg = await generateLogo({
+            brandName: brandInputs.brandName,
+            industry: brandInputs.industry || '',
+            description: brandInputs.description,
+            values: brandInputs.values.map((v: any) => v.value),
+            style: brandInputs.designStyle,
+            colors: brandInputs.colorPreferences || []
+          });
+          
+          // Generate monochrome and reverse versions
+          const monochromeLogo = generateMonochromeLogo(logoSvg);
+          const reverseLogo = generateReverseLogo(logoSvg);
+          
+          // Update the logo in the brand output
+          brandOutput.logo = {
+            primary: logoSvg,
+            monochrome: monochromeLogo,
+            reverse: reverseLogo
+          };
+        } catch (error) {
+          console.error("Error regenerating logo:", error);
+          return res.status(500).json({
+            success: false,
+            message: "Failed to regenerate logo",
+            error: error.message
+          });
+        }
       } else {
         return res.status(400).json({ 
           success: false, 
-          message: "Unsupported element type. Supported types: colors, typography" 
+          message: "Unsupported element type. Supported types: colors, typography, logo" 
         });
       }
       

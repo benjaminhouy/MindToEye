@@ -33,14 +33,24 @@ export const generateLogo = async (params: {
   // Generate a unique timestamp seed to make each request different
   const uniqueSeed = Date.now() % 1000;
   
-  // We need to sanitize description to prevent NSFW content
+  // We need to thoroughly sanitize description to prevent NSFW content triggers
   let sanitizedDescription = description;
-  // For business descriptions that might trigger NSFW filters, focus only on brand values
-  if (description.toLowerCase().includes("bdsm") || 
-      description.toLowerCase().includes("sex") || 
-      description.toLowerCase().includes("adult") ||
-      description.toLowerCase().includes("erotic")) {
-    sanitizedDescription = `A lifestyle brand focused on aesthetic appeal, quality, and elegance. Targeting customers who value innovation and quality.`;
+  
+  // List of sensitive terms that might trigger content filters
+  const sensitiveTerms = [
+    "bdsm", "sex", "adult", "erotic", "fetish", "kinky", 
+    "bondage", "slave", "dom", "sub", "flog", "whip", 
+    "leather", "nsfw", "xxx", "pleasure", "toy", "sensual"
+  ];
+  
+  // Check if any sensitive terms are in the description
+  const hasSensitiveContent = sensitiveTerms.some(term => 
+    description.toLowerCase().includes(term)
+  );
+  
+  // If sensitive content detected, replace with a sanitized version
+  if (hasSensitiveContent) {
+    sanitizedDescription = `A premium lifestyle brand focused on aesthetic appeal, quality, and elegance. Creating luxury accessories for discerning customers who value innovation, craftsmanship and quality materials.`;
   }
   
   // First, get logo design ideas from Claude
@@ -126,7 +136,7 @@ IMPORTANT REQUIREMENTS:
             prompt: fluxPrompt,
             width: 1024, 
             height: 1024,
-            negative_prompt: "low quality, distorted, ugly, bad proportions, text errors, text cut off, spelling errors, nsfw, provocative, inappropriate, sexual, adult content",
+            negative_prompt: "low quality, distorted, ugly, bad proportions, text errors, text cut off, spelling errors, nsfw, provocative, inappropriate, sexual, adult content, bondage, fetish, erotic, kinky, leather, sensual, lewd, explicit, objectionable",
             num_outputs: 1,
             num_inference_steps: 25
           }
@@ -177,7 +187,7 @@ function createFallbackLogo(brandName: string, colors: string[]): string {
 }
 
 // Create a monochrome version of the logo by replacing image with a grayscale version
-function generateMonochromeLogo(logoSvg: string): string {
+export function generateMonochromeLogo(logoSvg: string): string {
   // If the logo is an SVG with an embedded image
   if (logoSvg.includes('<image href="')) {
     // Extract the image URL
@@ -200,7 +210,7 @@ function generateMonochromeLogo(logoSvg: string): string {
 }
 
 // Create a reverse color version of the logo (light on dark)
-function generateReverseLogo(logoSvg: string): string {
+export function generateReverseLogo(logoSvg: string): string {
   // If the logo is an SVG with an embedded image
   if (logoSvg.includes('<image href="')) {
     // Extract the image URL
@@ -235,11 +245,31 @@ export const generateBrandConcept = async (brandInput: BrandInput) => {
   const uniqueSeed = Date.now() % 1000;
   const varietyFactor = Math.floor(Math.random() * 10); // Random number between 0-9
   
+  // Sanitize the description to prevent content moderation issues
+  let sanitizedDescription = brandInput.description;
+  
+  // List of sensitive terms that might trigger content filters
+  const sensitiveTerms = [
+    "bdsm", "sex", "adult", "erotic", "fetish", "kinky", 
+    "bondage", "slave", "dom", "sub", "flog", "whip", 
+    "leather", "nsfw", "xxx", "pleasure", "toy", "sensual"
+  ];
+  
+  // Check if any sensitive terms are in the description
+  const hasSensitiveContent = sensitiveTerms.some(term => 
+    brandInput.description.toLowerCase().includes(term)
+  );
+  
+  // If sensitive content detected, replace with a sanitized version
+  if (hasSensitiveContent) {
+    sanitizedDescription = `A premium lifestyle brand focused on aesthetic appeal, quality, and elegance. Creating luxury accessories for discerning customers who value innovation, craftsmanship and quality materials.`;
+  }
+  
   const prompt = `
     Generate a fresh, original, and comprehensive brand identity for a company with the following details:
     - Brand Name: ${brandInput.brandName}
     - Industry: ${brandInput.industry || 'General business'}
-    - Description: ${brandInput.description}
+    - Description: ${sanitizedDescription}
     - Values: ${brandInput.values.map(v => v.value).join(', ')}
     - Design Style: ${brandInput.designStyle}
     - Color Preferences: ${brandInput.colorPreferences?.length ? brandInput.colorPreferences.join(', ') : 'Open to creative suggestions'}
@@ -299,11 +329,11 @@ export const generateBrandConcept = async (brandInput: BrandInput) => {
     
     const parsed = JSON.parse(jsonStr);
     
-    // Generate a logo using the brand input
+    // Generate a logo using the brand input (with sanitized description)
     const logoSvg = await generateLogo({
       brandName: brandInput.brandName,
       industry: brandInput.industry,
-      description: brandInput.description,
+      description: sanitizedDescription, // Use the sanitized description
       values: brandInput.values.map(v => v.value),
       style: brandInput.designStyle,
       colors: brandInput.colorPreferences || []
