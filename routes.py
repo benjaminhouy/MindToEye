@@ -5,6 +5,12 @@ from datetime import datetime
 import time
 import logging
 from typing import Dict, Any, List, Optional, Callable
+from marshmallow import ValidationError
+from schema import (
+    project_schema, projects_schema, project_create_schema,
+    brand_concept_schema, brand_concepts_schema, brand_concept_create_schema,
+    brand_input_schema, regenerate_element_schema
+)
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -53,10 +59,15 @@ def register_routes(app, storage, anthropic_client, openai_client, replicate_cli
             project_data = request.json
             project_data["userId"] = user_id
             
-            # Validate project data here if needed
+            # Validate project data using schema
+            try:
+                validated_data = project_create_schema.load(project_data)
+            except ValidationError as err:
+                logger.error(f"Validation error: {err.messages}")
+                return jsonify({"error": "Invalid project data", "details": err.messages}), 400
             
-            project = storage.create_project(project_data)
-            return jsonify(project), 201
+            project = storage.create_project(validated_data)
+            return jsonify(project_schema.dump(project)), 201
         except Exception as e:
             logger.error(f"Error creating project: {e}")
             return jsonify({"error": "Failed to create project"}), 500
