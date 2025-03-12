@@ -70,16 +70,27 @@ const BrandInputPanel = ({ onGenerate, savedConcepts, activeConcept, onConceptSe
 
   const saveMutation = useMutation({
     mutationFn: async (data: any) => {
+      // Check if we have a valid project ID
+      if (!projectId || isNaN(projectId)) {
+        throw new Error("Invalid project ID. Please create a project first.");
+      }
       const response = await apiRequest("POST", `/api/projects/${projectId}/concepts`, data);
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/concepts`] });
+      toast({
+        title: "Concept saved",
+        description: "Your brand concept has been saved successfully.",
+      });
     },
-    onError: () => {
+    onError: (error) => {
+      console.error("Error saving concept:", error);
       toast({
         title: "Save failed",
-        description: "There was a problem saving your brand concept. Please try again.",
+        description: typeof error === 'object' && error !== null && 'message' in error 
+          ? String(error.message) 
+          : "There was a problem saving your brand concept. Please make sure you're in a project.",
         variant: "destructive",
       });
     }

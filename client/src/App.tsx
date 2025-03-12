@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import NotFound from "@/pages/not-found";
 import Dashboard from "@/pages/Dashboard";
 import ProjectWorkspace from "@/pages/ProjectWorkspace";
+import NewProject from "@/pages/NewProject";
 import Header from "@/components/Header";
 
 function Router() {
@@ -14,6 +15,7 @@ function Router() {
       <div className="flex-grow">
         <Switch>
           <Route path="/" component={Dashboard} />
+          <Route path="/projects/new" component={NewProject} />
           <Route path="/projects/:id" component={ProjectWorkspace} />
           <Route component={NotFound} />
         </Switch>
