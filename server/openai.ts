@@ -3,7 +3,8 @@ import Replicate from "replicate";
 import { BrandInput } from "@shared/schema";
 
 // Using Claude Sonnet 3.5 model from Anthropic as requested
-const CLAUDE_MODEL = "claude-3-sonnet-20240229";
+// Format is now model@YYYYMMDD to avoid deprecation warning
+const CLAUDE_MODEL = "claude-3-sonnet@20240229";
 
 // Random value between 0.3 and 0.9 to add variability to responses
 // (Claude API requires temperature between 0 and 1)
@@ -81,30 +82,30 @@ export const generateLogo = async (params: {
       throw new Error("Failed to generate logo design description");
     }
     
-    // Create a prompt for FLUX1.1 Pro (via Replicate)
+    // Create a prompt for the image generation
     const fluxPrompt = `
-Design a professional, minimal logo for ${brandName}, a ${industry} brand.
+Create a high-quality logo exactly matching this description:
 
 ${designDescription}
 
-The logo should be:
-- Clean and simple, using a minimal design approach 
-- Vector-style with clear shapes
-- Simple enough to be recognized at small sizes
-- Use a white or transparent background
-- Include both icon and text elements carefully positioned
-- Professional quality suitable for a business
+For brand: ${brandName}
+Industry: ${industry}
 
-Important formatting requirements:
-- Logo is centered in the image
-- Use negative space effectively
-- No borders or additional elements  
-- Logo should work well in both color and black/white
+IMPORTANT REQUIREMENTS:
+- Create EXACTLY what is described in the logo description
+- Render in the style of a professional logo with clean lines
+- Use the specific colors mentioned in the description
+- Include any symbolic elements described (like flowers, shapes, or abstract elements)
+- Make sure any text is perfectly legible
+- Use a transparent or white background
+- Center the logo in the image
+- Professional quality suitable for a business brand
+- Do not add any watermarks or signatures
     `;
 
-    // FLUX1.1 Pro model on Replicate
+    // FLUX model on Replicate (using stable model ID)
     const output = await replicate.run(
-      "fal-ai/flux:flux-1.1",
+      "stability-ai/sdxl:39ed52f2a78e934b3ba6e2a89f5b1c712de7dfea535525255b1aa35c5565e08b",
       {
         input: {
           prompt: fluxPrompt,
