@@ -1,32 +1,75 @@
 """Storage implementations for the application"""
-import time
-from datetime import datetime
+import datetime
 from typing import Dict, List, Optional, Any
 
 class MemStorage:
     """In-memory storage implementation for Flask backend"""
-    
+
     def __init__(self):
         """Initialize the storage with empty collections"""
-        self.users = {}  # user_id -> user data
-        self.projects = {}  # project_id -> project data
-        self.brand_concepts = {}  # concept_id -> concept data
+        self.users = {}  # {id: user_dict}
+        self.projects = {}  # {id: project_dict}
+        self.brand_concepts = {}  # {id: concept_dict}
         
         self.user_id_counter = 1
         self.project_id_counter = 1
         self.concept_id_counter = 1
         
-        # Create a default user for demo purposes
+        # Add a test user
+        self._create_test_data()
+    
+    def _create_test_data(self):
+        """Create test data for development"""
+        # Create a test user
         self.create_user({
-            "username": "demo",
-            "password": "password"  # In a real app, this would be hashed
+            "username": "testuser",
+            "password": "password123"
         })
         
-        # Add a sample project
-        self.create_project({
+        # Create a sample project
+        project = self.create_project({
             "name": "Solystra",
             "clientName": "Sample Client",
             "userId": 1
+        })
+        
+        # Create a sample brand concept
+        self.create_brand_concept({
+            "projectId": project["id"],
+            "name": "Initial Concept",
+            "brandInputs": {
+                "brandName": "Solystra",
+                "industry": "Renewable Energy",
+                "description": "Solar energy solutions for modern homes",
+                "values": [
+                    {"id": "1", "value": "Sustainability"},
+                    {"id": "2", "value": "Innovation"},
+                    {"id": "3", "value": "Reliability"}
+                ],
+                "designStyle": "modern",
+                "colorPreferences": ["blue", "green", "orange"]
+            },
+            "brandOutput": {
+                "logo": {
+                    "primary": '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><circle cx="100" cy="100" r="80" fill="#2563EB"/><circle cx="100" cy="100" r="40" fill="#F97316"/><path d="M100 20 L160 100 L100 180 L40 100 Z" fill="none" stroke="#10B981" stroke-width="4"/></svg>',
+                    "monochrome": '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><circle cx="100" cy="100" r="80" fill="#000000"/><circle cx="100" cy="100" r="40" fill="#FFFFFF"/><path d="M100 20 L160 100 L100 180 L40 100 Z" fill="none" stroke="#888888" stroke-width="4"/></svg>',
+                    "reverse": '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><circle cx="100" cy="100" r="80" fill="#FFFFFF"/><circle cx="100" cy="100" r="40" fill="#000000"/><path d="M100 20 L160 100 L100 180 L40 100 Z" fill="none" stroke="#CCCCCC" stroke-width="4"/></svg>'
+                },
+                "colors": [
+                    {"name": "Solar Blue", "hex": "#2563EB", "type": "primary"},
+                    {"name": "Energy Orange", "hex": "#F97316", "type": "secondary"},
+                    {"name": "Eco Green", "hex": "#10B981", "type": "accent"},
+                    {"name": "Cloud White", "hex": "#F8FAFC", "type": "base"},
+                    {"name": "Night Blue", "hex": "#1E3A8A", "type": "base"}
+                ],
+                "typography": {
+                    "headings": "Montserrat",
+                    "body": "Open Sans"
+                },
+                "tagline": "Powering Tomorrow, Today",
+                "logoDescription": "A modern, abstract representation of the sun (orange circle) with solar rays (blue circle) and a diamond shape representing homes and buildings (green outline)."
+            },
+            "isActive": True
         })
 
     def get_user(self, id: int) -> Optional[Dict]:
@@ -36,21 +79,22 @@ class MemStorage:
     def get_user_by_username(self, username: str) -> Optional[Dict]:
         """Get user by username"""
         for user in self.users.values():
-            if user["username"] == username:
+            if user["username"].lower() == username.lower():
                 return user
         return None
     
     def create_user(self, user_data: Dict) -> Dict:
         """Create a new user"""
-        user_id = self.user_id_counter
+        id = self.user_id_counter
         self.user_id_counter += 1
         
         user = {
-            "id": user_id,
-            **user_data
+            "id": id,
+            "username": user_data["username"],
+            "password": user_data["password"]
         }
         
-        self.users[user_id] = user
+        self.users[id] = user
         return user
     
     def get_projects(self, user_id: int) -> List[Dict]:
@@ -63,34 +107,41 @@ class MemStorage:
     
     def create_project(self, project_data: Dict) -> Dict:
         """Create a new project"""
-        project_id = self.project_id_counter
+        id = self.project_id_counter
         self.project_id_counter += 1
         
         project = {
-            "id": project_id,
-            "createdAt": datetime.now().isoformat(),
-            **project_data
+            "id": id,
+            "name": project_data["name"],
+            "clientName": project_data.get("clientName"),
+            "userId": project_data["userId"],
+            "createdAt": datetime.datetime.now().isoformat()
         }
         
-        self.projects[project_id] = project
+        self.projects[id] = project
         return project
     
     def update_project(self, id: int, partial_project: Dict) -> Optional[Dict]:
         """Update an existing project"""
-        project = self.get_project(id)
+        project = self.projects.get(id)
         if not project:
             return None
         
-        updated_project = {**project, **partial_project}
-        self.projects[id] = updated_project
-        return updated_project
+        for key, value in partial_project.items():
+            if key in project:
+                project[key] = value
+        
+        return project
     
     def delete_project(self, id: int) -> bool:
         """Delete a project and its concepts"""
         if id not in self.projects:
             return False
         
-        # Delete all brand concepts for this project
+        # Delete the project
+        del self.projects[id]
+        
+        # Delete all concepts for this project
         concept_ids_to_delete = []
         for concept_id, concept in self.brand_concepts.items():
             if concept["projectId"] == id:
@@ -99,8 +150,6 @@ class MemStorage:
         for concept_id in concept_ids_to_delete:
             del self.brand_concepts[concept_id]
         
-        # Delete the project
-        del self.projects[id]
         return True
     
     def get_brand_concepts(self, project_id: int) -> List[Dict]:
@@ -113,77 +162,63 @@ class MemStorage:
     
     def create_brand_concept(self, concept_data: Dict) -> Dict:
         """Create a new brand concept"""
-        concept_id = self.concept_id_counter
+        id = self.concept_id_counter
         self.concept_id_counter += 1
         
-        # Set isActive to False by default
-        if "isActive" not in concept_data:
-            concept_data["isActive"] = False
-        
         concept = {
-            "id": concept_id,
-            "createdAt": datetime.now().isoformat(),
-            **concept_data
+            "id": id,
+            "projectId": concept_data["projectId"],
+            "name": concept_data["name"],
+            "brandInputs": concept_data["brandInputs"],
+            "brandOutput": concept_data["brandOutput"],
+            "isActive": concept_data.get("isActive", False),
+            "createdAt": datetime.datetime.now().isoformat()
         }
         
-        self.brand_concepts[concept_id] = concept
+        self.brand_concepts[id] = concept
         
-        # If this is the first concept for the project, make it active
-        project_concepts = self.get_brand_concepts(concept["projectId"])
-        if len(project_concepts) == 1:
-            concept["isActive"] = True
-            self.brand_concepts[concept_id] = concept
+        # If this concept is active, deactivate all others
+        if concept["isActive"]:
+            self.set_active_brand_concept(id, concept["projectId"])
         
         return concept
     
     def update_brand_concept(self, id: int, partial_concept: Dict) -> Optional[Dict]:
         """Update an existing brand concept"""
-        concept = self.get_brand_concept(id)
+        concept = self.brand_concepts.get(id)
         if not concept:
             return None
         
-        updated_concept = {**concept, **partial_concept}
-        self.brand_concepts[id] = updated_concept
-        return updated_concept
+        for key, value in partial_concept.items():
+            if key in concept:
+                if key in ["brandInputs", "brandOutput"] and isinstance(value, dict):
+                    # Merge dictionaries for nested properties
+                    concept[key].update(value)
+                else:
+                    concept[key] = value
+        
+        return concept
     
     def delete_brand_concept(self, id: int) -> bool:
         """Delete a brand concept"""
         if id not in self.brand_concepts:
             return False
         
-        # Get the concept to check if it's active
-        concept = self.brand_concepts[id]
-        project_id = concept["projectId"]
-        was_active = concept["isActive"]
-        
-        # Delete the concept
         del self.brand_concepts[id]
-        
-        # If the deleted concept was active, set another concept as active (if any remain)
-        if was_active:
-            project_concepts = self.get_brand_concepts(project_id)
-            if project_concepts:
-                # Set the first available concept as active
-                first_concept_id = project_concepts[0]["id"]
-                self.set_active_brand_concept(first_concept_id, project_id)
-        
         return True
     
     def set_active_brand_concept(self, id: int, project_id: int) -> bool:
         """Set a brand concept as active and deactivate others for the same project"""
-        # Check if the concept exists
-        concept = self.get_brand_concept(id)
-        if not concept:
+        # Find the concept to activate
+        concept_to_activate = self.brand_concepts.get(id)
+        if not concept_to_activate or concept_to_activate["projectId"] != project_id:
             return False
         
         # Deactivate all concepts for this project
-        for c_id, c in self.brand_concepts.items():
-            if c["projectId"] == project_id:
-                c["isActive"] = False
-                self.brand_concepts[c_id] = c
+        for concept in self.brand_concepts.values():
+            if concept["projectId"] == project_id:
+                concept["isActive"] = False
         
-        # Activate the specified concept
-        concept["isActive"] = True
-        self.brand_concepts[id] = concept
-        
+        # Activate the requested concept
+        concept_to_activate["isActive"] = True
         return True

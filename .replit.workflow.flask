@@ -1,15 +1,2 @@
-run = "python app.py"
-language = "python"
-onBoot = "python -m flask --version"
-hidden = ["*.pyc", "__pycache__", ".pytest_cache"]
-
-[env]
-FLASK_APP = "app.py"
-FLASK_ENV = "development"
-
-[packager]
-language = "python"
-ignoredPackages = ["unity", "node_modules"]
-
-[packager.features]
-enabledForHosting = true
+name = "Flask API"
+command = "python app.py"

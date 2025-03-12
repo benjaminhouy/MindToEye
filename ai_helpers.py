@@ -1,13 +1,9 @@
 """AI helper functions for brand concept and logo generation"""
 import json
 import logging
-import random
-import re
-import time
-from datetime import datetime
-from typing import Dict, Any, List, Optional
+from typing import Dict, List, Any, Optional
 
-# Set up logging
+# Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -22,112 +18,106 @@ def generate_brand_concept(brand_input: Dict[str, Any], anthropic_client) -> Dic
     Returns:
         Dict containing the brand concept output
     """
-    brand_name = brand_input.get('brandName')
-    industry = brand_input.get('industry')
-    description = brand_input.get('description')
-    values = brand_input.get('values', [])
-    design_style = brand_input.get('designStyle', 'modern')
-    color_preferences = brand_input.get('colorPreferences', [])
-    
-    if not brand_name:
-        raise ValueError("Brand name is required")
-    
-    logger.info(f"Generating brand concept for {brand_name}...")
-    
-    # Generate a unique timestamp seed for variety
-    unique_seed = datetime.now().timestamp() % 1000
-    variety_factor = int(time.time() * 10) % 10
-    
-    prompt = f"""
-        Generate a fresh, original, and comprehensive brand identity for a company with the following details:
-        - Brand Name: {brand_name}
-        - Industry: {industry or 'General business'}
-        - Description: {description or 'A modern business'}
-        - Values: {', '.join([v.get('value') for v in values]) if isinstance(values, list) else 'Quality, Innovation'}
-        - Design Style: {design_style or 'modern'}
-        - Color Preferences: {', '.join(color_preferences) if isinstance(color_preferences, list) else 'Open to suggestions'}
-        - Unique design seed: {unique_seed}
-        - Variety factor: {variety_factor}
+    try:
+        brand_name = brand_input["brandName"]
+        industry = brand_input.get("industry", "")
+        description = brand_input.get("description", "")
+        values = brand_input.get("values", [])
+        design_style = brand_input.get("designStyle", "modern")
+        color_preferences = brand_input.get("colorPreferences", [])
         
-        Include the following in your response:
-        1. A distinctive color palette with 4-5 colors (primary, secondary, accent, and base colors)
-        2. Typography recommendations (heading and body fonts) that perfectly match the brand personality
-        3. A creative and memorable logo concept description
-        4. A catchy and meaningful tagline
-        5. Professional contact information with realistic name, title, phone and address
+        # Extract just the values from the values list
+        value_strings = [v["value"] for v in values]
         
-        Format your response as a structured JSON object with these fields (and nothing else):
-        {{
-          "colors": [
-            {{ "name": "Color Name", "hex": "#hex", "type": "primary" }},
-            {{ "name": "Color Name", "hex": "#hex", "type": "secondary" }},
-            {{ "name": "Color Name", "hex": "#hex", "type": "accent" }},
-            {{ "name": "Color Name", "hex": "#hex", "type": "base" }}
-          ],
-          "typography": {{
-            "headings": "Font Name",
-            "body": "Font Name"
-          }},
+        # Create the prompt for Claude
+        prompt = f"""
+        Create a comprehensive brand identity concept for the following brand:
+        
+        Brand Name: {brand_name}
+        Industry: {industry}
+        Description: {description}
+        Core Values: {', '.join(value_strings)}
+        Design Style Preference: {design_style}
+        Color Preferences: {', '.join(color_preferences) if color_preferences else 'No specific preferences'}
+        
+        Please provide a complete brand identity package that includes:
+        
+        1. A detailed logo description that could be used to generate a visual logo
+        2. A color palette with 4-5 colors including primary, secondary, accent, and base colors (with names and hex codes)
+        3. Typography recommendations for headings and body text
+        4. A memorable tagline that captures the brand essence
+        
+        Format your response as a JSON object with the following structure:
+        ```json
+        {
           "logoDescription": "Detailed description of the logo concept",
-          "tagline": "Catchy brand tagline",
-          "contactName": "Contact Person Name",
-          "contactTitle": "Professional Title",
-          "contactPhone": "555-123-4567",
-          "address": "123 Brand St, Business City, ST 12345"
-        }}
+          "colors": [
+            {"name": "Color Name", "hex": "#HEXCODE", "type": "primary/secondary/accent/base"}
+          ],
+          "typography": {
+            "headings": "Heading Font",
+            "body": "Body Font"
+          },
+          "tagline": "Brand Tagline"
+        }
+        ```
         
-        Return only the JSON object with no additional text before or after.
-    """
+        Make sure the response is valid JSON and the formatting exactly matches the example structure.
+        """
+        
+        logger.info(f"Generating brand concept for {brand_name}")
+        
+        # the newest Anthropic model is "claude-3-7-sonnet-20250219" which was released February 24, 2025
+        response = anthropic_client.messages.create(
+            model="claude-3-7-sonnet-20250219",
+            max_tokens=4000,
+            messages=[
+                {"role": "user", "content": prompt}
+            ]
+        )
+        
+        # Extract JSON from Claude's response
+        response_content = response.content[0].text
+        
+        # Find JSON content between triple backticks
+        json_start = response_content.find("```json")
+        json_end = response_content.rfind("```")
+        
+        if json_start != -1 and json_end != -1:
+            json_content = response_content[json_start + 7:json_end].strip()
+        else:
+            json_content = response_content
+        
+        # Clean up any remaining markdown
+        json_content = json_content.replace("```", "").strip()
+        
+        concept_data = json.loads(json_content)
+        
+        # Generate logo SVGs using the logo description
+        logo_svgs = generate_logo_svgs(
+            brand_name=brand_name,
+            industry=industry,
+            description=description,
+            design_style=design_style,
+            logo_description=concept_data.get("logoDescription", ""),
+            colors=[color["hex"] for color in concept_data.get("colors", [])]
+        )
+        
+        # Combine logo SVGs with the concept data
+        brand_output = {
+            "logo": logo_svgs,
+            "colors": concept_data.get("colors", []),
+            "typography": concept_data.get("typography", {"headings": "Arial", "body": "Helvetica"}),
+            "tagline": concept_data.get("tagline", ""),
+            "logoDescription": concept_data.get("logoDescription", "")
+        }
+        
+        logger.info(f"Successfully generated brand concept for {brand_name}")
+        return brand_output
     
-    response = anthropic_client.messages.create(
-        model="claude-3-7-sonnet-20250219",  # Using the latest Claude model
-        max_tokens=2000,
-        temperature=0.7,
-        system="You are a skilled brand identity designer. Provide detailed brand concepts in JSON format only. Be creative and varied with your designs. Every time you're called, generate something different and unique.",
-        messages=[{"role": "user", "content": prompt}]
-    )
-    
-    # Extract the design concept
-    if response.content[0].type == 'text':
-        content = response.content[0].text
-        if not content:
-            raise Exception("Empty response from Claude")
-        
-        # Extract JSON from the response
-        json_match = re.search(r'\{[\s\S]*\}', content)
-        json_str = json_match.group(0) if json_match else content
-        
-        try:
-            claude_output = json.loads(json_str)
-            logger.info("Successfully parsed Claude output")
-            
-            # Generate logo using the description
-            logo_description = claude_output.get("logoDescription", "")
-            colors = [color["hex"] for color in claude_output.get("colors", [])]
-            
-            logo_svgs = generate_logo_svgs(
-                brand_name=brand_name,
-                industry=industry or "",
-                description=description or "",
-                design_style=design_style or "modern",
-                logo_description=logo_description,
-                colors=colors
-            )
-            
-            # Combine the Claude output with the logo SVGs
-            brand_output = {
-                **claude_output,
-                "logo": logo_svgs
-            }
-            
-            return brand_output
-            
-        except json.JSONDecodeError as e:
-            logger.error(f"Failed to parse Claude output: {e}")
-            logger.error(f"Claude raw output: {content[:500]}...")
-            raise Exception(f"Failed to parse Claude output: {str(e)}")
-    else:
-        raise Exception("Unexpected response format from Claude")
+    except Exception as e:
+        logger.error(f"Error generating brand concept: {str(e)}")
+        raise
 
 def generate_logo_svgs(brand_name, industry, description, design_style, logo_description, colors):
     """
@@ -136,27 +126,16 @@ def generate_logo_svgs(brand_name, industry, description, design_style, logo_des
     
     For now, we'll return placeholder SVG content.
     """
-    # In the full implementation, this would call the Replicate API with FLUX model
-    primary_color = colors[0] if colors else "#4A90E2"
-    secondary_color = colors[1] if len(colors) > 1 else "#333333"
+    # Default colors if none provided
+    primary_color = colors[0] if colors else "#3B82F6"
+    secondary_color = colors[1] if len(colors) > 1 else "#10B981"
     
-    # Create a simple placeholder SVG
-    primary_svg = f"""<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
-        <rect width="200" height="200" fill="{secondary_color}" />
-        <text x="50%" y="50%" font-family="Arial" font-size="24" fill="{primary_color}" text-anchor="middle" dominant-baseline="middle">{brand_name}</text>
-    </svg>"""
+    # Generate SVG placeholders
+    primary_svg = f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 100" width="200" height="100"><rect width="200" height="100" fill="white"/><circle cx="50" cy="50" r="40" fill="{primary_color}"/><text x="100" y="55" font-family="Arial" font-size="24" font-weight="bold" text-anchor="middle">{brand_name}</text></svg>'
     
-    # Create monochrome version (black and white)
-    monochrome_svg = f"""<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
-        <rect width="200" height="200" fill="#FFFFFF" />
-        <text x="50%" y="50%" font-family="Arial" font-size="24" fill="#000000" text-anchor="middle" dominant-baseline="middle">{brand_name}</text>
-    </svg>"""
+    monochrome_svg = f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 100" width="200" height="100"><rect width="200" height="100" fill="white"/><circle cx="50" cy="50" r="40" fill="#000000"/><text x="100" y="55" font-family="Arial" font-size="24" font-weight="bold" text-anchor="middle">{brand_name}</text></svg>'
     
-    # Create reverse version (inverted colors)
-    reverse_svg = f"""<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
-        <rect width="200" height="200" fill="{primary_color}" />
-        <text x="50%" y="50%" font-family="Arial" font-size="24" fill="#FFFFFF" text-anchor="middle" dominant-baseline="middle">{brand_name}</text>
-    </svg>"""
+    reverse_svg = f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 100" width="200" height="100"><rect width="200" height="100" fill="black"/><circle cx="50" cy="50" r="40" fill="white"/><text x="100" y="55" font-family="Arial" font-size="24" font-weight="bold" fill="white" text-anchor="middle">{brand_name}</text></svg>'
     
     return {
         "primary": primary_svg,
@@ -181,79 +160,75 @@ def generate_logo(brand_name, industry, description, values, style, colors, repl
         Dict containing the generated logo SVGs
     """
     try:
-        logger.info(f"Generating logo for {brand_name} with FLUX AI...")
+        # Create a prompt for FLUX
+        values_text = ', '.join(values) if isinstance(values, list) else values
+        colors_text = ', '.join(colors) if isinstance(colors, list) else colors
         
-        # Extract values for the prompt
-        values_text = ", ".join([v.get("value") for v in values]) if isinstance(values, list) and values else "quality, innovation"
-        color_text = ", ".join(colors) if colors else "modern colors"
-        
-        # Craft the prompt for the logo generation
         prompt = f"""
-            Create a professional, modern logo for a company named "{brand_name}".
-            Industry: {industry}
-            Brand values: {values_text}
-            Style: {style}
-            Color scheme: {color_text}
-            
-            The logo should be clean, memorable, and instantly recognizable.
-            It should work well at different sizes and in both color and monochrome formats.
-            No text in the logo, just a distinctive symbol or icon.
+        Create a logo for a brand with the following details:
+        
+        Brand Name: {brand_name}
+        Industry: {industry}
+        Description: {description}
+        Values: {values_text}
+        Style: {style}
+        Colors: {colors_text}
+        
+        The logo should be professional, memorable, and aligned with the brand's values and industry.
         """
         
-        # Call Replicate's FLUX model
+        # Call the FLUX model via Replicate
+        logger.info(f"Generating logo for {brand_name} using FLUX AI")
+        
+        # Example model and version from Replicate (replace with actual FLUX model)
+        model = "fal-ai/flux1.1:pro"
+        
         output = replicate_client.run(
-            "black-forest-labs/flux-pro",
+            model,
             input={
                 "prompt": prompt,
-                "width": 1024,
-                "height": 1024,
-                "negative_prompt": "low quality, distorted, ugly, bad proportions, text errors, words, letters",
-                "num_outputs": 1,
-                "num_inference_steps": 25
+                "image_count": 1,
+                "format": "svg"
             }
         )
         
-        # Get the image URL
-        image_url = output[0] if isinstance(output, list) else str(output)
-        
-        # Create SVG wrapper for the image
-        primary_svg = f"""<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
-            <image href="{image_url}" width="200" height="200" preserveAspectRatio="xMidYMid meet"/>
-        </svg>"""
-        
-        # Generate monochrome and reverse versions
-        monochrome_svg = f"""<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
-            <filter id="grayscale">
-                <feColorMatrix type="matrix" values="0.33 0.33 0.33 0 0 0.33 0.33 0.33 0 0 0.33 0.33 0.33 0 0 0 0 0 1 0"/>
-            </filter>
-            <image href="{image_url}" width="200" height="200" preserveAspectRatio="xMidYMid meet" filter="url(#grayscale)"/>
-        </svg>"""
-        
-        reverse_svg = f"""<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
-            <filter id="invert">
-                <feColorMatrix type="matrix" values="-1 0 0 0 1 0 -1 0 0 1 0 0 -1 0 1 0 0 0 1 0"/>
-            </filter>
-            <image href="{image_url}" width="200" height="200" preserveAspectRatio="xMidYMid meet" filter="url(#invert)"/>
-        </svg>"""
-        
-        return {
-            "primary": primary_svg,
-            "monochrome": monochrome_svg,
-            "reverse": reverse_svg
-        }
-        
+        # Process the output to get the SVG content
+        if output and isinstance(output, list) and len(output) > 0:
+            primary_svg = output[0]
+            
+            # Create monochrome and reverse versions
+            monochrome_svg = create_monochrome_version(primary_svg)
+            reverse_svg = create_reverse_version(primary_svg)
+            
+            logo_svgs = {
+                "primary": primary_svg,
+                "monochrome": monochrome_svg,
+                "reverse": reverse_svg
+            }
+            
+            logger.info(f"Successfully generated logo for {brand_name}")
+            return logo_svgs
+        else:
+            logger.error("Failed to generate logo: No output from Replicate")
+            # Return placeholder SVGs
+            return generate_logo_svgs(brand_name, industry, description, style, "", colors)
+    
     except Exception as e:
-        logger.error(f"Error generating logo with FLUX AI: {e}")
-        
-        # If FLUX generation fails, fall back to the placeholder implementation
-        return generate_logo_svgs(
-            brand_name=brand_name,
-            industry=industry,
-            description=description,
-            design_style=style,
-            logo_description=f"Logo for {brand_name} in the {industry} industry",
-            colors=colors
-        )
+        logger.error(f"Error generating logo: {str(e)}")
+        # Return placeholder SVGs on error
+        return generate_logo_svgs(brand_name, industry, description, style, "", colors)
+
+def create_monochrome_version(svg_content):
+    """Convert color SVG to monochrome"""
+    # This is a simplified implementation
+    # In a real app, you would use a proper SVG parser and transformer
+    return svg_content.replace('fill="#', 'fill="#000000').replace('stroke="#', 'stroke="#000000')
+
+def create_reverse_version(svg_content):
+    """Create reversed color version of SVG"""
+    # This is a simplified implementation
+    # In a real app, you would use a proper SVG parser and transformer
+    return svg_content.replace('fill="white"', 'fill="black"').replace('fill="black"', 'fill="white"')
 
 def regenerate_element(concept, element_type, anthropic_client, replicate_client):
     """
@@ -268,225 +243,262 @@ def regenerate_element(concept, element_type, anthropic_client, replicate_client
     Returns:
         The regenerated element
     """
-    brand_inputs = concept.get("brandInputs", {})
-    brand_output = concept.get("brandOutput", {})
+    try:
+        brand_inputs = concept["brandInputs"]
+        brand_name = brand_inputs["brandName"]
+        industry = brand_inputs.get("industry", "")
+        description = brand_inputs.get("description", "")
+        values = brand_inputs.get("values", [])
+        design_style = brand_inputs.get("designStyle", "modern")
+        
+        # Extract just the values from the values list
+        value_strings = [v["value"] for v in values]
+        
+        existing_colors = concept["brandOutput"].get("colors", [])
+        
+        if element_type == "colors":
+            return regenerate_colors(brand_name, industry, description, value_strings, design_style, anthropic_client)
+        
+        elif element_type == "typography":
+            return regenerate_typography(brand_name, industry, description, value_strings, design_style, existing_colors, anthropic_client)
+        
+        elif element_type == "logo":
+            return regenerate_logo(brand_name, industry, description, value_strings, design_style, existing_colors, replicate_client)
+        
+        elif element_type == "tagline":
+            return regenerate_tagline(brand_name, industry, description, value_strings, design_style, anthropic_client)
+        
+        else:
+            raise ValueError(f"Unknown element type: {element_type}")
     
-    brand_name = brand_inputs.get("brandName", "")
-    industry = brand_inputs.get("industry", "")
-    description = brand_inputs.get("description", "")
-    values = brand_inputs.get("values", [])
-    design_style = brand_inputs.get("designStyle", "modern")
-    color_preferences = brand_inputs.get("colorPreferences", [])
-    
-    if element_type == "colors":
-        return regenerate_colors(
-            brand_name=brand_name,
-            industry=industry,
-            description=description,
-            values=values,
-            design_style=design_style,
-            anthropic_client=anthropic_client
-        )
-    elif element_type == "typography":
-        existing_colors = brand_output.get("colors", [])
-        return regenerate_typography(
-            brand_name=brand_name,
-            industry=industry,
-            description=description,
-            values=values,
-            design_style=design_style,
-            existing_colors=existing_colors,
-            anthropic_client=anthropic_client
-        )
-    elif element_type == "logo":
-        existing_colors = brand_output.get("colors", [])
-        return regenerate_logo(
-            brand_name=brand_name,
-            industry=industry,
-            description=description,
-            values=values,
-            design_style=design_style,
-            existing_colors=existing_colors,
-            replicate_client=replicate_client
-        )
-    elif element_type == "tagline":
-        return regenerate_tagline(
-            brand_name=brand_name,
-            industry=industry,
-            description=description,
-            values=values,
-            design_style=design_style,
-            anthropic_client=anthropic_client
-        )
-    else:
-        raise ValueError(f"Unsupported element type: {element_type}")
+    except Exception as e:
+        logger.error(f"Error regenerating {element_type}: {str(e)}")
+        raise
 
 def regenerate_colors(brand_name, industry, description, values, design_style, anthropic_client):
     """Regenerate color palette for a brand using Claude"""
-    # Extract values for the prompt
-    values_text = ", ".join([v.get("value") for v in values]) if isinstance(values, list) and values else "quality, innovation"
-    
-    # Generate a unique timestamp seed
-    unique_seed = datetime.now().timestamp() % 1000
-    
-    prompt = f"""
-        Generate a fresh, distinctive color palette for a brand with the following details:
-        - Brand Name: {brand_name}
-        - Industry: {industry or 'General business'}
-        - Description: {description or 'A modern business'}
-        - Values: {values_text}
-        - Design Style: {design_style or 'modern'}
-        - Unique design seed: {unique_seed}
+    try:
+        prompt = f"""
+        Create a professional color palette for the following brand:
         
-        Create a color palette with 4-5 colors including primary, secondary, accent, and base colors.
-        These colors should work well together while reflecting the brand's identity and values.
+        Brand Name: {brand_name}
+        Industry: {industry}
+        Description: {description}
+        Core Values: {', '.join(values)}
+        Design Style: {design_style}
+        
+        Generate a unique and refreshed color palette with 4-5 colors including:
+        - A primary brand color
+        - A secondary color
+        - An accent color
+        - 1-2 base/neutral colors
+        
+        For each color, provide:
+        - A creative name that relates to the brand
+        - The exact hex code
+        - The type (primary, secondary, accent, or base)
         
         Format your response as a JSON array with this structure:
+        ```json
         [
-          {{ "name": "Color Name", "hex": "#hex", "type": "primary" }},
-          {{ "name": "Color Name", "hex": "#hex", "type": "secondary" }},
-          {{ "name": "Color Name", "hex": "#hex", "type": "accent" }},
-          {{ "name": "Color Name", "hex": "#hex", "type": "base" }}
+            {{"name": "Color Name", "hex": "#HEXCODE", "type": "primary"}},
+            {{"name": "Color Name", "hex": "#HEXCODE", "type": "secondary"}},
+            {{"name": "Color Name", "hex": "#HEXCODE", "type": "accent"}},
+            {{"name": "Color Name", "hex": "#HEXCODE", "type": "base"}}
         ]
+        ```
         
-        Return only the JSON array with no additional text before or after.
-    """
+        Make sure the colors work well together and reflect the brand's personality and industry.
+        Make sure the response is valid JSON and the formatting exactly matches the example structure.
+        """
+        
+        logger.info(f"Regenerating colors for {brand_name}")
+        
+        # the newest Anthropic model is "claude-3-7-sonnet-20250219" which was released February 24, 2025
+        response = anthropic_client.messages.create(
+            model="claude-3-7-sonnet-20250219",
+            max_tokens=2000,
+            messages=[
+                {"role": "user", "content": prompt}
+            ]
+        )
+        
+        # Extract JSON from Claude's response
+        response_content = response.content[0].text
+        
+        # Find JSON content between triple backticks
+        json_start = response_content.find("```json")
+        json_end = response_content.rfind("```")
+        
+        if json_start != -1 and json_end != -1:
+            json_content = response_content[json_start + 7:json_end].strip()
+        else:
+            json_content = response_content
+        
+        # Clean up any remaining markdown
+        json_content = json_content.replace("```", "").strip()
+        
+        colors = json.loads(json_content)
+        
+        logger.info(f"Successfully regenerated colors for {brand_name}")
+        return colors
     
-    response = anthropic_client.messages.create(
-        model="claude-3-7-sonnet-20250219",
-        max_tokens=1000,
-        temperature=0.7,
-        system="You are a professional color specialist for brand identity design. Generate unique and harmonious color palettes. Every time you're called, create a different palette.",
-        messages=[{"role": "user", "content": prompt}]
-    )
-    
-    # Extract the colors
-    if response.content[0].type == 'text':
-        content = response.content[0].text
-        if not content:
-            raise Exception("Empty response from Claude")
-        
-        # Extract JSON from the response
-        json_match = re.search(r'\[[\s\S]*\]', content)
-        json_str = json_match.group(0) if json_match else content
-        
-        return json.loads(json_str)
-    else:
-        raise Exception("Unexpected response format from Claude")
+    except Exception as e:
+        logger.error(f"Error regenerating colors: {str(e)}")
+        raise
 
 def regenerate_typography(brand_name, industry, description, values, design_style, existing_colors, anthropic_client):
     """Regenerate typography for a brand using Claude"""
-    # Extract values and colors for the prompt
-    values_text = ", ".join([v.get("value") for v in values]) if isinstance(values, list) and values else "quality, innovation"
-    colors_text = ", ".join([f"{c.get('name')} ({c.get('hex')})" for c in existing_colors]) if existing_colors else "brand colors"
-    
-    # Generate a unique timestamp seed
-    unique_seed = datetime.now().timestamp() % 1000
-    
-    prompt = f"""
-        Recommend typography for a brand with the following details:
-        - Brand Name: {brand_name}
-        - Industry: {industry or 'General business'}
-        - Description: {description or 'A modern business'}
-        - Values: {values_text}
-        - Design Style: {design_style or 'modern'}
-        - Color Palette: {colors_text}
-        - Unique design seed: {unique_seed}
+    try:
+        colors_text = ", ".join([f"{c['name']} ({c['hex']})" for c in existing_colors[:3]])
         
-        Recommend typography that perfectly complements the brand personality and works well with the color palette.
-        Choose real, accessible fonts that are widely available on standard font services.
+        prompt = f"""
+        Recommend typography for the following brand:
+        
+        Brand Name: {brand_name}
+        Industry: {industry}
+        Description: {description}
+        Core Values: {', '.join(values)}
+        Design Style: {design_style}
+        Brand Colors: {colors_text}
+        
+        Please suggest a typography pairing that:
+        - Complements the brand personality and values
+        - Works well with the design style
+        - Has a heading font with the right character for the brand
+        - Has a body text font that is readable and professional
         
         Format your response as a JSON object with this structure:
+        ```json
         {{
-          "headings": "Font Name",
-          "body": "Font Name"
+            "headings": "Heading Font Name",
+            "body": "Body Font Name"
         }}
+        ```
         
-        Return only the JSON object with no additional text before or after.
-    """
+        Focus on widely available, professional fonts that enhance the brand identity.
+        Make sure the response is valid JSON and the formatting exactly matches the example structure.
+        """
+        
+        logger.info(f"Regenerating typography for {brand_name}")
+        
+        # the newest Anthropic model is "claude-3-7-sonnet-20250219" which was released February 24, 2025
+        response = anthropic_client.messages.create(
+            model="claude-3-7-sonnet-20250219",
+            max_tokens=1000,
+            messages=[
+                {"role": "user", "content": prompt}
+            ]
+        )
+        
+        # Extract JSON from Claude's response
+        response_content = response.content[0].text
+        
+        # Find JSON content between triple backticks
+        json_start = response_content.find("```json")
+        json_end = response_content.rfind("```")
+        
+        if json_start != -1 and json_end != -1:
+            json_content = response_content[json_start + 7:json_end].strip()
+        else:
+            json_content = response_content
+        
+        # Clean up any remaining markdown
+        json_content = json_content.replace("```", "").strip()
+        
+        typography = json.loads(json_content)
+        
+        logger.info(f"Successfully regenerated typography for {brand_name}")
+        return typography
     
-    response = anthropic_client.messages.create(
-        model="claude-3-7-sonnet-20250219",
-        max_tokens=1000,
-        temperature=0.7,
-        system="You are a typography expert for brand identity design. Recommend font pairings that match brand personalities. Choose real, accessible fonts that are widely available.",
-        messages=[{"role": "user", "content": prompt}]
-    )
-    
-    # Extract the typography
-    if response.content[0].type == 'text':
-        content = response.content[0].text
-        if not content:
-            raise Exception("Empty response from Claude")
-        
-        # Extract JSON from the response
-        json_match = re.search(r'\{[\s\S]*\}', content)
-        json_str = json_match.group(0) if json_match else content
-        
-        return json.loads(json_str)
-    else:
-        raise Exception("Unexpected response format from Claude")
+    except Exception as e:
+        logger.error(f"Error regenerating typography: {str(e)}")
+        raise
 
 def regenerate_logo(brand_name, industry, description, values, design_style, existing_colors, replicate_client):
     """Regenerate logo for a brand using FLUX AI via Replicate"""
-    # Get color hex values from existing colors
-    colors = [color.get("hex") for color in existing_colors if "hex" in color]
+    try:
+        # Get the primary and secondary colors from existing colors
+        primary_color = next((c["hex"] for c in existing_colors if c["type"] == "primary"), "#000000")
+        secondary_color = next((c["hex"] for c in existing_colors if c["type"] == "secondary"), "#FFFFFF")
+        accent_color = next((c["hex"] for c in existing_colors if c["type"] == "accent"), "#CCCCCC")
+        
+        colors = [primary_color, secondary_color, accent_color]
+        
+        # Call the logo generation function
+        return generate_logo(
+            brand_name=brand_name,
+            industry=industry,
+            description=description,
+            values=values,
+            style=design_style,
+            colors=colors,
+            replicate_client=replicate_client
+        )
     
-    # Call the logo generation function
-    return generate_logo(
-        brand_name=brand_name,
-        industry=industry,
-        description=description,
-        values=values,
-        style=design_style,
-        colors=colors,
-        replicate_client=replicate_client
-    )
+    except Exception as e:
+        logger.error(f"Error regenerating logo: {str(e)}")
+        raise
 
 def regenerate_tagline(brand_name, industry, description, values, design_style, anthropic_client):
     """Regenerate tagline for a brand using Claude"""
-    # Extract values for the prompt
-    values_text = ", ".join([v.get("value") for v in values]) if isinstance(values, list) and values else "quality, innovation"
+    try:
+        prompt = f"""
+        Create a compelling tagline for the following brand:
+        
+        Brand Name: {brand_name}
+        Industry: {industry}
+        Description: {description}
+        Core Values: {', '.join(values)}
+        Design Style: {design_style}
+        
+        Generate a memorable, concise tagline that:
+        - Captures the essence of the brand
+        - Reflects the core values
+        - Is unique and not generic
+        - Is brief (ideally 3-7 words)
+        
+        Format your response as a JSON string with this structure:
+        ```json
+        {{
+            "tagline": "Your Brand Tagline Here"
+        }}
+        ```
+        
+        Make sure the response is valid JSON and the formatting exactly matches the example structure.
+        """
+        
+        logger.info(f"Regenerating tagline for {brand_name}")
+        
+        # the newest Anthropic model is "claude-3-7-sonnet-20250219" which was released February 24, 2025
+        response = anthropic_client.messages.create(
+            model="claude-3-7-sonnet-20250219",
+            max_tokens=1000,
+            messages=[
+                {"role": "user", "content": prompt}
+            ]
+        )
+        
+        # Extract JSON from Claude's response
+        response_content = response.content[0].text
+        
+        # Find JSON content between triple backticks
+        json_start = response_content.find("```json")
+        json_end = response_content.rfind("```")
+        
+        if json_start != -1 and json_end != -1:
+            json_content = response_content[json_start + 7:json_end].strip()
+        else:
+            json_content = response_content
+        
+        # Clean up any remaining markdown
+        json_content = json_content.replace("```", "").strip()
+        
+        tagline_data = json.loads(json_content)
+        
+        logger.info(f"Successfully regenerated tagline for {brand_name}")
+        return tagline_data["tagline"]
     
-    # Generate a unique timestamp seed
-    unique_seed = datetime.now().timestamp() % 1000
-    
-    prompt = f"""
-        Create a catchy, memorable, and meaningful tagline for a brand with the following details:
-        - Brand Name: {brand_name}
-        - Industry: {industry or 'General business'}
-        - Description: {description or 'A modern business'}
-        - Values: {values_text}
-        - Design Style: {design_style or 'modern'}
-        - Unique seed: {unique_seed}
-        
-        The tagline should be concise (3-7 words) and capture the essence of the brand.
-        It should be distinctive, easy to remember, and convey the brand's unique value proposition.
-        
-        Format your response as a simple JSON object:
-        {{ "tagline": "Your Catchy Tagline Here" }}
-        
-        Return only the JSON object with no additional text before or after.
-    """
-    
-    response = anthropic_client.messages.create(
-        model="claude-3-7-sonnet-20250219",
-        max_tokens=500,
-        temperature=0.7,
-        system="You are a creative copywriter specializing in brand taglines. Create catchy, concise, and memorable taglines that capture a brand's essence. Every time you're called, generate something completely different.",
-        messages=[{"role": "user", "content": prompt}]
-    )
-    
-    # Extract the tagline
-    if response.content[0].type == 'text':
-        content = response.content[0].text
-        if not content:
-            raise Exception("Empty response from Claude")
-        
-        # Extract JSON from the response
-        json_match = re.search(r'\{[\s\S]*\}', content)
-        json_str = json_match.group(0) if json_match else content
-        
-        return json.loads(json_str)
-    else:
-        raise Exception("Unexpected response format from Claude")
+    except Exception as e:
+        logger.error(f"Error regenerating tagline: {str(e)}")
+        raise
