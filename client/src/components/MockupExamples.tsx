@@ -56,11 +56,11 @@ const MockupExamples = ({ brandOutput }: MockupExamplesProps) => {
                 </div>
               </div>
               <div className="pt-3 pb-1">
-                <p className="text-sm font-medium text-gray-900">Sarah Johnson</p>
-                <p className="text-xs text-gray-500">Chief Sustainability Officer</p>
+                <p className="text-sm font-medium text-gray-900">{brandOutput?.contactName || 'Your Name'}</p>
+                <p className="text-xs text-gray-500">{brandOutput?.contactTitle || brandOutput?.industry || 'Brand Representative'}</p>
                 <div className="mt-2 pt-2 border-t border-gray-200">
-                  <p className="text-xs text-gray-700">+1 (555) 123-4567</p>
-                  <p className="text-xs text-gray-700">sarah@{brandOutput?.brandName?.toLowerCase().replace(/\s+/g, '') || 'brand'}.com</p>
+                  <p className="text-xs text-gray-700">{brandOutput?.contactPhone || '+1 (000) 000-0000'}</p>
+                  <p className="text-xs text-gray-700">contact@{brandOutput?.brandName?.toLowerCase().replace(/\s+/g, '') || 'brand'}.com</p>
                   <p className="text-xs text-gray-700">www.{brandOutput?.brandName?.toLowerCase().replace(/\s+/g, '') || 'brand'}.com</p>
                 </div>
               </div>
@@ -93,7 +93,7 @@ const MockupExamples = ({ brandOutput }: MockupExamplesProps) => {
                   <div className="h-3 bg-gray-200 rounded-full w-4/5"></div>
                 </div>
                 <div className="bg-emerald-50 p-2 text-xs text-emerald-800 border-t border-emerald-100">
-                  123 Business Ave, Suite 101 | www.{brandOutput?.brandName?.toLowerCase().replace(/\s+/g, '') || 'brand'}.com | 555-123-4567
+                  {brandOutput?.address || 'Company Address'} | www.{brandOutput?.brandName?.toLowerCase().replace(/\s+/g, '') || 'brand'}.com | {brandOutput?.contactPhone || '+1 (000) 000-0000'}
                 </div>
               </div>
             </div>
@@ -113,14 +113,14 @@ const MockupExamples = ({ brandOutput }: MockupExamplesProps) => {
                       <path d="M100 30C61.34 30 30 61.34 30 100C30 138.66 61.34 170 100 170C138.66 170 170 138.66 170 100C170 61.34 138.66 30 100 30ZM135 110H110V135C110 140.52 105.52 145 100 145C94.48 145 90 140.52 90 135V110H65C59.48 110 55 105.52 55 100C55 94.48 59.48 90 65 90H90V65C90 59.48 94.48 55 100 55C105.52 55 110 59.48 110 65V90H135C140.52 90 145 94.48 145 100C145 105.52 140.52 110 135 110Z" fill="#10B981"/>
                     </svg>
                     <div className="ml-2">
-                      <h4 className="text-sm font-bold text-gray-900">Sarah Johnson</h4>
-                      <p className="text-xs text-gray-500">Chief Sustainability Officer</p>
+                      <h4 className="text-sm font-bold text-gray-900">{brandOutput?.contactName || 'Your Name'}</h4>
+                      <p className="text-xs text-gray-500">{brandOutput?.contactTitle || brandOutput?.industry || 'Brand Representative'}</p>
                     </div>
                   </div>
                   
                   <div className="mt-2 pt-2 border-t border-gray-200 text-xs text-gray-700">
-                    <p>{brandOutput?.brandName || 'Brand Name'} Technologies</p>
-                    <p>+1 (555) 123-4567</p>
+                    <p>{brandOutput?.brandName || 'Brand Name'}</p>
+                    <p>{brandOutput?.contactPhone || '+1 (000) 000-0000'}</p>
                     <p>contact@{brandOutput?.brandName?.toLowerCase().replace(/\s+/g, '') || 'brand'}.com</p>
                     <div className="flex space-x-2 mt-2">
                       <svg className="h-4 w-4 text-gray-400" fill="currentColor" viewBox="0 0 24 24">
