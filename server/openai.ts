@@ -21,7 +21,7 @@ export const anthropic = new Anthropic({
 });
 
 // Initialize Replicate with API key from environment for Black Forest Flux
-const replicate = new Replicate({
+export const replicate = new Replicate({
   auth: process.env.REPLICATE_API_TOKEN,
 });
 

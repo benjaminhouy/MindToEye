@@ -396,8 +396,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // For billboard or other custom generations with Flux
           console.log("Generating custom image with Flux AI using prompt:", prompt.substring(0, 100) + "...");
           
+          // Import Replicate from openai.ts
+          const openaiModule = await import('./openai');
+          
           // Call Replicate's Flux model
-          const imageOutput = await replicate.run(
+          const imageOutput = await openaiModule.replicate.run(
             "black-forest-labs/flux-pro",
             {
               input: {
