@@ -2,8 +2,8 @@ import Anthropic from "@anthropic-ai/sdk";
 import Replicate from "replicate";
 import { BrandInput } from "@shared/schema";
 
-// Using known working Claude model
-const CLAUDE_MODEL = "claude-2.1";
+// Using latest Claude model
+const CLAUDE_MODEL = "claude-3-sonnet-20240229";
 
 // Random value between 0.3 and 0.9 to add variability to responses
 // (Claude API requires temperature between 0 and 1)
