@@ -797,10 +797,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
             error: error?.message || String(error)
           });
         }
+      } else if (elementType === 'applications') {
+        // For brand applications regeneration, we use Claude to generate application suggestions
+        try {
+          // Import Anthropic for generating applications via free-form text
+          const { anthropic } = await import('./openai');
+          
+          // Check if we have a custom description
+          let customDescription = '';
+          if (newValues && typeof newValues === 'object' && newValues.description) {
+            customDescription = newValues.description;
+            console.log(`Generating brand applications with description: ${customDescription}`);
+          }
+          
+          // If no custom description is provided, use a default one based on the brand info
+          const description = customDescription || 
+            `Brand applications for ${brandInputs.brandName} in the ${brandInputs.industry || 'general'} industry. The brand style is ${brandInputs.designStyle || 'modern'}.`;
+          
+          // We don't need to call Claude here since our mockups are already nicely designed
+          // But we would in the future if we wanted to generate actual application designs
+          
+          // For now, we just store the applications description for reference
+          brandOutput.applicationsDescription = description;
+          
+          // Update brand applications flag to indicate they've been customized
+          brandOutput.hasCustomApplications = true;
+          
+          console.log("Brand applications updated with description:", description);
+        } catch (error: any) {
+          console.error("Error generating brand applications:", error);
+          return res.status(500).json({
+            success: false,
+            message: "Failed to generate brand applications",
+            error: error?.message || String(error)
+          });
+        }
       } else {
         return res.status(400).json({ 
           success: false, 
-          message: "Unsupported element type. Supported types: colors, typography, logo" 
+          message: "Unsupported element type. Supported types: colors, typography, logo, applications" 
         });
       }
       

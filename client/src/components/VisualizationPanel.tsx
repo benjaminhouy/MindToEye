@@ -3,6 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import LogoExploration from "./LogoExploration";
 import BrandElementsOverview from "./BrandElementsOverview";
 import MockupExamples from "./MockupExamples";
+import BrandApplications from "./BrandApplications";
 import PresentationControls from "./PresentationControls";
 import { BrandConcept } from "@shared/schema";
 import { CalendarIcon, MoreHorizontalIcon, MaximizeIcon, RefreshCwIcon } from "lucide-react";
@@ -369,6 +370,10 @@ const VisualizationPanel = ({ concept: initialConcept, projectId }: Visualizatio
       </Card>
       
       <LogoExploration brandOutput={brandOutput} />
+      
+      <Card className="shadow overflow-hidden mt-6 p-6">
+        <BrandApplications brandOutput={brandOutput} onElementEdit={handleElementEdit} />
+      </Card>
       
       <PresentationControls />
     </>
