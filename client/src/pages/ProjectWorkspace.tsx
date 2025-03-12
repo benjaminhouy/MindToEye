@@ -142,6 +142,7 @@ const ProjectWorkspace = () => {
                   activeConcept={activeConcept}
                   onConceptSelect={setActiveConceptId}
                   projectId={Number(params?.id)}
+                  projectName={project?.name}
                 />
               </div>
               <div className="lg:col-span-9 space-y-6">

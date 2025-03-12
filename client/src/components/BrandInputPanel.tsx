@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { queryClient } from "@/lib/queryClient";
@@ -21,24 +21,34 @@ interface BrandInputPanelProps {
   activeConcept: BrandConcept | undefined;
   onConceptSelect: (id: number | null) => void;
   projectId: number;
+  projectName?: string; // Optional project name to pre-fill
 }
 
-const BrandInputPanel = ({ onGenerate, savedConcepts, activeConcept, onConceptSelect, projectId }: BrandInputPanelProps) => {
+const BrandInputPanel = ({ onGenerate, savedConcepts, activeConcept, onConceptSelect, projectId, projectName }: BrandInputPanelProps) => {
   const { toast } = useToast();
   const [brandInput, setBrandInput] = useState<BrandInput>({
-    brandName: "EcoVision",
-    industry: "Sustainable Technology",
-    description: "EcoVision develops sustainable technology solutions that help businesses reduce their carbon footprint while improving operational efficiency.",
+    brandName: projectName || "",
+    industry: "",
+    description: "",
     values: [
-      { id: nanoid(), value: "Sustainability" },
       { id: nanoid(), value: "Innovation" },
-      { id: nanoid(), value: "Responsibility" }
+      { id: nanoid(), value: "Quality" }
     ],
     designStyle: "modern",
-    colorPreferences: ["#10B981", "#0F766E", "#38BDF8", "#1F2937"]
+    colorPreferences: []
   });
   
   const [newValue, setNewValue] = useState("");
+  
+  // Update brandName when projectName changes
+  useEffect(() => {
+    if (projectName) {
+      setBrandInput(prev => ({
+        ...prev,
+        brandName: projectName
+      }));
+    }
+  }, [projectName]);
 
   const generateMutation = useMutation({
     mutationFn: async (data: BrandInput) => {
