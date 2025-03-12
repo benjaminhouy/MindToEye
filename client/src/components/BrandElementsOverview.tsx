@@ -36,7 +36,7 @@ const BrandElementsOverview = ({ brandOutput }: BrandElementsOverviewProps) => {
           )}
         </div>
         <h3 className="text-base font-medium text-gray-900">Logo</h3>
-        <p className="mt-1 text-sm text-gray-500">Modern and eco-friendly</p>
+        <p className="mt-1 text-sm text-gray-500">{brandOutput?.logoDescription || 'Brand logo design'}</p>
       </div>
       
       {/* Color Palette */}

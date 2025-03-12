@@ -60,8 +60,8 @@ const MockupExamples = ({ brandOutput }: MockupExamplesProps) => {
                 <p className="text-xs text-gray-500">Chief Sustainability Officer</p>
                 <div className="mt-2 pt-2 border-t border-gray-200">
                   <p className="text-xs text-gray-700">+1 (555) 123-4567</p>
-                  <p className="text-xs text-gray-700">sarah@ecovision.com</p>
-                  <p className="text-xs text-gray-700">www.ecovision.com</p>
+                  <p className="text-xs text-gray-700">sarah@{brandOutput?.brandName?.toLowerCase().replace(/\s+/g, '') || 'brand'}.com</p>
+                  <p className="text-xs text-gray-700">www.{brandOutput?.brandName?.toLowerCase().replace(/\s+/g, '') || 'brand'}.com</p>
                 </div>
               </div>
             </div>
