@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import LogoExploration from "./LogoExploration";
 import BrandElementsOverview from "./BrandElementsOverview";
-import MockupExamples from "./MockupExamples";
 import BrandApplications from "./BrandApplications";
 import PresentationControls from "./PresentationControls";
 import { BrandConcept } from "@shared/schema";
@@ -365,8 +364,6 @@ const VisualizationPanel = ({ concept: initialConcept, projectId }: Visualizatio
           brandOutput={brandOutput} 
           onElementEdit={handleElementEdit}
         />
-        
-        <MockupExamples brandOutput={brandOutput} />
       </Card>
       
       <LogoExploration brandOutput={brandOutput} />
