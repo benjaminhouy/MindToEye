@@ -217,6 +217,7 @@ function generateReverseLogo(logoSvg: string): string {
 
 // Generate brand concept with Claude
 export const generateBrandConcept = async (brandInput: BrandInput) => {
+  console.log("Starting brand concept generation with input:", JSON.stringify(brandInput));
   // Generate a unique timestamp seed to ensure different results each time
   const uniqueSeed = Date.now() % 1000;
   const varietyFactor = Math.floor(Math.random() * 10); // Random number between 0-9

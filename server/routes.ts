@@ -139,11 +139,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   app.post("/api/generate-concept", async (req: Request, res: Response) => {
+    log("Received request to generate brand concept");
     try {
+      log("Validating brand input data");
       const brandInput = brandInputSchema.parse(req.body);
+      log("Input data validated successfully");
       
       // Call the AI service to generate a brand concept
+      log("Calling AI service to generate brand concept");
       const brandOutput = await generateBrandConcept(brandInput);
+      log("AI service returned brand concept successfully");
       
       res.json({ 
         success: true,
@@ -151,6 +156,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error) {
       if (error instanceof ZodError) {
+        log(`Validation error: ${JSON.stringify(error.errors)}`);
         return res.status(400).json({ error: "Invalid brand input data", details: error.errors });
       }
       
