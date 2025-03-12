@@ -198,6 +198,147 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Replicate API test failed", details: errorMessage });
     }
   });
+  
+  // Test route for Claude concept generation
+  app.post("/api/test-claude", async (req: Request, res: Response) => {
+    try {
+      const { brandName, industry, description, values, designStyle, colorPreferences } = req.body;
+      
+      if (!brandName) {
+        return res.status(400).json({ error: "Brand name is required" });
+      }
+      
+      log("Testing Claude concept generation...");
+      // Generate a unique timestamp seed
+      const uniqueSeed = Date.now() % 1000;
+      const varietyFactor = Math.floor(Math.random() * 10);
+      
+      const prompt = `
+        Generate a fresh, original, and comprehensive brand identity for a company with the following details:
+        - Brand Name: ${brandName}
+        - Industry: ${industry || 'General business'}
+        - Description: ${description || 'A modern business'}
+        - Values: ${Array.isArray(values) ? values.join(', ') : 'Quality, Innovation'}
+        - Design Style: ${designStyle || 'modern'}
+        - Color Preferences: ${Array.isArray(colorPreferences) ? colorPreferences.join(', ') : 'Open to suggestions'}
+        - Unique design seed: ${uniqueSeed}
+        - Variety factor: ${varietyFactor}
+        
+        Include the following in your response:
+        1. A distinctive color palette with 4-5 colors (primary, secondary, accent, and base colors)
+        2. Typography recommendations (heading and body fonts) that perfectly match the brand personality
+        3. A creative and memorable logo concept description
+        
+        Format your response as a structured JSON object with these fields (and nothing else):
+        {
+          "colors": [
+            { "name": "Primary", "hex": "#hex", "type": "primary" },
+            { "name": "Secondary", "hex": "#hex", "type": "secondary" },
+            { "name": "Accent", "hex": "#hex", "type": "accent" },
+            { "name": "Base", "hex": "#hex", "type": "base" }
+          ],
+          "typography": {
+            "headings": "Font Name",
+            "body": "Font Name"
+          },
+          "logoDescription": "Description of the logo concept"
+        }
+        
+        Return only the JSON object with no additional text before or after.
+      `;
+      
+      const anthropic = new Anthropic({
+        apiKey: process.env.ANTHROPIC_API_KEY,
+      });
+      
+      const response = await anthropic.messages.create({
+        model: "claude-3-5-sonnet-20240620",
+        max_tokens: 2000,
+        temperature: 0.7,
+        system: "You are a skilled brand identity designer. Provide detailed brand concepts in JSON format only. Be creative and varied with your designs. Every time you're called, generate something different and unique.",
+        messages: [{ role: "user", content: prompt }],
+      });
+      
+      // Extract the design concept
+      let jsonStr = '';
+      if (response.content[0].type === 'text') {
+        const content = response.content[0].text;
+        if (!content) throw new Error("Empty response from Claude");
+        
+        // Extract JSON from the response
+        const jsonMatch = content.match(/\{[\s\S]*\}/);
+        jsonStr = jsonMatch ? jsonMatch[0] : content;
+      } else {
+        throw new Error("Unexpected response format from Claude");
+      }
+      
+      const parsedOutput = JSON.parse(jsonStr);
+      
+      res.json({
+        success: true,
+        message: "Claude concept generation successful",
+        brandConcept: parsedOutput
+      });
+      
+    } catch (error: any) {
+      console.error("Claude concept generation error:", error);
+      const errorMessage = error?.message || "Unknown error";
+      res.status(500).json({ error: "Claude concept generation failed", details: errorMessage });
+    }
+  });
+  
+  // Test route for FLUX logo generation 
+  app.post("/api/test-flux-logo", async (req: Request, res: Response) => {
+    try {
+      const { brandName, prompt } = req.body;
+      
+      if (!brandName || !prompt) {
+        return res.status(400).json({ error: "Brand name and prompt are required" });
+      }
+      
+      log("Testing direct FLUX logo generation...");
+      // Initialize client for this test
+      const testReplicate = new Replicate({
+        auth: process.env.REPLICATE_API_TOKEN,
+      });
+      
+      log("Sending logo prompt to FLUX model...");
+      const output = await testReplicate.run(
+        "black-forest-labs/flux-pro",
+        {
+          input: {
+            prompt: prompt,
+            width: 1024,
+            height: 1024,
+            negative_prompt: "low quality, distorted, ugly, bad proportions, text errors",
+            num_outputs: 1,
+            num_inference_steps: 25
+          }
+        }
+      );
+      
+      log("FLUX logo response: " + JSON.stringify(output));
+      
+      // Get the URL from the response
+      const imageUrl = Array.isArray(output) ? output[0] : String(output);
+      
+      // Create an SVG wrapper for the image
+      const logoSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+        <image href="${imageUrl}" width="200" height="200" preserveAspectRatio="xMidYMid meet"/>
+      </svg>`;
+      
+      res.json({
+        success: true,
+        message: "FLUX logo generation successful",
+        imageUrl: imageUrl,
+        logoSvg: logoSvg
+      });
+    } catch (error: any) {
+      console.error("FLUX logo generation error:", error);
+      const errorMessage = error?.message || "Unknown error";
+      res.status(500).json({ error: "FLUX logo generation failed", details: errorMessage });
+    }
+  });
 
   // Logo generation route
   app.post("/api/generate-logo", async (req: Request, res: Response) => {
