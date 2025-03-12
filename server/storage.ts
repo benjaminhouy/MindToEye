@@ -48,6 +48,13 @@ export class MemStorage implements IStorage {
       username: 'demo',
       password: 'demo123'
     });
+    
+    // Add a sample project for testing
+    this.createProject({
+      name: 'Solystra',
+      clientName: 'Sample Client',
+      userId: 1
+    });
   }
 
   // User operations
