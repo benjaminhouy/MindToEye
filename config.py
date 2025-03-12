@@ -16,7 +16,7 @@ class Config:
     REPLICATE_API_TOKEN = os.environ.get('REPLICATE_API_TOKEN')
     
     # Server settings
-    PORT = int(os.environ.get('PORT', 5000))
+    PORT = int(os.environ.get('PORT', 5001))
     HOST = os.environ.get('HOST', '0.0.0.0')
 
 class DevelopmentConfig(Config):
