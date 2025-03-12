@@ -33,23 +33,19 @@ const ProjectWorkspace = () => {
 
   const handleGenerate = () => {
     setIsGenerating(true);
-    
-    // Simulate progress
-    let currentProgress = 0;
-    const interval = setInterval(() => {
-      currentProgress += Math.random() * 15;
-      if (currentProgress > 100) currentProgress = 100;
-      setProgress(currentProgress);
-      
-      if (currentProgress === 100) {
-        clearInterval(interval);
-        // Hide loading overlay after a short delay to show 100%
-        setTimeout(() => {
-          setIsGenerating(false);
-          setProgress(0);
-        }, 500);
-      }
-    }, 600);
+    setProgress(0); // Reset progress
+  };
+  
+  // Function to update progress from child components
+  const updateProgress = (value: number) => {
+    setProgress(value);
+    // When progress reaches 100%, hide loading overlay after a short delay
+    if (value >= 100) {
+      setTimeout(() => {
+        setIsGenerating(false);
+        setProgress(0);
+      }, 500);
+    }
   };
 
   if (!match) return null;

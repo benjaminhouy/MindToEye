@@ -14,6 +14,7 @@ import { BrandConcept, BrandInput } from "@shared/schema";
 import { ZapIcon, XIcon } from "lucide-react";
 import { nanoid } from "nanoid";
 import SavedConcepts from "./SavedConcepts";
+import { generateBrandConcept } from "@/lib/openai";
 
 interface BrandInputPanelProps {
   onGenerate: () => void;
@@ -22,9 +23,10 @@ interface BrandInputPanelProps {
   onConceptSelect: (id: number | null) => void;
   projectId: number;
   projectName?: string; // Optional project name to pre-fill
+  onProgressUpdate?: (progress: number) => void; // Optional progress callback
 }
 
-const BrandInputPanel = ({ onGenerate, savedConcepts, activeConcept, onConceptSelect, projectId, projectName }: BrandInputPanelProps) => {
+const BrandInputPanel = ({ onGenerate, savedConcepts, activeConcept, onConceptSelect, projectId, projectName, onProgressUpdate }: BrandInputPanelProps) => {
   const { toast } = useToast();
   const [brandInput, setBrandInput] = useState<BrandInput>({
     brandName: projectName || "",
@@ -141,14 +143,47 @@ const BrandInputPanel = ({ onGenerate, savedConcepts, activeConcept, onConceptSe
     }));
   };
 
-  const handleGenerateClick = () => {
+  const handleGenerateClick = async () => {
     // Add a unique request ID to force diversity in AI responses
     const uniqueBrandInput = {
       ...brandInput,
       requestId: Date.now().toString() // Add a timestamp to ensure uniqueness
     };
+    
+    // Start the generation process and show loading overlay
     onGenerate();
-    generateMutation.mutate(uniqueBrandInput);
+    
+    try {
+      // Use the direct API with progress tracking
+      const brandOutput = await generateBrandConcept(uniqueBrandInput, (progress) => {
+        // Report progress to parent if callback exists
+        if (onProgressUpdate) {
+          onProgressUpdate(progress);
+        }
+        console.log(`Generation progress: ${progress}%`);
+      });
+      
+      // If successful, save the concept
+      saveBrandConcept({
+        name: `${brandInput.designStyle.charAt(0).toUpperCase() + brandInput.designStyle.slice(1)} ${brandInput.brandName} Concept`,
+        brandInputs: brandInput,
+        brandOutput: brandOutput,
+        isActive: true
+      });
+      
+      toast({
+        title: "Brand concept generated!",
+        description: "Your brand concept has been created successfully.",
+      });
+      
+    } catch (error) {
+      console.error("Error generating brand concept:", error);
+      toast({
+        title: "Generation failed",
+        description: error instanceof Error ? error.message : "There was a problem generating your brand concept. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const saveBrandConcept = (conceptData: any) => {
