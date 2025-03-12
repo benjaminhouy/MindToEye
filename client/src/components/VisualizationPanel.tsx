@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import LogoExploration from "./LogoExploration";
 import BrandElementsOverview from "./BrandElementsOverview";
@@ -20,11 +20,17 @@ interface VisualizationPanelProps {
   projectId?: number;
 }
 
-const VisualizationPanel = ({ concept, projectId }: VisualizationPanelProps) => {
+const VisualizationPanel = ({ concept: initialConcept, projectId }: VisualizationPanelProps) => {
   const [expanded, setExpanded] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [concept, setConcept] = useState(initialConcept);
   const { toast } = useToast();
+  
+  // Keep the local concept state in sync with the prop
+  useEffect(() => {
+    setConcept(initialConcept);
+  }, [initialConcept]);
 
   // Track pending changes that need regeneration
   const [pendingChanges, setPendingChanges] = useState<{
@@ -97,6 +103,20 @@ const VisualizationPanel = ({ concept, projectId }: VisualizationPanelProps) => 
       return result;
     },
     onSuccess: (data) => {
+      // Immediately update the UI with the new data without waiting for refetch
+      if (concept && data.brandOutput) {
+        // Make a deep copy of the concept to avoid mutation issues
+        const updatedConcept = {
+          ...concept,
+          brandOutput: data.brandOutput
+        };
+        
+        // Force a re-render by setting a new object reference
+        // This is a workaround for React Query's refetch delay
+        setConcept(updatedConcept);
+      }
+      
+      // Still invalidate queries to ensure data consistency
       queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/concepts`] });
       queryClient.invalidateQueries({ queryKey: [`/api/concepts/${concept?.id}`] });
       

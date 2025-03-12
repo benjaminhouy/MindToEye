@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -21,6 +21,11 @@ interface BrandTypography {
 interface BrandElementsOverviewProps {
   brandOutput: any;
   onElementEdit?: (type: string, updatedData: any) => Promise<void>;
+  /**
+   * Optional: If provided, will immediately update the UI with new values
+   * after a regeneration, without waiting for server refresh 
+   */
+  immediateUpdate?: boolean;
 }
 
 // Extended list of font options for dropdowns
@@ -78,6 +83,16 @@ const BrandElementsOverview = ({ brandOutput, onElementEdit }: BrandElementsOver
   const [typography, setTypography] = useState<BrandTypography>(initialTypography);
   const [editingColor, setEditingColor] = useState<number | null>(null);
   const [editingTypography, setEditingTypography] = useState(false);
+  
+  // Keep colors and typography in sync with brandOutput
+  useEffect(() => {
+    if (brandOutput?.colors) {
+      setColors(brandOutput.colors);
+    }
+    if (brandOutput?.typography) {
+      setTypography(brandOutput.typography);
+    }
+  }, [brandOutput]);
   
   // Function to handle color changes
   const handleColorChange = (index: number, hex: string) => {
