@@ -2,8 +2,8 @@ import Anthropic from "@anthropic-ai/sdk";
 import Replicate from "replicate";
 import { BrandInput } from "@shared/schema";
 
-// Using Claude Sonnet 3.5 model from Anthropic as requested
-const CLAUDE_MODEL = "claude-3-sonnet-20240229";
+// Using Claude 3 Sonnet model from Anthropic
+const CLAUDE_MODEL = "claude-3-sonnet";
 
 // Random value between 0.3 and 0.9 to add variability to responses
 // (Claude API requires temperature between 0 and 1)
@@ -102,18 +102,18 @@ IMPORTANT REQUIREMENTS:
 - Do not add any watermarks or signatures
     `;
 
-    // FLUX 1.1 Pro model on Replicate
+    // FLUX model on Replicate
     const output = await replicate.run(
-      "blackforestlabs/flux:1.1-pro",
+      "black-forest-labs/flux:1",
       {
         input: {
           prompt: fluxPrompt,
-          width: 768, 
-          height: 768,
+          width: 1024, 
+          height: 1024,
           negative_prompt: "low quality, distorted, ugly, bad proportions, text errors, text cut off, spelling errors",
-          num_inference_steps: 50,
-          guidance_scale: 7.5,
-          seed: Math.floor(Math.random() * 1000000)
+          prompt_strength: 7.5,
+          num_outputs: 1,
+          num_inference_steps: 25
         }
       }
     );
