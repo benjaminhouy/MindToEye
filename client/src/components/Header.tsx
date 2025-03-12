@@ -11,79 +11,81 @@ const Header = () => {
         <div className="flex justify-between h-16">
           <div className="flex items-center">
             {/* Logo */}
-            <Link href="/">
-              <a className="flex-shrink-0 flex items-center">
-                <svg
-                  className="h-8 w-8 text-primary"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  xmlns="http://www.w3.org/2000/svg"
-                >
-                  <path
-                    d="M12 16C14.2091 16 16 14.2091 16 12C16 9.79086 14.2091 8 12 8C9.79086 8 8 9.79086 8 12C8 14.2091 9.79086 16 12 16Z"
-                    fill="currentColor"
-                  />
-                  <path
-                    d="M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                  />
-                  <path
-                    d="M12 16V20M12 4V8M16 12H20M4 12H8"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                  />
-                </svg>
-                <span className="ml-2 text-xl font-bold text-gray-900">MindToEye</span>
-              </a>
-            </Link>
+            <div className="flex-shrink-0">
+              <Link href="/">
+                <div className="flex items-center cursor-pointer">
+                  <svg
+                    className="h-8 w-8 text-primary"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    xmlns="http://www.w3.org/2000/svg"
+                  >
+                    <path
+                      d="M12 16C14.2091 16 16 14.2091 16 12C16 9.79086 14.2091 8 12 8C9.79086 8 8 9.79086 8 12C8 14.2091 9.79086 16 12 16Z"
+                      fill="currentColor"
+                    />
+                    <path
+                      d="M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                    />
+                    <path
+                      d="M12 16V20M12 4V8M16 12H20M4 12H8"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                  <span className="ml-2 text-xl font-bold text-gray-900">MindToEye</span>
+                </div>
+              </Link>
+            </div>
 
             {/* Primary Navigation */}
             <nav className="hidden md:ml-8 md:flex md:space-x-8">
               <Link href="/">
-                <a
+                <div
                   className={`${
                     location === "/"
                       ? "border-primary text-gray-900"
                       : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
-                  } inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}
+                  } inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium cursor-pointer`}
                 >
                   Dashboard
-                </a>
+                </div>
               </Link>
               <Link href="/projects">
-                <a
+                <div
                   className={`${
                     location.startsWith("/projects")
                       ? "border-primary text-gray-900"
                       : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
-                  } inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}
+                  } inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium cursor-pointer`}
                 >
                   Projects
-                </a>
+                </div>
               </Link>
               <Link href="/templates">
-                <a
+                <div
                   className={`${
                     location.startsWith("/templates")
                       ? "border-primary text-gray-900"
                       : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
-                  } inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}
+                  } inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium cursor-pointer`}
                 >
                   Templates
-                </a>
+                </div>
               </Link>
               <Link href="/resources">
-                <a
+                <div
                   className={`${
                     location.startsWith("/resources")
                       ? "border-primary text-gray-900"
                       : "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700"
-                  } inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium`}
+                  } inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium cursor-pointer`}
                 >
                   Resources
-                </a>
+                </div>
               </Link>
             </nav>
           </div>
