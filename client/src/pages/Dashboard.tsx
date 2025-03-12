@@ -49,8 +49,8 @@ const Dashboard = () => {
       ) : projects && projects.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {projects.map((project) => (
-            <Link key={project.id} href={`/projects/${project.id}`}>
-              <a className="block">
+            <div key={project.id} className="block">
+              <Link href={`/projects/${project.id}`}>
                 <Card className="hover:shadow-md transition-shadow duration-300 cursor-pointer h-full">
                   <CardHeader className="bg-gradient-to-r from-primary-100 to-primary-50">
                     <CardTitle className="text-lg">{project.name}</CardTitle>
@@ -71,8 +71,8 @@ const Dashboard = () => {
                     </Button>
                   </CardFooter>
                 </Card>
-              </a>
-            </Link>
+              </Link>
+            </div>
           ))}
         </div>
       ) : (

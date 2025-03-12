@@ -85,7 +85,9 @@ export class MemStorage implements IStorage {
     const project: Project = { 
       ...insertProject, 
       id, 
-      createdAt: now 
+      createdAt: now,
+      // Ensure clientName is not undefined
+      clientName: insertProject.clientName ?? null
     };
     this.projects.set(id, project);
     return project;
@@ -130,7 +132,9 @@ export class MemStorage implements IStorage {
     const concept: BrandConcept = { 
       ...insertConcept, 
       id, 
-      createdAt: now 
+      createdAt: now,
+      // Ensure isActive is not undefined
+      isActive: insertConcept.isActive ?? false
     };
     this.brandConcepts.set(id, concept);
     

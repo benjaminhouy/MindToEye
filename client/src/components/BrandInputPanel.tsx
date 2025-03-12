@@ -106,7 +106,12 @@ const BrandInputPanel = ({ onGenerate, savedConcepts, activeConcept, onConceptSe
   };
 
   const handleRadioChange = (value: string) => {
-    setBrandInput(prev => ({ ...prev, designStyle: value }));
+    // Ensure value is one of the allowed design styles
+    const designStyle = (value === "modern" || value === "classic" || value === "minimalist" || value === "bold") 
+      ? value 
+      : "modern";
+    
+    setBrandInput(prev => ({ ...prev, designStyle }));
   };
 
   const handleAddValue = () => {
