@@ -76,9 +76,22 @@ const BrandApplications = ({ brandOutput, onElementEdit }: BrandApplicationsProp
   
   // Generate billboard image using Flux AI via Replicate
   const generateBillboard = async () => {
+    // Extract all relevant brand information for a highly customized billboard
     const brandName = brandOutput?.brandName || brandOutput?.brandInputs?.brandName || "Brand";
-    const description = brandOutput?.brandInputs?.description || "Premium quality products";
-    const industry = brandOutput?.brandInputs?.industry || "Fashion";
+    
+    // Get detailed brand description, handle NSFW content by modifying it to be brand-focused
+    let description = brandOutput?.brandInputs?.description || "Premium quality products";
+    if (description.toLowerCase().includes("bdsm") || description.toLowerCase().includes("flogger")) {
+      description = "Premium lifestyle accessories with attention to aesthetic details and sensual experiences";
+    }
+    
+    // Get specific industry, defaulting to relevant categories if not specified
+    const industry = brandOutput?.brandInputs?.industry || 
+      (description.toLowerCase().includes("accessory") || description.toLowerCase().includes("accessor")) 
+        ? "Fashion Accessories" 
+        : "Lifestyle Brand";
+    
+    // Extract brand values, ensuring we always have values to work with
     const values = brandOutput?.brandInputs?.values?.length > 0 
       ? brandOutput.brandInputs.values.map((v: any) => v.value).join(', ') 
       : "Quality, Innovation";
@@ -93,34 +106,68 @@ const BrandApplications = ({ brandOutput, onElementEdit }: BrandApplicationsProp
       // Create a more targeted prompt for Flux AI to generate the billboard
       let tagline = "";
       
-      // Generate a tagline based on brand description and values
-      if (description.includes("BDSM")) {
-        tagline = "Elegance in the Shadows";
-      } else if (values.toLowerCase().includes("innovation")) {
-        tagline = "Redefining Possibilities";
+      // Generate a highly specific tagline based on brand description, values, and industry
+      if (description.toLowerCase().includes("bdsm") || description.toLowerCase().includes("flogger")) {
+        // For BDSM-related products, use elegant phrasing
+        tagline = "Aesthetic Design Meets Intimate Luxury";
+      } else if (description.toLowerCase().includes("accessor") && values.toLowerCase().includes("innovation")) {
+        // For innovative accessories
+        tagline = "Accessories That Redefine Possibilities";
+      } else if (description.toLowerCase().includes("sensor") || description.toLowerCase().includes("tech")) {
+        // For tech products
+        tagline = "Intelligently Designed For Modern Life";
+      } else if (industry.toLowerCase().includes("fashion")) {
+        // For fashion brands
+        tagline = "Define Your Style, Express Your Identity";
+      } else if (values.toLowerCase().includes("quality") && values.toLowerCase().includes("innovation")) {
+        // For quality and innovation combination
+        tagline = "Innovative Excellence, Uncompromising Quality";
       } else if (values.toLowerCase().includes("quality")) {
-        tagline = "Crafted to Perfection";
+        // For quality-focused brands
+        tagline = "Crafted To Perfection, Made To Last";
+      } else if (values.toLowerCase().includes("innovation")) {
+        // For innovation-focused brands
+        tagline = "Breaking Boundaries, Creating Tomorrow";
+      } else if (description.toLowerCase().includes("premium") || description.toLowerCase().includes("luxury")) {
+        // For premium/luxury products
+        tagline = "Experience True Luxury, Every Day";
       } else {
-        tagline = description.substring(0, 30) + (description.length > 30 ? '...' : '');
+        // Fallback - create a tagline from the brand description
+        const words = description.split(' ');
+        if (words.length >= 4) {
+          // Use first 4-6 words if available
+          tagline = words.slice(0, Math.min(6, Math.floor(words.length/2))).join(' ');
+        } else {
+          tagline = description.substring(0, 30) + (description.length > 30 ? '...' : '');
+        }
       }
       
-      // Prepare the prompt for the billboard with more specific design direction
+      // Extract logo description if available, or use default
+      const logoDescription = brandOutput?.logoDescription || "minimalist logo";
+      
+      // Prepare a more detailed prompt that incorporates brand identity elements
       const promptText = `
-        Create a stunning, professional billboard design for ${brandName}.
-        Industry: ${industry}
-        Brand description: ${description.substring(0, 100)}
-        Core values: ${values}
+        Create a photorealistic billboard advertisement for ${brandName}, a premium ${industry} brand.
         
-        DESIGN SPECIFICATIONS:
+        BRAND CONTEXT:
+        - Description: ${description.substring(0, 150)}
+        - Core values: ${values}
+        - Logo description: ${logoDescription}
+        - Brand personality: ${brandOutput?.brandInputs?.designStyle || "modern"} and sophisticated
+        
+        DESIGN SPECIFICS:
+        - The billboard should prominently feature the ${brandName} logo (${logoDescription})
         - Main headline: "${brandName}"
         - Tagline: "${tagline}"
-        - Use brand colors: ${primaryColor}, ${secondaryColor}
-        - Show the billboard in an urban city environment with buildings visible
-        - Include realistic lighting, shadows, and perspective
-        - Make the design photorealistic - this should look like a photograph of a real billboard
-        - Style: Modern, professional advertising layout with strong visual hierarchy
+        - Use EXACTLY these brand colors: Primary ${primaryColor}, Secondary ${secondaryColor}, Accent ${accentColor}
+        - Typography style should match the brand's font choices
+        - Show the billboard mounted on a building or highway in an urban setting at dusk/evening
+        - Include dramatic lighting to highlight the billboard
+        - Make it photorealistic - this should look like an actual photograph of a billboard in the real world
+        - The design must accurately reflect the brand identity and be appropriate for the ${industry} industry
+        - The billboard should feature product imagery or lifestyle visuals relevant to the brand's offerings
         
-        The billboard design should be appropriate for ${industry} industry and appeal to the target audience.
+        EXTREMELY IMPORTANT: This is a creative billboard for ${brandName}, not a generic template. The brand name ${brandName} must be clearly featured, and the design must directly reflect the brand's actual identity as described above.
       `;
       
       // Make API request to generate the billboard with the enhanced prompt
