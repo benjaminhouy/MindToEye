@@ -150,36 +150,69 @@ const BrandElementsOverview = ({ brandOutput, onElementEdit }: BrandElementsOver
         <h3 className="text-base font-medium text-gray-900">Logo</h3>
         <p className="mt-1 text-sm text-gray-500">{brandOutput?.logoDescription || 'Brand logo design'}</p>
         {onElementEdit && (
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="mt-2"
-            onClick={async () => {
-              try {
-                if (onElementEdit) {
-                  toast({
-                    title: "Regenerating logo instantly",
-                    description: "Creating a professional logo design for client review...",
-                  });
-                  
-                  await onElementEdit('logo', null);
-                  
-                  toast({
-                    title: "Logo regenerated",
-                    description: "New logo ready for client presentation! Approve designs faster.",
-                  });
-                }
-              } catch (error) {
-                toast({
-                  title: "Regeneration failed",
-                  description: "Failed to regenerate logo. Please try again.",
-                  variant: "destructive",
-                });
-              }
-            }}
-          >
-            <EditIcon className="h-3 w-3 mr-1" /> Regenerate Logo
-          </Button>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="mt-2"
+              >
+                <EditIcon className="h-3 w-3 mr-1" /> Regenerate Logo
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-80">
+              <div className="space-y-2">
+                <h4 className="font-medium text-sm">Describe your logo</h4>
+                <p className="text-xs text-gray-500">Tell the AI what kind of logo you want. Be specific about style, symbols, and colors.</p>
+                <form 
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    const form = e.currentTarget;
+                    const formData = new FormData(form);
+                    const description = formData.get('logoDescription') as string;
+                    
+                    try {
+                      if (onElementEdit) {
+                        toast({
+                          title: "Regenerating logo instantly",
+                          description: "Creating a professional logo design based on your description...",
+                        });
+                        
+                        await onElementEdit('logo', { description });
+                        
+                        toast({
+                          title: "Logo regenerated",
+                          description: "New logo ready for client presentation! Approve designs faster.",
+                        });
+                      }
+                      
+                      // Close the popover
+                      const closeEvent = new CustomEvent('close-popover');
+                      document.dispatchEvent(closeEvent);
+                    } catch (error) {
+                      toast({
+                        title: "Regeneration failed",
+                        description: "Failed to regenerate logo. Please try again.",
+                        variant: "destructive",
+                      });
+                    }
+                  }}
+                >
+                  <div className="space-y-2">
+                    <textarea 
+                      name="logoDescription"
+                      className="w-full min-h-[100px] p-2 text-sm border rounded-md"
+                      placeholder="Example: A minimalist logo with abstract elements representing growth and innovation. Use teal and gold as primary colors."
+                      defaultValue=""
+                    />
+                    <div className="flex justify-end">
+                      <Button type="submit" size="sm">Generate</Button>
+                    </div>
+                  </div>
+                </form>
+              </div>
+            </PopoverContent>
+          </Popover>
         )}
       </div>
       
@@ -188,14 +221,78 @@ const BrandElementsOverview = ({ brandOutput, onElementEdit }: BrandElementsOver
         <div className="flex justify-between items-center mb-3">
           <h3 className="text-base font-medium text-gray-900">Color Palette</h3>
           {onElementEdit && (
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={editingColor !== null ? saveColorChanges : () => setEditingColor(0)}
-              className={`text-xs px-2 h-7 ${editingColor === null ? "text-blue-600 hover:text-blue-700" : ""}`}
-            >
-              {editingColor !== null ? "Save" : <><EditIcon className="h-3 w-3 mr-1" /> Edit Colors</>}
-            </Button>
+            <div className="flex gap-2">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="text-xs px-2 h-7 text-blue-600 hover:text-blue-700"
+                  >
+                    <EditIcon className="h-3 w-3 mr-1" /> AI Generate
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-80">
+                  <div className="space-y-2">
+                    <h4 className="font-medium text-sm">Generate Color Palette</h4>
+                    <p className="text-xs text-gray-500">Describe the color palette you want. Include moods, themes, or specific colors.</p>
+                    <form 
+                      onSubmit={async (e) => {
+                        e.preventDefault();
+                        const form = e.currentTarget;
+                        const formData = new FormData(form);
+                        const description = formData.get('colorDescription') as string;
+                        
+                        try {
+                          toast({
+                            title: "Generating color palette",
+                            description: "Creating a color scheme based on your description...",
+                          });
+                          
+                          await onElementEdit!('colors', { description });
+                          
+                          toast({
+                            title: "Colors generated",
+                            description: "Fresh color palette is ready for client review!",
+                          });
+                          
+                          // Close the popover
+                          const closeEvent = new CustomEvent('close-popover');
+                          document.dispatchEvent(closeEvent);
+                        } catch (error) {
+                          toast({
+                            title: "Generation failed",
+                            description: "Failed to generate colors. Please try again.",
+                            variant: "destructive",
+                          });
+                        }
+                      }}
+                    >
+                      <div className="space-y-2">
+                        <textarea 
+                          name="colorDescription"
+                          className="w-full min-h-[100px] p-2 text-sm border rounded-md"
+                          placeholder="Example: A bold, modern palette with deep purples and vibrant teals that conveys luxury and innovation."
+                          defaultValue=""
+                        />
+                        <div className="flex justify-end">
+                          <Button type="submit" size="sm">Generate</Button>
+                        </div>
+                      </div>
+                    </form>
+                  </div>
+                </PopoverContent>
+              </Popover>
+              
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={editingColor !== null ? saveColorChanges : () => setEditingColor(0)}
+                className={`text-xs px-2 h-7 ${editingColor === null ? "text-blue-600 hover:text-blue-700" : ""}`}
+              >
+                {editingColor !== null ? "Save" : <><EditIcon className="h-3 w-3 mr-1" /> Manual Edit</>}
+              </Button>
+            </div>
           )}
         </div>
         <div className="grid grid-cols-2 gap-2">
@@ -237,14 +334,78 @@ const BrandElementsOverview = ({ brandOutput, onElementEdit }: BrandElementsOver
         <div className="flex justify-between items-center mb-3">
           <h3 className="text-base font-medium text-gray-900">Typography</h3>
           {onElementEdit && (
-            <Button 
-              variant="ghost" 
-              size="sm"
-              onClick={editingTypography ? saveTypographyChanges : () => setEditingTypography(true)}
-              className={`text-xs px-2 h-7 ${editingTypography === false ? "text-blue-600 hover:text-blue-700" : ""}`}
-            >
-              {editingTypography ? "Save" : <><EditIcon className="h-3 w-3 mr-1" /> Edit Fonts</>}
-            </Button>
+            <div className="flex gap-2">
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="text-xs px-2 h-7 text-blue-600 hover:text-blue-700"
+                  >
+                    <EditIcon className="h-3 w-3 mr-1" /> AI Generate
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-80">
+                  <div className="space-y-2">
+                    <h4 className="font-medium text-sm">Generate Typography</h4>
+                    <p className="text-xs text-gray-500">Describe the typography style you want. Include the brand personality or specific font inspiration.</p>
+                    <form 
+                      onSubmit={async (e) => {
+                        e.preventDefault();
+                        const form = e.currentTarget;
+                        const formData = new FormData(form);
+                        const description = formData.get('typographyDescription') as string;
+                        
+                        try {
+                          toast({
+                            title: "Generating typography",
+                            description: "Finding the perfect font combination based on your description...",
+                          });
+                          
+                          await onElementEdit!('typography', { description });
+                          
+                          toast({
+                            title: "Typography updated",
+                            description: "New font combination is ready for client review!",
+                          });
+                          
+                          // Close the popover
+                          const closeEvent = new CustomEvent('close-popover');
+                          document.dispatchEvent(closeEvent);
+                        } catch (error) {
+                          toast({
+                            title: "Generation failed",
+                            description: "Failed to generate typography. Please try again.",
+                            variant: "destructive",
+                          });
+                        }
+                      }}
+                    >
+                      <div className="space-y-2">
+                        <textarea 
+                          name="typographyDescription"
+                          className="w-full min-h-[100px] p-2 text-sm border rounded-md"
+                          placeholder="Example: Modern tech fonts for a futuristic brand. The heading should be bold and tech-oriented like Audiowide, and the body text should be clean and readable."
+                          defaultValue=""
+                        />
+                        <div className="flex justify-end">
+                          <Button type="submit" size="sm">Generate</Button>
+                        </div>
+                      </div>
+                    </form>
+                  </div>
+                </PopoverContent>
+              </Popover>
+
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={editingTypography ? saveTypographyChanges : () => setEditingTypography(true)}
+                className={`text-xs px-2 h-7 ${!editingTypography ? "text-blue-600 hover:text-blue-700" : ""}`}
+              >
+                {editingTypography ? "Save" : <><EditIcon className="h-3 w-3 mr-1" /> Manual Edit</>}
+              </Button>
+            </div>
           )}
         </div>
         <div className="space-y-3">

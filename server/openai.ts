@@ -1,6 +1,12 @@
 import Anthropic from "@anthropic-ai/sdk";
 import Replicate from "replicate";
+import OpenAI from "openai";
 import { BrandInput } from "@shared/schema";
+
+// Initialize OpenAI client
+export const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY,
+});
 
 // Using latest Claude model
 const CLAUDE_MODEL = "claude-3-5-sonnet-20240620";

@@ -530,22 +530,130 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Clone the current brand output
       const brandOutput = JSON.parse(JSON.stringify(existingConcept.brandOutput));
       
+      // Import OpenAI for generating elements via free-form text
+      const { openai } = await import('./openai');
+      
       // Based on elementType, merge the new values
       if (elementType === 'colors') {
-        brandOutput.colors = newValues;
+        // Check if we're doing manual edit or AI-based generation
+        if (newValues && typeof newValues === 'object' && newValues.description) {
+          // AI-based generation from description
+          const description = newValues.description;
+          console.log(`Generating colors based on description: ${description}`);
+          
+          try {
+            // Use OpenAI to generate color palette based on the description
+            const response = await openai.chat.completions.create({
+              model: "gpt-4o",
+              messages: [
+                {
+                  role: "system",
+                  content: "You are a brand design expert specializing in color theory. Generate a color palette based on the user's description. Return only a JSON object with 4 colors: primary, secondary, accent, and base. Each color should include a name and hex value."
+                },
+                {
+                  role: "user",
+                  content: `Generate a brand color palette based on this description: "${description}". The brand is named "${brandInputs.brandName}" in the "${brandInputs.industry || 'general'}" industry.`
+                }
+              ],
+              response_format: { type: "json_object" }
+            });
+            
+            const colorData = JSON.parse(response.choices[0].message.content);
+            
+            // Transform the data into our expected format
+            const formattedColors = [
+              { name: "Primary", hex: colorData.primary.hex, type: "primary" },
+              { name: "Secondary", hex: colorData.secondary.hex, type: "secondary" },
+              { name: "Accent", hex: colorData.accent.hex, type: "accent" },
+              { name: "Base", hex: colorData.base.hex, type: "base" }
+            ];
+            
+            // Update the colors in the brand output
+            brandOutput.colors = formattedColors;
+            
+          } catch (error) {
+            console.error("Error generating colors with AI:", error);
+            return res.status(500).json({
+              success: false,
+              message: "Failed to generate colors with AI",
+              error: String(error)
+            });
+          }
+        } else {
+          // Manual edit - direct update
+          brandOutput.colors = newValues;
+        }
       } else if (elementType === 'typography') {
-        brandOutput.typography = newValues;
+        // Check if we're doing manual edit or AI-based generation
+        if (newValues && typeof newValues === 'object' && newValues.description) {
+          // AI-based generation from description
+          const description = newValues.description;
+          console.log(`Generating typography based on description: ${description}`);
+          
+          try {
+            // Use OpenAI to generate font combination based on the description
+            const response = await openai.chat.completions.create({
+              model: "gpt-4o",
+              messages: [
+                {
+                  role: "system",
+                  content: `You are a typography expert. Generate a font combination based on the user's description. 
+                  Choose from these available fonts:
+                  - Sans-serif: Arial, Roboto, Montserrat, Open Sans, Lato, Poppins, Raleway, Nunito, Source Sans Pro, Oswald, Ubuntu, PT Sans, Noto Sans, Inter, Work Sans, Quicksand, Barlow, Mulish, Rubik, Karla, Helvetica Neue, Segoe UI, Verdana, Tahoma, Proxima Nova, Avenir, DM Sans, SF Pro, Century Gothic, Futura
+                  - Serif: Playfair Display, Merriweather, Georgia, Times New Roman, Baskerville, Garamond, Didot, Bodoni, Caslon, Palatino, Cambria, Bookman, Hoefler Text, Cormorant Garamond, EB Garamond, Libre Baskerville
+                  - Display & decorative: Bebas Neue, Abril Fatface, Pacifico, Comfortaa, Dancing Script, Lobster, Caveat, Sacramento, Righteous, Permanent Marker, Fredoka One, Staatliches, Monoton, Baloo, Satisfy
+                  - Tech & Modern: Audiowide, Orbitron, Exo, Exo 2, Rajdhani, Quantico, Teko, Aldrich, Syncopate, Michroma, Electrolize, Sarpanch, Oxanium, Jura, Russo One, Chakra Petch, Saira Stencil One, Unica One
+                  - Creative & Unique: Poiret One, Julius Sans One, Amatic SC, Handlee, Kalam, Indie Flower, Patrick Hand, Architects Daughter, Shadows Into Light, Rock Salt, Gloria Hallelujah, Kaushan Script, Neucha, Fredericka the Great
+                  - Monospace: Courier, Courier New, Roboto Mono, IBM Plex Mono, Source Code Pro, Space Mono, Fira Code, JetBrains Mono, Inconsolata, VT323
+                  
+                  Return only a JSON object with headings and body fonts.`
+                },
+                {
+                  role: "user",
+                  content: `Generate a font combination based on this description: "${description}". The brand is named "${brandInputs.brandName}" in the "${brandInputs.industry || 'general'}" industry.`
+                }
+              ],
+              response_format: { type: "json_object" }
+            });
+            
+            const typographyData = JSON.parse(response.choices[0].message.content);
+            
+            // Update the typography in the brand output
+            brandOutput.typography = {
+              headings: typographyData.headings,
+              body: typographyData.body
+            };
+            
+          } catch (error) {
+            console.error("Error generating typography with AI:", error);
+            return res.status(500).json({
+              success: false,
+              message: "Failed to generate typography with AI",
+              error: String(error)
+            });
+          }
+        } else {
+          // Manual edit - direct update
+          brandOutput.typography = newValues;
+        }
       } else if (elementType === 'logo') {
         // For logo regeneration, we need to call the FLUX API
         try {
           // Import the generateLogo function
           const { generateLogo, generateMonochromeLogo, generateReverseLogo } = await import('./openai');
           
+          // Check if we have a custom description
+          let customDescription = '';
+          if (newValues && typeof newValues === 'object' && newValues.description) {
+            customDescription = newValues.description;
+            console.log(`Generating logo with custom description: ${customDescription}`);
+          }
+          
           // Generate a new logo using the current brand input
           const logoSvg = await generateLogo({
             brandName: brandInputs.brandName,
             industry: brandInputs.industry || '',
-            description: brandInputs.description,
+            description: customDescription || brandInputs.description,
             values: brandInputs.values.map((v: any) => v.value),
             style: brandInputs.designStyle,
             colors: brandInputs.colorPreferences || []
