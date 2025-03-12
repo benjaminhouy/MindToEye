@@ -60,8 +60,8 @@ export type BrandConcept = typeof brandConcepts.$inferSelect;
 // Brand Input Schema for validation
 export const brandInputSchema = z.object({
   brandName: z.string().min(1, "Brand name is required"),
-  industry: z.string().min(1, "Industry is required"),
-  description: z.string().min(1, "Description is required"),
+  industry: z.string().default(""),
+  description: z.string().default(""),
   values: z.array(z.object({
     id: z.string(),
     value: z.string()
