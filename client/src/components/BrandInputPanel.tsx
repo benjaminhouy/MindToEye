@@ -166,22 +166,15 @@ const BrandInputPanel = ({ onGenerate, savedConcepts, activeConcept, onConceptSe
             
             <div>
               <Label htmlFor="industry">Industry</Label>
-              <Select 
+              <Input 
+                type="text" 
+                id="industry" 
+                name="industry" 
                 value={brandInput.industry} 
-                onValueChange={(value) => handleSelectChange("industry", value)}
-              >
-                <SelectTrigger className="mt-1">
-                  <SelectValue placeholder="Select industry" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Sustainable Technology">Sustainable Technology</SelectItem>
-                  <SelectItem value="E-commerce">E-commerce</SelectItem>
-                  <SelectItem value="Healthcare">Healthcare</SelectItem>
-                  <SelectItem value="Finance">Finance</SelectItem>
-                  <SelectItem value="Education">Education</SelectItem>
-                  <SelectItem value="Entertainment">Entertainment</SelectItem>
-                </SelectContent>
-              </Select>
+                onChange={handleInputChange}
+                className="mt-1"
+                placeholder="Enter industry (e.g., Tech, Healthcare, Hospitality)"
+              />
             </div>
             
             <div>
@@ -264,23 +257,23 @@ const BrandInputPanel = ({ onGenerate, savedConcepts, activeConcept, onConceptSe
             </div>
 
             <div>
-              <Label className="block text-sm font-medium text-gray-700">Color Preferences</Label>
-              <div className="mt-2 flex items-center space-x-2">
-                <span className="h-6 w-6 rounded-full bg-emerald-500 cursor-pointer ring-2 ring-offset-2 ring-emerald-500"></span>
-                <span className="h-6 w-6 rounded-full bg-sky-600 cursor-pointer"></span>
-                <span className="h-6 w-6 rounded-full bg-indigo-500 cursor-pointer"></span>
-                <Button 
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6 rounded-full flex items-center justify-center border-2 border-dashed border-gray-300 text-gray-400 hover:text-gray-500 hover:border-gray-400 p-0"
-                >
-                  <span className="sr-only">Add color</span>
-                  <svg className="h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                  </svg>
-                </Button>
-              </div>
+              <Label htmlFor="colorPreferences" className="block text-sm font-medium text-gray-700">Color Preferences</Label>
+              <Input 
+                type="text" 
+                id="colorPreferences" 
+                name="colorPreferences" 
+                className="mt-1"
+                placeholder="Describe colors (e.g., earthy tones, vibrant, blue and gold)"
+                value={brandInput.colorPreferences?.join(', ') || ''}
+                onChange={(e) => {
+                  // Split by commas and trim each entry
+                  const colorPrefs = e.target.value.split(',').map(color => color.trim()).filter(Boolean);
+                  setBrandInput(prev => ({ ...prev, colorPreferences: colorPrefs }));
+                }}
+              />
+              <p className="mt-1 text-sm text-gray-500">
+                Be as specific or vague as you'd like. Leave empty for AI to choose colors.
+              </p>
             </div>
             
             <div className="pt-3">

@@ -1,8 +1,8 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { BrandInput } from "@shared/schema";
 
-// Using Claude Opus model from Anthropic (latest model)
-const CLAUDE_MODEL = "claude-3-opus-20240229";
+// Using Claude Sonnet 3.5 model from Anthropic as requested
+const CLAUDE_MODEL = "claude-3-sonnet-20240229";
 
 // Random value between 0.7 and 1.4 to add variability to responses
 const getRandomTemperature = () => 0.7 + Math.random() * 0.7;
@@ -33,11 +33,14 @@ export const generateLogo = async (params: {
     - Description: ${description}
     - Values: ${values.join(', ')}
     - Style: ${style}
-    - Colors: ${colors.join(', ')}
+    - Color Preferences: ${colors.length > 0 ? colors.join(', ') : 'Choose appropriate colors based on the brand personality'}
     - Unique design seed: ${uniqueSeed}
     
     Be innovative and original with this design. Create something that stands out and is memorable.
     The logo should be professional, visually striking, and perfectly reflect the brand's identity.
+    
+    For color preferences, interpret them flexibly - they can be specific hex codes, color names, or vague terms like "earthy" or "vibrant".
+    
     Return ONLY the SVG code without any explanations or markdown formatting. 
     The SVG should be complete, valid, and ready to use directly in a web page.
   `;
@@ -73,16 +76,19 @@ export const generateBrandConcept = async (brandInput: BrandInput) => {
   const prompt = `
     Generate a fresh, original, and comprehensive brand identity for a company with the following details:
     - Brand Name: ${brandInput.brandName}
-    - Industry: ${brandInput.industry}
+    - Industry: ${brandInput.industry || 'General business'}
     - Description: ${brandInput.description}
     - Values: ${brandInput.values.map(v => v.value).join(', ')}
     - Design Style: ${brandInput.designStyle}
-    - Color Preferences: ${brandInput.colorPreferences ? brandInput.colorPreferences.join(', ') : 'Open to suggestions'}
+    - Color Preferences: ${brandInput.colorPreferences?.length ? brandInput.colorPreferences.join(', ') : 'Open to creative suggestions'}
     - Unique design seed: ${uniqueSeed}
     - Variety factor: ${varietyFactor} (use this to influence your creative direction - higher numbers mean more bold/experimental designs)
     
     Create something truly unique - avoid generic or commonly used design elements.
     You're designing for seed #${uniqueSeed}, so make this concept different from any others you've created.
+    
+    Be flexible with interpreting the industry and color preferences - they may be specific or vague descriptors.
+    If color preferences are vague (like "earthy" or "vibrant"), interpret them creatively.
     
     Include the following in your response:
     1. A distinctive color palette with 4-5 colors (primary, secondary, accent, and base colors)
