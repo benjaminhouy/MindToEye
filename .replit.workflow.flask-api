@@ -1,0 +1,4 @@
+name = "Flask API Server"
+command = "python app.py"
+persistent = true
+path = "."
