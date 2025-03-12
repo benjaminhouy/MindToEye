@@ -33,12 +33,22 @@ export const generateLogo = async (params: {
   // Generate a unique timestamp seed to make each request different
   const uniqueSeed = Date.now() % 1000;
   
+  // We need to sanitize description to prevent NSFW content
+  let sanitizedDescription = description;
+  // For business descriptions that might trigger NSFW filters, focus only on brand values
+  if (description.toLowerCase().includes("bdsm") || 
+      description.toLowerCase().includes("sex") || 
+      description.toLowerCase().includes("adult") ||
+      description.toLowerCase().includes("erotic")) {
+    sanitizedDescription = `A lifestyle brand focused on aesthetic appeal, quality, and elegance. Targeting customers who value innovation and quality.`;
+  }
+  
   // First, get logo design ideas from Claude
   const designPrompt = `
     Create a detailed description for a unique and creative logo for a brand with the following details:
     - Brand Name: ${brandName}
-    - Industry: ${industry}
-    - Description: ${description}
+    - Industry: ${industry || "Lifestyle products"}
+    - Description: ${sanitizedDescription}
     - Values: ${values.join(', ')}
     - Style: ${style}
     - Color Preferences: ${colors.length > 0 ? colors.join(', ') : 'Choose appropriate colors based on the brand personality'}
@@ -48,12 +58,14 @@ export const generateLogo = async (params: {
     Be innovative and original with this design. Create something that stands out and is memorable.
     The logo should be professional, visually striking, and perfectly reflect the brand's identity.
     
+    Important: Focus only on abstract design elements that are suitable for public display. Create a tasteful, modern, elegant logo that would be appropriate for a high-end lifestyle brand.
+    
     Focus on:
-    1. The overall shape and concept
-    2. Specific colors (with hex codes)
-    3. Detailed description of graphical elements
+    1. The overall shape and concept (abstract, geometric, elegant)
+    2. Specific colors (with hex codes) that convey sophistication
+    3. Detailed description of graphical elements (curves, lines, shapes)
     4. Typography suggestions if text is incorporated
-    5. How it relates to the brand's values and industry
+    5. How it relates to the brand's values
     
     Your description should be 2-3 paragraphs, detailed enough for an AI image generator to create a high-quality logo.
   `;
@@ -88,7 +100,7 @@ Create a high-quality logo exactly matching this description:
 ${designDescription}
 
 For brand: ${brandName}
-Industry: ${industry}
+Industry: ${industry || "Lifestyle products"}
 
 IMPORTANT REQUIREMENTS:
 - Create EXACTLY what is described in the logo description
@@ -100,6 +112,7 @@ IMPORTANT REQUIREMENTS:
 - Center the logo in the image
 - Professional quality suitable for a business brand
 - Do not add any watermarks or signatures
+- Keep the design tasteful, modern and suitable for public display
     `;
 
     // FLUX model on Replicate
@@ -113,7 +126,7 @@ IMPORTANT REQUIREMENTS:
             prompt: fluxPrompt,
             width: 1024, 
             height: 1024,
-            negative_prompt: "low quality, distorted, ugly, bad proportions, text errors, text cut off, spelling errors",
+            negative_prompt: "low quality, distorted, ugly, bad proportions, text errors, text cut off, spelling errors, nsfw, provocative, inappropriate, sexual, adult content",
             num_outputs: 1,
             num_inference_steps: 25
           }

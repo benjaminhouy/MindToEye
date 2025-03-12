@@ -51,6 +51,8 @@ export const generateBrandConcept = async (brandInput: BrandInput, onProgress?: 
       const { done, value } = await reader.read();
       
       if (done) {
+        // If we're done and haven't hit 100% yet, set to 100%
+        onProgress?.(100);
         break;
       }
       
@@ -60,7 +62,17 @@ export const generateBrandConcept = async (brandInput: BrandInput, onProgress?: 
       
       chunks++;
       
-      // Parse the JSON when we have complete chunks
+      // Implement a simple artificial progress that moves forward
+      // even if we don't have concrete progress from the server
+      if (onProgress) {
+        // Even if we can't parse the chunk, we'll still show progress increasing
+        // Start at 10%, simulate progress up to 90% during processing
+        const artificialProgress = Math.min(90, 10 + ((chunks * 5) % 80));
+        onProgress(artificialProgress);
+        console.log(`Updating progress to ${artificialProgress}%`);
+      }
+      
+      // Try to parse the JSON when we have complete chunks
       try {
         const data = JSON.parse(chunk);
         
@@ -79,13 +91,6 @@ export const generateBrandConcept = async (brandInput: BrandInput, onProgress?: 
         // For error responses
         else if (!data.success) {
           throw new Error(data.message || "Failed to generate brand concept");
-        }
-        
-        // Update progress periodically during processing
-        if (receivedFirstResponse && chunks % 2 === 0) {
-          // Increment progress from 10% to 90% during processing
-          const progress = Math.min(90, 10 + (chunks * 5));
-          onProgress?.(progress);
         }
       } catch (e) {
         // This might happen if we get a partial JSON chunk
