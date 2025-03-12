@@ -145,8 +145,8 @@ IMPORTANT REQUIREMENTS:
     // For our purposes, we'll return an SVG wrapper that embeds the generated image
     // This allows us to maintain compatibility with our existing code
     if (imageUrl) {
-      return `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
-        <image href="${imageUrl}" width="200" height="200" preserveAspectRatio="xMidYMid meet"/>
+      return `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 200 200">
+        <image href="${imageUrl}" width="100%" height="100%" preserveAspectRatio="xMidYMid meet"/>
       </svg>`;
     }
     
@@ -169,7 +169,7 @@ function createFallbackLogo(brandName: string, colors: string[]): string {
   const secondaryColor = colors && colors.length > 1 ? colors[1] : '#0891B2';
   
   // Create a simple circular logo with the first letter
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 200 200">
     <circle cx="100" cy="100" r="90" fill="${primaryColor}" />
     <circle cx="100" cy="100" r="70" fill="${secondaryColor}" />
     <text x="100" y="120" font-family="Arial, sans-serif" font-size="80" font-weight="bold" text-anchor="middle" fill="white">${initial}</text>
@@ -186,11 +186,11 @@ function generateMonochromeLogo(logoSvg: string): string {
     
     if (imageUrl) {
       // Return an SVG with the same image but with a grayscale filter applied
-      return `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+      return `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 200 200">
         <filter id="grayscale">
           <feColorMatrix type="matrix" values="0.3333 0.3333 0.3333 0 0 0.3333 0.3333 0.3333 0 0 0.3333 0.3333 0.3333 0 0 0 0 0 1 0"/>
         </filter>
-        <image href="${imageUrl}" width="200" height="200" preserveAspectRatio="xMidYMid meet" filter="url(#grayscale)"/>
+        <image href="${imageUrl}" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" filter="url(#grayscale)"/>
       </svg>`;
     }
   }
@@ -209,12 +209,12 @@ function generateReverseLogo(logoSvg: string): string {
     
     if (imageUrl) {
       // Return an SVG with the same image but with an invert filter applied
-      return `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+      return `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 200 200">
         <rect width="200" height="200" fill="#111111"/>
         <filter id="invert">
           <feColorMatrix type="matrix" values="-1 0 0 0 1 0 -1 0 0 1 0 0 -1 0 1 0 0 0 1 0"/>
         </filter>
-        <image href="${imageUrl}" width="200" height="200" preserveAspectRatio="xMidYMid meet" filter="url(#invert)"/>
+        <image href="${imageUrl}" width="100%" height="100%" preserveAspectRatio="xMidYMid meet" filter="url(#invert)"/>
       </svg>`;
     }
   }

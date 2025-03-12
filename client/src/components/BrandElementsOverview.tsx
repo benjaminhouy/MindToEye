@@ -25,7 +25,8 @@ const BrandElementsOverview = ({ brandOutput }: BrandElementsOverviewProps) => {
           {brandOutput?.logo?.primary ? (
             <div 
               dangerouslySetInnerHTML={{ __html: brandOutput.logo.primary }}
-              className="w-24 h-24"
+              className="w-full h-full flex items-center justify-center" 
+              style={{ maxWidth: "100%", maxHeight: "100%" }}
             />
           ) : (
             <svg className="w-24 h-24" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
