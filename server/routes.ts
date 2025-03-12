@@ -138,30 +138,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/generate-concept", async (req: Request, res: Response) => {
+  app.post("/api/generate-concept", (req: Request, res: Response) => {
     log("Received request to generate brand concept");
+    
+    // Increase server timeout for this specific request
+    res.setTimeout(120000); // 2 minute timeout
+    
+    // First, validate the input data
     try {
       log("Validating brand input data");
       const brandInput = brandInputSchema.parse(req.body);
       log("Input data validated successfully");
       
-      // Call the AI service to generate a brand concept
-      log("Calling AI service to generate brand concept");
-      const brandOutput = await generateBrandConcept(brandInput);
-      log("AI service returned brand concept successfully");
-      
-      res.json({ 
-        success: true,
-        brandOutput
+      // Send immediate acknowledgment to prevent timeout
+      res.writeHead(202, {
+        'Content-Type': 'application/json',
+        'Transfer-Encoding': 'chunked'
       });
+      
+      // Send initial response to keep connection alive
+      res.write(JSON.stringify({
+        status: "processing",
+        message: "Brand concept generation has started. This may take up to 1-2 minutes to complete."
+      }));
+      
+      // Process the request asynchronously
+      (async () => {
+        try {
+          log("Calling AI service to generate brand concept");
+          const brandOutput = await generateBrandConcept(brandInput);
+          log("AI service returned brand concept successfully");
+          
+          // Send the final result
+          res.write(JSON.stringify({ 
+            success: true,
+            status: "complete",
+            brandOutput
+          }));
+          
+          res.end();
+        } catch (error) {
+          console.error("Error generating brand concept:", error);
+          res.write(JSON.stringify({ 
+            success: false, 
+            error: "Failed to generate brand concept",
+            message: error instanceof Error ? error.message : String(error)
+          }));
+          res.end();
+        }
+      })();
+      
     } catch (error) {
       if (error instanceof ZodError) {
         log(`Validation error: ${JSON.stringify(error.errors)}`);
         return res.status(400).json({ error: "Invalid brand input data", details: error.errors });
       }
       
-      console.error("Error generating brand concept:", error);
-      res.status(500).json({ error: "Failed to generate brand concept" });
+      console.error("Error in generate-concept:", error);
+      res.status(500).json({ error: "Failed to process request" });
     }
   });
   
