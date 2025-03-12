@@ -26,6 +26,13 @@ const VisualizationPanel = ({ concept, projectId }: VisualizationPanelProps) => 
   const [progress, setProgress] = useState(0);
   const { toast } = useToast();
 
+  // Track pending changes that need regeneration
+  const [pendingChanges, setPendingChanges] = useState<{
+    colors?: any;
+    typography?: any;
+    hasChanges: boolean;
+  }>({ hasChanges: false });
+
   // Mutation to update a brand concept
   const updateConceptMutation = useMutation({
     mutationFn: async (data: { conceptId: number; updates: any }) => {
@@ -85,6 +92,9 @@ const VisualizationPanel = ({ concept, projectId }: VisualizationPanelProps) => 
       queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/concepts`] });
       queryClient.invalidateQueries({ queryKey: [`/api/concepts/${concept?.id}`] });
       
+      // Reset pending changes after successful regeneration
+      setPendingChanges({ hasChanges: false });
+      
       setTimeout(() => {
         setIsRegenerating(false);
         setProgress(0);
@@ -119,17 +129,109 @@ const VisualizationPanel = ({ concept, projectId }: VisualizationPanelProps) => 
       return;
     }
 
+    // Special case for logo which should regenerate immediately
+    if (type === 'logo') {
+      try {
+        await regenerateElementMutation.mutateAsync({
+          conceptId: concept.id,
+          elementType: type,
+          newValues: updatedData,
+          brandInputs: concept.brandInputs,
+          projectId: projectId
+        });
+      } catch (error) {
+        console.error("Error regenerating logo:", error);
+      }
+      return;
+    }
+
+    // For colors and typography, just save the changes locally
+    // and mark as pending
+    if (type === 'colors' || type === 'typography') {
+      // Update the brandOutput directly for immediate visual feedback
+      const brandOutputCopy = { ...concept.brandOutput as any };
+      brandOutputCopy[type] = updatedData;
+      
+      // Update the local state to track pending changes
+      setPendingChanges(prev => ({
+        ...prev,
+        [type]: updatedData,
+        hasChanges: true
+      }));
+      
+      // Show a toast notification informing the user to click "Regenerate All"
+      toast({
+        title: `${type.charAt(0).toUpperCase() + type.slice(1)} updated`,
+        description: "Click 'Regenerate All' to apply these changes to the concept.",
+      });
+      
+      return;
+    }
+  };
+  
+  // Handle the "Regenerate All" action
+  const handleRegenerateAll = async () => {
+    if (!concept || !projectId || !pendingChanges.hasChanges) {
+      if (!pendingChanges.hasChanges) {
+        toast({
+          title: "No changes to apply",
+          description: "Make changes to colors or typography first before regenerating.",
+        });
+        return;
+      }
+      
+      toast({
+        title: "Cannot regenerate",
+        description: "No active concept or project found.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    // Apply all pending changes in sequence
+    setIsRegenerating(true);
+    setProgress(10);
+    
     try {
-      // This will regenerate the element using AI
-      await regenerateElementMutation.mutateAsync({
-        conceptId: concept.id,
-        elementType: type,
-        newValues: updatedData,
-        brandInputs: concept.brandInputs,
-        projectId: projectId
+      // Apply typography changes if any
+      if (pendingChanges.typography) {
+        await regenerateElementMutation.mutateAsync({
+          conceptId: concept.id,
+          elementType: 'typography',
+          newValues: pendingChanges.typography,
+          brandInputs: concept.brandInputs,
+          projectId: projectId
+        });
+      }
+      
+      // Apply color changes if any
+      if (pendingChanges.colors) {
+        await regenerateElementMutation.mutateAsync({
+          conceptId: concept.id,
+          elementType: 'colors',
+          newValues: pendingChanges.colors,
+          brandInputs: concept.brandInputs,
+          projectId: projectId
+        });
+      }
+      
+      // Reset pending changes
+      setPendingChanges({ hasChanges: false });
+      
+      toast({
+        title: "All changes applied",
+        description: "The brand concept has been successfully updated with all your changes.",
       });
     } catch (error) {
-      console.error("Error handling element edit:", error);
+      console.error("Error applying all changes:", error);
+      toast({
+        title: "Regeneration failed",
+        description: "Failed to apply all changes. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsRegenerating(false);
+      setProgress(0);
     }
   };
 
@@ -182,17 +284,13 @@ const VisualizationPanel = ({ concept, projectId }: VisualizationPanelProps) => 
             </div>
             <div className="flex space-x-2">
               <Button 
-                variant="outline" 
+                variant={pendingChanges.hasChanges ? "default" : "outline"}
                 size="sm"
-                onClick={() => {
-                  toast({
-                    title: "Coming soon",
-                    description: "Full concept regeneration will be available in a future update.",
-                  });
-                }}
+                onClick={handleRegenerateAll}
+                className={pendingChanges.hasChanges ? "bg-green-600 hover:bg-green-700" : ""}
               >
                 <RefreshCwIcon className="mr-1 h-4 w-4" />
-                Regenerate All
+                {pendingChanges.hasChanges ? "Apply Changes" : "Regenerate All"}
               </Button>
               <Button 
                 variant="outline" 

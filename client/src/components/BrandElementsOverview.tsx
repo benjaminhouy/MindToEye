@@ -23,12 +23,28 @@ interface BrandElementsOverviewProps {
   onElementEdit?: (type: string, updatedData: any) => Promise<void>;
 }
 
-// Common Google Fonts for dropdown options
+// Extended list of font options for dropdowns
 const COMMON_FONTS = [
+  // Sans-serif fonts
   "Arial", "Roboto", "Montserrat", "Open Sans", "Lato", "Poppins", 
-  "Raleway", "Nunito", "Playfair Display", "Merriweather", "Source Sans Pro", 
-  "Oswald", "Ubuntu", "PT Sans", "Noto Sans", "Inter", "Work Sans", 
-  "Quicksand", "Barlow", "Mulish", "Rubik", "Karla"
+  "Raleway", "Nunito", "Source Sans Pro", "Oswald", "Ubuntu", "PT Sans", 
+  "Noto Sans", "Inter", "Work Sans", "Quicksand", "Barlow", "Mulish", 
+  "Rubik", "Karla", "Helvetica Neue", "Segoe UI", "Verdana", "Tahoma",
+  "Proxima Nova", "Avenir", "DM Sans", "SF Pro", "Century Gothic", "Futura",
+  
+  // Serif fonts
+  "Playfair Display", "Merriweather", "Georgia", "Times New Roman", "Baskerville",
+  "Garamond", "Didot", "Bodoni", "Caslon", "Palatino", "Cambria", "Bookman",
+  "Hoefler Text", "Cormorant Garamond", "EB Garamond", "Libre Baskerville",
+  
+  // Display & decorative fonts
+  "Bebas Neue", "Abril Fatface", "Pacifico", "Comfortaa", "Dancing Script",
+  "Lobster", "Caveat", "Sacramento", "Righteous", "Permanent Marker",
+  "Fredoka One", "Staatliches", "Monoton", "Baloo", "Satisfy",
+  
+  // Monospace fonts
+  "Courier", "Courier New", "Roboto Mono", "IBM Plex Mono", "Source Code Pro",
+  "Space Mono", "Fira Code", "JetBrains Mono", "Inconsolata"
 ];
 
 const BrandElementsOverview = ({ brandOutput, onElementEdit }: BrandElementsOverviewProps) => {
@@ -64,11 +80,10 @@ const BrandElementsOverview = ({ brandOutput, onElementEdit }: BrandElementsOver
   const saveColorChanges = async () => {
     try {
       if (onElementEdit) {
+        // Update the element with the new colors
         await onElementEdit('colors', colors);
-        toast({
-          title: "Colors updated",
-          description: "The color palette has been updated successfully.",
-        });
+        
+        // The parent component will handle toast notifications
       }
       setEditingColor(null);
     } catch (error) {
@@ -89,11 +104,10 @@ const BrandElementsOverview = ({ brandOutput, onElementEdit }: BrandElementsOver
   const saveTypographyChanges = async () => {
     try {
       if (onElementEdit) {
+        // Update the element with the new typography
         await onElementEdit('typography', typography);
-        toast({
-          title: "Typography updated",
-          description: "The typography has been updated successfully.",
-        });
+        
+        // The parent component will handle toast notifications
       }
       setEditingTypography(false);
     } catch (error) {
