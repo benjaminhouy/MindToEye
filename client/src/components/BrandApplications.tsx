@@ -99,7 +99,8 @@ const BrandApplications = ({ brandOutput, onElementEdit }: BrandApplicationsProp
       // Make API request to generate the billboard
       const response = await apiRequest('POST', '/api/generate-logo', {
         prompt: promptText,
-        brandName: brandName
+        brandName: brandName,
+        industry: brandOutput?.brandInputs?.industry || "Fashion"
       });
       
       if (!response.ok) {
@@ -189,10 +190,14 @@ const BrandApplications = ({ brandOutput, onElementEdit }: BrandApplicationsProp
                         Dear Valued Client,
                       </p>
                       <p className="text-sm text-gray-600 mb-2" style={{ fontFamily: typography.body }}>
-                        Thank you for your interest in our premium products. We're excited to share our catalog with you.
+                        {brandOutput?.brandInputs?.description
+                          ? `Thank you for your interest in ${brandOutput?.brandName}. ${brandOutput?.brandInputs?.description.split('.')[0]}.`
+                          : "Thank you for your interest in our premium products. We're excited to share our catalog with you."}
                       </p>
                       <p className="text-sm text-gray-600" style={{ fontFamily: typography.body }}>
-                        Our team is dedicated to providing exceptional quality and service to all our clients.
+                        {brandOutput?.brandInputs?.values?.length > 0
+                          ? `Our commitment to ${brandOutput.brandInputs.values.map((v: any) => v.value.toLowerCase()).join(' and ')} is at the heart of everything we create.`
+                          : "Our team is dedicated to providing exceptional quality and service to all our clients."}
                       </p>
                     </div>
                     <div>
@@ -265,7 +270,10 @@ const BrandApplications = ({ brandOutput, onElementEdit }: BrandApplicationsProp
                 </div>
                 <div className="text-xs" style={{ fontFamily: typography.body }}>
                   <span className="font-medium" style={{ fontFamily: typography.headings }}>
-                    {(brandOutput?.brandName || "brand").toLowerCase()}</span> Introducing our new collection. #premium #quality #design
+                    {(brandOutput?.brandName || brandOutput?.brandInputs?.brandName || "brand").toLowerCase()}</span> {" "}
+                    {brandOutput?.brandInputs?.description 
+                      ? `Elevate your experience with our latest designs. ${brandOutput?.brandInputs?.values?.map((v: any) => `#${v.value?.toLowerCase()}`).join(' ') || '#premium'} #aesthetic #design` 
+                      : "Introducing our new collection. #premium #quality #design"}
                 </div>
               </div>
             </div>
@@ -295,7 +303,9 @@ const BrandApplications = ({ brandOutput, onElementEdit }: BrandApplicationsProp
               </div>
               <div className="p-4">
                 <p className="text-sm mb-4" style={{ fontFamily: typography.body }}>
-                  Introducing our premium quality products. Designed with attention to every detail.
+                  {brandOutput?.brandInputs?.description ? 
+                    `Introducing our new ${brandOutput?.brandName} collection. ${brandOutput?.brandInputs?.description.split('.')[0]}.` : 
+                    "Elevate your experience with our premium products crafted for those who appreciate quality and aesthetics."}
                 </p>
               </div>
               <div className="h-56 bg-gradient-to-br from-gray-100 to-gray-200 flex items-center justify-center border-t border-b border-gray-200">
@@ -311,7 +321,9 @@ const BrandApplications = ({ brandOutput, onElementEdit }: BrandApplicationsProp
                   <div className="w-24 h-24 mb-4" dangerouslySetInnerHTML={{ __html: logoSvg }} />
                   <h3 className="text-xl font-medium text-center px-6" 
                       style={{ fontFamily: typography.headings, color: baseColor }}>
-                    Experience premium quality
+                    {brandOutput?.brandInputs?.values?.length > 0 
+                      ? `Experience ${brandOutput.brandInputs.values[0].value}` 
+                      : "Experience premium quality"}
                   </h3>
                 </div>
               </div>
@@ -450,7 +462,11 @@ const BrandApplications = ({ brandOutput, onElementEdit }: BrandApplicationsProp
                   Premium T-Shirt
                 </h4>
                 <p className="text-sm text-gray-500 mb-2" style={{ fontFamily: typography.body }}>
-                  100% organic cotton with embroidered logo
+                  {brandOutput?.brandInputs?.industry === "Fashion"
+                    ? "Premium sustainable materials with embroidered logo"
+                    : brandOutput?.brandInputs?.description?.includes("BDSM")
+                      ? "Soft, high-quality fabric with subtle embroidered logo"
+                      : "100% organic cotton with embroidered logo"}
                 </p>
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-medium" style={{ color: primaryColor }}>$29.99</span>
@@ -485,7 +501,11 @@ const BrandApplications = ({ brandOutput, onElementEdit }: BrandApplicationsProp
                   Branded Ceramic Mug
                 </h4>
                 <p className="text-sm text-gray-500 mb-2" style={{ fontFamily: typography.body }}>
-                  12oz high-quality ceramic with printed logo
+                  {brandOutput?.brandInputs?.industry === "Food & Beverage"
+                    ? "12oz double-wall insulated ceramic with debossed logo"
+                    : brandOutput?.brandInputs?.description?.includes("BDSM") 
+                      ? "Elegant matte black ceramic with subtle tonal logo" 
+                      : "12oz high-quality ceramic with printed logo"}
                 </p>
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-medium" style={{ color: primaryColor }}>$14.99</span>
