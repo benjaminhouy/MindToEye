@@ -2,8 +2,8 @@ import Anthropic from "@anthropic-ai/sdk";
 import Replicate from "replicate";
 import { BrandInput } from "@shared/schema";
 
-// Using Claude 3 Sonnet model from Anthropic
-const CLAUDE_MODEL = "claude-3-sonnet";
+// Using Claude 3 Haiku model from Anthropic (most reliable model version)
+const CLAUDE_MODEL = "claude-3-haiku-20240307";
 
 // Random value between 0.3 and 0.9 to add variability to responses
 // (Claude API requires temperature between 0 and 1)
@@ -27,7 +27,7 @@ export const generateLogo = async (params: {
   values: string[],
   style: string,
   colors: string[]
-}) => {
+}): Promise<string> => {
   const { brandName, industry, description, values, style, colors } = params;
   
   // Generate a unique timestamp seed to make each request different
@@ -103,24 +103,32 @@ IMPORTANT REQUIREMENTS:
     `;
 
     // FLUX model on Replicate
-    const output = await replicate.run(
-      "black-forest-labs/flux:1",
-      {
-        input: {
-          prompt: fluxPrompt,
-          width: 1024, 
-          height: 1024,
-          negative_prompt: "low quality, distorted, ugly, bad proportions, text errors, text cut off, spelling errors",
-          prompt_strength: 7.5,
-          num_outputs: 1,
-          num_inference_steps: 25
+    console.log("Sending request to Replicate FLUX model with prompt:", fluxPrompt.substring(0, 100) + "...");
+    let imageOutput;
+    try {
+      imageOutput = await replicate.run(
+        "black-forest-labs/flux:1",
+        {
+          input: {
+            prompt: fluxPrompt,
+            width: 1024, 
+            height: 1024,
+            negative_prompt: "low quality, distorted, ugly, bad proportions, text errors, text cut off, spelling errors",
+            prompt_strength: 7.5,
+            num_outputs: 1,
+            num_inference_steps: 25
+          }
         }
-      }
-    );
+      );
+      console.log("Replicate response received:", imageOutput);
+    } catch (error) {
+      console.error("Replicate API error:", error);
+      throw error;
+    }
 
     // Replicate typically returns an array of image URLs
     // Let's grab the first one (or the output if it's a string)
-    const imageUrl = Array.isArray(output) ? output[0] : output;
+    const imageUrl = Array.isArray(imageOutput) ? imageOutput[0] : String(imageOutput);
     
     // For our purposes, we'll return an SVG wrapper that embeds the generated image
     // This allows us to maintain compatibility with our existing code
