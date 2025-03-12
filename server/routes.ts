@@ -381,32 +381,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Logo generation route
+  // Logo generation route - handles both logos and billboard generation
   app.post("/api/generate-logo", async (req: Request, res: Response) => {
     try {
-      const { brandName, industry, description, values, style, colors } = req.body;
+      const { brandName, industry, description, values, style, colors, prompt } = req.body;
       
       if (!brandName || !industry) {
         return res.status(400).json({ error: "Brand name and industry are required" });
       }
       
-      // Call the AI service to generate a logo
+      // If a prompt is provided, use it for custom image generation (billboard, etc.)
+      if (prompt) {
+        try {
+          // For billboard or other custom generations with Flux
+          console.log("Generating custom image with Flux AI using prompt:", prompt.substring(0, 100) + "...");
+          
+          // Call Replicate's Flux model
+          const imageOutput = await replicate.run(
+            "black-forest-labs/flux-pro",
+            {
+              input: {
+                prompt: prompt,
+                width: 1024, 
+                height: 768, // Billboard aspect ratio
+                negative_prompt: "low quality, distorted, ugly, bad proportions, text errors, text cut off, spelling errors",
+                num_outputs: 1,
+                num_inference_steps: 25
+              }
+            }
+          );
+          
+          // Get the image URL
+          const imageUrl = Array.isArray(imageOutput) ? imageOutput[0] : String(imageOutput);
+          
+          // Create SVG wrapper
+          const logoSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 1024 768">
+            <image href="${imageUrl}" width="100%" height="100%" preserveAspectRatio="xMidYMid meet"/>
+          </svg>`;
+          
+          return res.json({ 
+            success: true,
+            logoSvg: logoSvg,
+            imageUrl: imageUrl
+          });
+        } catch (error) {
+          console.error("Flux AI generation error:", error);
+          return res.status(500).json({ error: "Failed to generate custom image" });
+        }
+      }
+      
+      // Default path: Generate a regular logo
       const logo = await generateLogo({
         brandName,
         industry,
-        description,
-        values,
-        style,
-        colors
+        description: description || "", // Handle undefined description
+        values: values || [],           // Handle undefined values
+        style: style || "modern",       // Default style
+        colors: colors || []            // Handle undefined colors
       });
       
       res.json({ 
         success: true,
-        logo
+        logoSvg: logo
       });
     } catch (error) {
-      console.error("Error generating logo:", error);
-      res.status(500).json({ error: "Failed to generate logo" });
+      console.error("Error generating logo or custom image:", error);
+      res.status(500).json({ error: "Failed to generate logo or custom image" });
     }
   });
 

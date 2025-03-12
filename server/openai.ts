@@ -49,8 +49,8 @@ export const generateLogo = async (params: {
     "leather", "nsfw", "xxx", "pleasure", "toy", "sensual"
   ];
   
-  // Check if any sensitive terms are in the description
-  const hasSensitiveContent = sensitiveTerms.some(term => 
+  // Check if any sensitive terms are in the description (if description exists)
+  const hasSensitiveContent = description && sensitiveTerms.some(term => 
     description.toLowerCase().includes(term)
   );
   
