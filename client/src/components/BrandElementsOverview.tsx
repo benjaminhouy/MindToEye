@@ -130,12 +130,31 @@ const BrandElementsOverview = ({ brandOutput, onElementEdit }: BrandElementsOver
             variant="outline" 
             size="sm" 
             className="mt-2"
-            onClick={() => toast({
-              title: "Coming soon",
-              description: "Logo editing will be available in a future update.",
-            })}
+            onClick={async () => {
+              try {
+                if (onElementEdit) {
+                  toast({
+                    title: "Regenerating logo",
+                    description: "Please wait while we generate a new logo...",
+                  });
+                  
+                  await onElementEdit('logo', null);
+                  
+                  toast({
+                    title: "Logo regenerated",
+                    description: "A new logo has been generated successfully.",
+                  });
+                }
+              } catch (error) {
+                toast({
+                  title: "Regeneration failed",
+                  description: "Failed to regenerate logo. Please try again.",
+                  variant: "destructive",
+                });
+              }
+            }}
           >
-            <EditIcon className="h-3 w-3 mr-1" /> Edit Logo
+            <EditIcon className="h-3 w-3 mr-1" /> Regenerate Logo
           </Button>
         )}
       </div>

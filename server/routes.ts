@@ -561,12 +561,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
             monochrome: monochromeLogo,
             reverse: reverseLogo
           };
-        } catch (error) {
+        } catch (error: any) {
           console.error("Error regenerating logo:", error);
           return res.status(500).json({
             success: false,
             message: "Failed to regenerate logo",
-            error: error.message
+            error: error?.message || String(error)
           });
         }
       } else {
