@@ -40,7 +40,8 @@ const LogoExploration = ({ brandOutput }: LogoExplorationProps) => {
               {brandOutput?.logo?.primary ? (
                 <div 
                   dangerouslySetInnerHTML={{ __html: brandOutput.logo.primary }}
-                  className="w-20 h-20 mx-auto"
+                  className="w-full h-full mx-auto flex items-center justify-center"
+                  style={{ maxWidth: "100%", maxHeight: "100%" }}
                 />
               ) : (
                 logoVariants.primary
@@ -68,7 +69,8 @@ const LogoExploration = ({ brandOutput }: LogoExplorationProps) => {
               {brandOutput?.logo?.monochrome ? (
                 <div 
                   dangerouslySetInnerHTML={{ __html: brandOutput.logo.monochrome }}
-                  className="w-20 h-20 mx-auto"
+                  className="w-full h-full mx-auto flex items-center justify-center"
+                  style={{ maxWidth: "100%", maxHeight: "100%" }}
                 />
               ) : (
                 logoVariants.monochrome
@@ -96,7 +98,8 @@ const LogoExploration = ({ brandOutput }: LogoExplorationProps) => {
               {brandOutput?.logo?.reverse ? (
                 <div 
                   dangerouslySetInnerHTML={{ __html: brandOutput.logo.reverse }}
-                  className="w-20 h-20 mx-auto"
+                  className="w-full h-full mx-auto flex items-center justify-center"
+                  style={{ maxWidth: "100%", maxHeight: "100%" }}
                 />
               ) : (
                 logoVariants.reverse
