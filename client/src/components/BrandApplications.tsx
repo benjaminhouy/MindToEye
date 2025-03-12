@@ -145,29 +145,35 @@ const BrandApplications = ({ brandOutput, onElementEdit }: BrandApplicationsProp
       // Extract logo description if available, or use default
       const logoDescription = brandOutput?.logoDescription || "minimalist logo";
       
-      // Prepare a more detailed prompt that incorporates brand identity elements
+      // Create a billboard mockup - NOT generating a new logo, but using the existing one
       const promptText = `
-        Create a photorealistic billboard advertisement for ${brandName}, a premium ${industry} brand.
+        Create a photorealistic mockup of a billboard advertisement with exactly these elements:
         
-        BRAND CONTEXT:
-        - Description: ${description.substring(0, 150)}
+        BILLBOARD DESIGN:
+        - Create a professional advertising billboard mockup in a city environment at dusk/evening
+        - The billboard should show the following exact design (DO NOT create a new logo or modify this design):
+        - Main headline (centered at the top in large text): "${brandName.toUpperCase()}"
+        - Main tagline below headline: "${tagline}"
+        - Leave blank space in the center right (about 25-30% of the design) for the logo which will be added separately
+        - Background should use gradient or solid colors from this palette: ${primaryColor}, ${secondaryColor}
+        - Create atmosphere with dramatic lighting on the billboard
+        - Add lifestyle imagery relevant to: ${description.substring(0, 80)}
+        - The billboard should be mounted on a building or highway support in urban setting
+        - Add subtle city elements in the background like buildings, streets, ambient lighting
+        - Make it photorealistic - this should look like an actual photograph of a real billboard advertisement
+        
+        CONTEXT DETAILS:
+        - This is for ${brandName}, a premium ${industry} brand 
+        - Brand focus: ${description.substring(0, 100)}
         - Core values: ${values}
-        - Logo description: ${logoDescription}
-        - Brand personality: ${brandOutput?.brandInputs?.designStyle || "modern"} and sophisticated
+        - Target audience: Sophisticated young adults seeking high-quality, aesthetic products
         
-        DESIGN SPECIFICS:
-        - The billboard should prominently feature the ${brandName} logo (${logoDescription})
-        - Main headline: "${brandName}"
-        - Tagline: "${tagline}"
-        - Use EXACTLY these brand colors: Primary ${primaryColor}, Secondary ${secondaryColor}, Accent ${accentColor}
-        - Typography style should match the brand's font choices
-        - Show the billboard mounted on a building or highway in an urban setting at dusk/evening
-        - Include dramatic lighting to highlight the billboard
-        - Make it photorealistic - this should look like an actual photograph of a billboard in the real world
-        - The design must accurately reflect the brand identity and be appropriate for the ${industry} industry
-        - The billboard should feature product imagery or lifestyle visuals relevant to the brand's offerings
-        
-        EXTREMELY IMPORTANT: This is a creative billboard for ${brandName}, not a generic template. The brand name ${brandName} must be clearly featured, and the design must directly reflect the brand's actual identity as described above.
+        IMPORTANT REQUIREMENTS:
+        - DO NOT create a new logo for the brand
+        - DO NOT place any text where the logo would go (right center area of the billboard)
+        - Ensure the design has a sophisticated, premium feel appropriate for ${industry}
+        - Create ONLY the billboard and its environment - the actual brand logo will be added separately
+        - The billboard design should be simple enough that we can overlay an SVG logo on it
       `;
       
       // Make API request to generate the billboard with the enhanced prompt
@@ -183,8 +189,22 @@ const BrandApplications = ({ brandOutput, onElementEdit }: BrandApplicationsProp
       
       const result = await response.json();
       
-      if (result.logoSvg) {
-        setBillboardImage(result.logoSvg);
+      if (result.logoSvg && result.imageUrl) {
+        // Create a composite billboard image that includes the actual brand logo
+        // We'll do this by embedding the generated billboard image and placing the logo on top
+        const compositeLogoSvg = `
+          <svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 1024 768">
+            <!-- Background billboard image -->
+            <image href="${result.imageUrl}" width="100%" height="100%" preserveAspectRatio="xMidYMid meet"/>
+            
+            <!-- Add the actual brand logo in the center-right position -->
+            <g transform="translate(665, 370) scale(0.4)">
+              ${logoSvg}
+            </g>
+          </svg>
+        `;
+        
+        setBillboardImage(compositeLogoSvg);
         toast({
           title: "Billboard created!",
           description: "Your AI-generated billboard is ready for client presentation.",
