@@ -1,12 +1,14 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
+import Replicate from "replicate";
 import { 
   brandInputSchema, 
   insertBrandConceptSchema,
   insertProjectSchema
 } from "@shared/schema";
 import { generateBrandConcept, generateLogo } from "./openai";
+import { log } from "./vite";
 import { ZodError } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -184,16 +186,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       );
       
-      log("Replicate test response:", output);
+      log("Replicate test response: " + JSON.stringify(output));
       
       res.json({
         success: true,
         message: "Replicate API test successful",
         output: output
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error("Replicate API test error:", error);
-      res.status(500).json({ error: "Replicate API test failed", details: error.message });
+      const errorMessage = error?.message || "Unknown error";
+      res.status(500).json({ error: "Replicate API test failed", details: errorMessage });
     }
   });
 
