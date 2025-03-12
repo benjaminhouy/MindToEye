@@ -78,6 +78,10 @@ const BrandApplications = ({ brandOutput, onElementEdit }: BrandApplicationsProp
   const generateBillboard = async () => {
     const brandName = brandOutput?.brandName || brandOutput?.brandInputs?.brandName || "Brand";
     const description = brandOutput?.brandInputs?.description || "Premium quality products";
+    const industry = brandOutput?.brandInputs?.industry || "Fashion";
+    const values = brandOutput?.brandInputs?.values?.length > 0 
+      ? brandOutput.brandInputs.values.map((v: any) => v.value).join(', ') 
+      : "Quality, Innovation";
     
     try {
       setGenerateBillboardLoading(true);
@@ -86,21 +90,44 @@ const BrandApplications = ({ brandOutput, onElementEdit }: BrandApplicationsProp
         description: "Using Flux AI to create a realistic billboard design...",
       });
       
-      // Prepare the prompt for the billboard
+      // Create a more targeted prompt for Flux AI to generate the billboard
+      let tagline = "";
+      
+      // Generate a tagline based on brand description and values
+      if (description.includes("BDSM")) {
+        tagline = "Elegance in the Shadows";
+      } else if (values.toLowerCase().includes("innovation")) {
+        tagline = "Redefining Possibilities";
+      } else if (values.toLowerCase().includes("quality")) {
+        tagline = "Crafted to Perfection";
+      } else {
+        tagline = description.substring(0, 30) + (description.length > 30 ? '...' : '');
+      }
+      
+      // Prepare the prompt for the billboard with more specific design direction
       const promptText = `
-        Create a modern billboard design for ${brandName}.
-        The billboard should show the brand logo prominently along with
-        the tagline "${description.substring(0, 50)}${description.length > 50 ? '...' : ''}".
-        Use colors: ${primaryColor}, ${secondaryColor}.
-        The billboard should be shown in an urban setting with other buildings visible.
-        Make the design look realistic and professional.
+        Create a stunning, professional billboard design for ${brandName}.
+        Industry: ${industry}
+        Brand description: ${description.substring(0, 100)}
+        Core values: ${values}
+        
+        DESIGN SPECIFICATIONS:
+        - Main headline: "${brandName}"
+        - Tagline: "${tagline}"
+        - Use brand colors: ${primaryColor}, ${secondaryColor}
+        - Show the billboard in an urban city environment with buildings visible
+        - Include realistic lighting, shadows, and perspective
+        - Make the design photorealistic - this should look like a photograph of a real billboard
+        - Style: Modern, professional advertising layout with strong visual hierarchy
+        
+        The billboard design should be appropriate for ${industry} industry and appeal to the target audience.
       `;
       
-      // Make API request to generate the billboard
+      // Make API request to generate the billboard with the enhanced prompt
       const response = await apiRequest('POST', '/api/generate-logo', {
         prompt: promptText,
         brandName: brandName,
-        industry: brandOutput?.brandInputs?.industry || "Fashion"
+        industry: industry
       });
       
       if (!response.ok) {
