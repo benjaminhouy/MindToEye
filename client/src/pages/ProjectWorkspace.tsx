@@ -139,6 +139,7 @@ const ProjectWorkspace = () => {
                   onConceptSelect={setActiveConceptId}
                   projectId={Number(params?.id)}
                   projectName={project?.name}
+                  onProgressUpdate={updateProgress}
                 />
               </div>
               <div className="lg:col-span-9 space-y-6">
