@@ -509,6 +509,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Endpoint to regenerate a specific element of a brand concept
+  app.post("/api/regenerate-element", async (req: Request, res: Response) => {
+    try {
+      const { conceptId, elementType, newValues, brandInputs, projectId } = req.body;
+      
+      if (!conceptId || !elementType || !brandInputs || !projectId) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Missing required fields (conceptId, elementType, brandInputs, projectId)" 
+        });
+      }
+      
+      // Get the existing concept
+      const existingConcept = await storage.getBrandConcept(conceptId);
+      if (!existingConcept) {
+        return res.status(404).json({ success: false, message: "Brand concept not found" });
+      }
+      
+      // Clone the current brand output
+      const brandOutput = { ...existingConcept.brandOutput };
+      
+      // Based on elementType, merge the new values
+      if (elementType === 'colors') {
+        brandOutput.colors = newValues;
+      } else if (elementType === 'typography') {
+        brandOutput.typography = newValues;
+      } else {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Unsupported element type. Supported types: colors, typography" 
+        });
+      }
+      
+      // Update the brand concept with the new output
+      const updatedConcept = await storage.updateBrandConcept(conceptId, {
+        brandOutput: brandOutput
+      });
+      
+      // Return success response
+      res.json({
+        success: true,
+        message: `Brand ${elementType} has been regenerated successfully`,
+        brandOutput
+      });
+      
+    } catch (error) {
+      console.error("Error regenerating brand element:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Failed to regenerate brand element", 
+        error: error.message 
+      });
+    }
+  });
+
   // Create HTTP server
   const httpServer = createServer(app);
   return httpServer;
