@@ -132,8 +132,13 @@ const BrandInputPanel = ({ onGenerate, savedConcepts, activeConcept, onConceptSe
   };
 
   const handleGenerateClick = () => {
+    // Add a unique request ID to force diversity in AI responses
+    const uniqueBrandInput = {
+      ...brandInput,
+      requestId: Date.now().toString() // Add a timestamp to ensure uniqueness
+    };
     onGenerate();
-    generateMutation.mutate(brandInput);
+    generateMutation.mutate(uniqueBrandInput);
   };
 
   const saveBrandConcept = (conceptData: any) => {

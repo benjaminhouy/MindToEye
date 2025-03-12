@@ -197,8 +197,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Project not found" });
       }
 
+      // Generate a more descriptive name for the concept
+      let conceptName = req.body.name || "";
+      
+      // If the name is missing or just the standard format, create a more unique name
+      if (!conceptName || conceptName.match(/^(Modern|Classic|Minimalist|Bold) .+$/)) {
+        const style = req.body.output?.logoDescription 
+          ? req.body.output.logoDescription.split(' ').slice(0, 2).join(' ') 
+          : req.body.designStyle || "";
+        
+        const adjectives = [
+          "Vibrant", "Bold", "Elegant", "Fresh", "Dynamic", 
+          "Sleek", "Refined", "Innovative", "Premium", "Creative"
+        ];
+        
+        const randomAdj = adjectives[Math.floor(Math.random() * adjectives.length)];
+        conceptName = `${randomAdj} ${style} Concept (${new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })})`;
+      }
+      
       const conceptData = {
         ...req.body,
+        name: conceptName,
         projectId
       };
       

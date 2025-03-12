@@ -1,8 +1,11 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { BrandInput } from "@shared/schema";
 
-// Using Claude Sonnet model from Anthropic
-const CLAUDE_MODEL = "claude-3-sonnet-20240229";
+// Using Claude Opus model from Anthropic (latest model)
+const CLAUDE_MODEL = "claude-3-opus-20240229";
+
+// Random value between 0.7 and 1.4 to add variability to responses
+const getRandomTemperature = () => 0.7 + Math.random() * 0.7;
 
 // Initialize Anthropic with API key from environment
 const anthropic = new Anthropic({
@@ -20,16 +23,21 @@ export const generateLogo = async (params: {
 }) => {
   const { brandName, industry, description, values, style, colors } = params;
   
+  // Generate a unique timestamp seed to make each request different
+  const uniqueSeed = Date.now() % 1000;
+  
   const prompt = `
-    Create an SVG logo for a brand with the following details:
+    Create a unique and creative SVG logo for a brand with the following details:
     - Brand Name: ${brandName}
     - Industry: ${industry}
     - Description: ${description}
     - Values: ${values.join(', ')}
     - Style: ${style}
     - Colors: ${colors.join(', ')}
+    - Unique design seed: ${uniqueSeed}
     
-    The logo should be simple, professional, and reflect the brand's identity.
+    Be innovative and original with this design. Create something that stands out and is memorable.
+    The logo should be professional, visually striking, and perfectly reflect the brand's identity.
     Return ONLY the SVG code without any explanations or markdown formatting. 
     The SVG should be complete, valid, and ready to use directly in a web page.
   `;
@@ -38,6 +46,7 @@ export const generateLogo = async (params: {
     const response = await anthropic.messages.create({
       model: CLAUDE_MODEL,
       max_tokens: 4000,
+      temperature: getRandomTemperature(), // Add temperature for variability
       messages: [{ role: "user", content: prompt }],
     });
 
@@ -57,19 +66,28 @@ export const generateLogo = async (params: {
 
 // Generate brand concept with Claude
 export const generateBrandConcept = async (brandInput: BrandInput) => {
+  // Generate a unique timestamp seed to ensure different results each time
+  const uniqueSeed = Date.now() % 1000;
+  const varietyFactor = Math.floor(Math.random() * 10); // Random number between 0-9
+  
   const prompt = `
-    Generate a comprehensive brand identity for a company with the following details:
+    Generate a fresh, original, and comprehensive brand identity for a company with the following details:
     - Brand Name: ${brandInput.brandName}
     - Industry: ${brandInput.industry}
     - Description: ${brandInput.description}
     - Values: ${brandInput.values.map(v => v.value).join(', ')}
     - Design Style: ${brandInput.designStyle}
     - Color Preferences: ${brandInput.colorPreferences ? brandInput.colorPreferences.join(', ') : 'Open to suggestions'}
+    - Unique design seed: ${uniqueSeed}
+    - Variety factor: ${varietyFactor} (use this to influence your creative direction - higher numbers mean more bold/experimental designs)
+    
+    Create something truly unique - avoid generic or commonly used design elements.
+    You're designing for seed #${uniqueSeed}, so make this concept different from any others you've created.
     
     Include the following in your response:
-    1. A color palette with 4-5 colors (primary, secondary, accent, and base colors)
-    2. Typography recommendations (heading and body fonts)
-    3. Logo concept descriptions
+    1. A distinctive color palette with 4-5 colors (primary, secondary, accent, and base colors)
+    2. Typography recommendations (heading and body fonts) that perfectly match the brand personality
+    3. A creative and memorable logo concept description
     
     Format your response as a structured JSON object with these fields (and nothing else):
     {
@@ -93,7 +111,8 @@ export const generateBrandConcept = async (brandInput: BrandInput) => {
     const response = await anthropic.messages.create({
       model: CLAUDE_MODEL,
       max_tokens: 2000,
-      system: "You are a skilled brand identity designer. Provide detailed brand concepts in JSON format only.",
+      temperature: getRandomTemperature(), // Add temperature for variability
+      system: "You are a skilled brand identity designer. Provide detailed brand concepts in JSON format only. Be creative and varied with your designs. Every time you're called, generate something different and unique.",
       messages: [{ role: "user", content: prompt }],
     });
 
