@@ -2,8 +2,8 @@ import Anthropic from "@anthropic-ai/sdk";
 import Replicate from "replicate";
 import { BrandInput } from "@shared/schema";
 
-// Using Claude 3 Haiku model from Anthropic (most reliable model version)
-const CLAUDE_MODEL = "claude-3-haiku-20240307";
+// Using known working Claude model
+const CLAUDE_MODEL = "claude-2.1";
 
 // Random value between 0.3 and 0.9 to add variability to responses
 // (Claude API requires temperature between 0 and 1)

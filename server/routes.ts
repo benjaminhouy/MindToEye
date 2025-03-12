@@ -156,6 +156,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Test route for Replicate API
+  app.get("/api/test-replicate", async (req: Request, res: Response) => {
+    try {
+      log("Testing Replicate API with FLUX model...");
+      // Initialize a new Replicate client just for this test
+      const testReplicate = new Replicate({
+        auth: process.env.REPLICATE_API_TOKEN,
+      });
+      
+      // Simple test prompt that should work for FLUX model
+      const testPrompt = "Create a minimalist logo for a coffee shop called 'Sunrise Brew' with orange and brown colors";
+      
+      log("Sending request to Replicate with test prompt...");
+      const output = await testReplicate.run(
+        "black-forest-labs/flux:1",
+        {
+          input: {
+            prompt: testPrompt,
+            width: 1024,
+            height: 1024,
+            negative_prompt: "low quality, distorted",
+            prompt_strength: 7.5,
+            num_outputs: 1,
+            num_inference_steps: 25
+          }
+        }
+      );
+      
+      log("Replicate test response:", output);
+      
+      res.json({
+        success: true,
+        message: "Replicate API test successful",
+        output: output
+      });
+    } catch (error) {
+      console.error("Replicate API test error:", error);
+      res.status(500).json({ error: "Replicate API test failed", details: error.message });
+    }
+  });
+
   // Logo generation route
   app.post("/api/generate-logo", async (req: Request, res: Response) => {
     try {
