@@ -1,5 +1,5 @@
 import postgres from 'postgres';
-import dotenv from 'dotenv';
+import * as dotenv from 'dotenv';
 
 // Load environment variables from both .env files
 dotenv.config({ path: '.env' });
