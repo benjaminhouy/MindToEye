@@ -1,6 +1,11 @@
 import fs from 'fs';
+import { fileURLToPath } from 'url';
 import path from 'path';
 import postgres from 'postgres';
+
+// Get current file's directory (ESM compatible)
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Initialize PostgreSQL client for migrations
 const databaseUrl = process.env.DATABASE_URL;
@@ -27,7 +32,7 @@ async function runMigrations() {
     console.log('Running migrations...');
     
     // Get all SQL files from the migrations directory
-    const migrationsDir = path.join(__dirname);
+    const migrationsDir = __dirname;
     const files = fs.readdirSync(migrationsDir)
       .filter(file => file.endsWith('.sql'))
       .sort(); // Sort to ensure migrations run in order
