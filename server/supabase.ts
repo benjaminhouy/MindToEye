@@ -164,92 +164,82 @@ export class SupabaseStorage implements IStorage {
     }
     
     try {
-      console.log('Creating tables in Supabase...');
-      // We need to use the REST API to run SQL commands
-      // This is a simplified approach - in production, use Supabase migrations
+      console.log('Creating tables in Supabase directly with SQL...');
       
-      // Create users table
-      const { error: usersError } = await supabase.rpc('create_tables_if_not_exist', {
-        sql_command: `
-          CREATE TABLE IF NOT EXISTS public.users (
-            id SERIAL PRIMARY KEY,
-            username TEXT NOT NULL UNIQUE,
-            password TEXT NOT NULL
-          );
+      // Execute SQL directly using the PostgreSQL database connection
+      // Note: We're using the SQL query directly instead of RPC
+      const { error: tablesError } = await supabase.from('_exec_sql').select('*').eq('query', `
+        -- Create Users Table
+        CREATE TABLE IF NOT EXISTS public.users (
+          id SERIAL PRIMARY KEY,
+          username TEXT NOT NULL UNIQUE,
+          password TEXT NOT NULL
+        );
+        
+        -- Create Projects Table
+        CREATE TABLE IF NOT EXISTS public.projects (
+          id SERIAL PRIMARY KEY,
+          name TEXT NOT NULL,
+          client_name TEXT,
+          created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+          user_id INTEGER NOT NULL
+        );
+        
+        -- Create Brand Concepts Table
+        CREATE TABLE IF NOT EXISTS public.brand_concepts (
+          id SERIAL PRIMARY KEY,
+          project_id INTEGER NOT NULL,
+          name TEXT NOT NULL,
+          created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+          brand_inputs JSONB NOT NULL,
+          brand_output JSONB NOT NULL,
+          is_active BOOLEAN DEFAULT FALSE
+        );
+        
+        -- Add foreign key constraints if they don't exist
+        DO $$
+        BEGIN
+          IF NOT EXISTS (
+            SELECT 1 FROM pg_constraint WHERE conname = 'fk_projects_user_id'
+          ) THEN
+            ALTER TABLE public.projects 
+              ADD CONSTRAINT fk_projects_user_id 
+              FOREIGN KEY (user_id) 
+              REFERENCES public.users(id) 
+              ON DELETE CASCADE;
+          END IF;
           
-          -- Create demo user if not exists
-          INSERT INTO public.users (username, password)
-          VALUES ('demo', 'password')
-          ON CONFLICT (username) DO NOTHING;
-        `
-      });
+          IF NOT EXISTS (
+            SELECT 1 FROM pg_constraint WHERE conname = 'fk_brand_concepts_project_id'
+          ) THEN
+            ALTER TABLE public.brand_concepts 
+              ADD CONSTRAINT fk_brand_concepts_project_id 
+              FOREIGN KEY (project_id) 
+              REFERENCES public.projects(id) 
+              ON DELETE CASCADE;
+          END IF;
+        END
+        $$;
+        
+        -- Create an example user if it doesn't exist
+        INSERT INTO public.users (username, password)
+        VALUES ('demo', 'password')
+        ON CONFLICT (username) DO NOTHING;
+        
+        -- Create a sample project if it doesn't exist
+        INSERT INTO public.projects (name, client_name, user_id)
+        SELECT 'Solystra', 'Sample Client', id
+        FROM public.users
+        WHERE username = 'demo'
+        AND NOT EXISTS (
+          SELECT 1 FROM public.projects WHERE name = 'Solystra'
+        )
+        LIMIT 1;
+      `);
       
-      if (usersError) {
-        logSupabaseError('createTablesIfNotExist-users', usersError);
-        console.error('Error creating users table. Falling back to sample data.');
-        // Since we can't create tables dynamically, insert sample data
-        await this.insertSampleData();
-        return;
-      }
-      
-      // Create projects table
-      const { error: projectsError } = await supabase.rpc('create_tables_if_not_exist', {
-        sql_command: `
-          CREATE TABLE IF NOT EXISTS public.projects (
-            id SERIAL PRIMARY KEY,
-            name TEXT NOT NULL,
-            client_name TEXT,
-            created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-            user_id INTEGER NOT NULL
-          );
-          
-          -- Create sample project if not exists
-          INSERT INTO public.projects (name, client_name, user_id)
-          SELECT 'Solystra', 'Sample Client', id
-          FROM public.users
-          WHERE username = 'demo'
-          ON CONFLICT DO NOTHING;
-        `
-      });
-      
-      if (projectsError) {
-        logSupabaseError('createTablesIfNotExist-projects', projectsError);
-        console.error('Error creating projects table. Falling back to sample data.');
-        await this.insertSampleData();
-        return;
-      }
-      
-      // Create brand_concepts table
-      const { error: conceptsError } = await supabase.rpc('create_tables_if_not_exist', {
-        sql_command: `
-          CREATE TABLE IF NOT EXISTS public.brand_concepts (
-            id SERIAL PRIMARY KEY,
-            project_id INTEGER NOT NULL,
-            name TEXT NOT NULL,
-            created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-            brand_inputs JSONB NOT NULL,
-            brand_output JSONB NOT NULL,
-            is_active BOOLEAN DEFAULT FALSE
-          );
-          
-          -- Add foreign key constraints
-          ALTER TABLE public.projects 
-            ADD CONSTRAINT IF NOT EXISTS fk_projects_user_id 
-            FOREIGN KEY (user_id) 
-            REFERENCES public.users(id) 
-            ON DELETE CASCADE;
-          
-          ALTER TABLE public.brand_concepts 
-            ADD CONSTRAINT IF NOT EXISTS fk_brand_concepts_project_id 
-            FOREIGN KEY (project_id) 
-            REFERENCES public.projects(id) 
-            ON DELETE CASCADE;
-        `
-      });
-      
-      if (conceptsError) {
-        logSupabaseError('createTablesIfNotExist-concepts', conceptsError);
-        console.error('Error creating brand_concepts table. Falling back to sample data.');
+      if (tablesError) {
+        logSupabaseError('createTablesIfNotExist', tablesError);
+        console.error('Error creating tables using SQL. Trying individual inserts...');
         await this.insertSampleData();
         return;
       }
@@ -257,7 +247,7 @@ export class SupabaseStorage implements IStorage {
       console.log('Tables created successfully!');
     } catch (error) {
       logSupabaseError('createTablesIfNotExist', error);
-      console.error('Failed to create tables. Falling back to sample data.');
+      console.error('Failed to create tables. Trying individual inserts...');
       await this.insertSampleData();
     }
   }

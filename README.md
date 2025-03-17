@@ -25,6 +25,8 @@ The following environment variables need to be set:
 - `ANTHROPIC_API_KEY` - API key for Claude (3.7 Sonnet)
 - `OPENAI_API_KEY` - API key for OpenAI
 - `REPLICATE_API_TOKEN` - API token for Replicate (FLUX 1.1 Pro)
+- `SUPABASE_URL` - URL for your Supabase project
+- `SUPABASE_ANON_KEY` - Anon/Public key for Supabase authentication
 
 ## Key Features
 
@@ -42,7 +44,7 @@ The following environment variables need to be set:
 - Node.js/Express backend
 - Claude 3.7 Sonnet for brand concept generation
 - Black Forest Labs FLUX 1.1 Pro for logo generation
-- In-memory storage with optional persistence
+- Supabase database for persistent storage
 - RESTful API with JSON output
 - TanStack Query for data fetching
 - Shadcn UI components
