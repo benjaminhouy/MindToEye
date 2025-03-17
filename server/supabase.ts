@@ -164,90 +164,110 @@ export class SupabaseStorage implements IStorage {
     }
     
     try {
-      console.log('Creating tables in Supabase directly with SQL...');
+      console.log('Creating tables in Supabase with individual create operations...');
       
-      // Execute SQL directly using the PostgreSQL database connection
-      // Note: We're using the SQL query directly instead of RPC
-      const { error: tablesError } = await supabase.from('_exec_sql').select('*').eq('query', `
-        -- Create Users Table
-        CREATE TABLE IF NOT EXISTS public.users (
-          id SERIAL PRIMARY KEY,
-          username TEXT NOT NULL UNIQUE,
-          password TEXT NOT NULL
-        );
-        
-        -- Create Projects Table
-        CREATE TABLE IF NOT EXISTS public.projects (
-          id SERIAL PRIMARY KEY,
-          name TEXT NOT NULL,
-          client_name TEXT,
-          created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-          user_id INTEGER NOT NULL
-        );
-        
-        -- Create Brand Concepts Table
-        CREATE TABLE IF NOT EXISTS public.brand_concepts (
-          id SERIAL PRIMARY KEY,
-          project_id INTEGER NOT NULL,
-          name TEXT NOT NULL,
-          created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-          brand_inputs JSONB NOT NULL,
-          brand_output JSONB NOT NULL,
-          is_active BOOLEAN DEFAULT FALSE
-        );
-        
-        -- Add foreign key constraints if they don't exist
-        DO $$
-        BEGIN
-          IF NOT EXISTS (
-            SELECT 1 FROM pg_constraint WHERE conname = 'fk_projects_user_id'
-          ) THEN
-            ALTER TABLE public.projects 
-              ADD CONSTRAINT fk_projects_user_id 
-              FOREIGN KEY (user_id) 
-              REFERENCES public.users(id) 
-              ON DELETE CASCADE;
-          END IF;
-          
-          IF NOT EXISTS (
-            SELECT 1 FROM pg_constraint WHERE conname = 'fk_brand_concepts_project_id'
-          ) THEN
-            ALTER TABLE public.brand_concepts 
-              ADD CONSTRAINT fk_brand_concepts_project_id 
-              FOREIGN KEY (project_id) 
-              REFERENCES public.projects(id) 
-              ON DELETE CASCADE;
-          END IF;
-        END
-        $$;
-        
-        -- Create an example user if it doesn't exist
-        INSERT INTO public.users (username, password)
-        VALUES ('demo', 'password')
-        ON CONFLICT (username) DO NOTHING;
-        
-        -- Create a sample project if it doesn't exist
-        INSERT INTO public.projects (name, client_name, user_id)
-        SELECT 'Solystra', 'Sample Client', id
-        FROM public.users
-        WHERE username = 'demo'
-        AND NOT EXISTS (
-          SELECT 1 FROM public.projects WHERE name = 'Solystra'
-        )
-        LIMIT 1;
-      `);
+      // Try to create the users table
+      const { error: usersError } = await supabase.rpc('execute_sql', {
+        sql_query: `
+          CREATE TABLE IF NOT EXISTS public.users (
+            id SERIAL PRIMARY KEY,
+            username TEXT NOT NULL UNIQUE,
+            password TEXT NOT NULL
+          );
+        `
+      }).maybeSingle();
       
-      if (tablesError) {
-        logSupabaseError('createTablesIfNotExist', tablesError);
-        console.error('Error creating tables using SQL. Trying individual inserts...');
+      if (usersError) {
+        // If RPC fails, try individual table operations
+        console.log('RPC method not available, creating tables via individual operations');
         await this.insertSampleData();
         return;
       }
       
+      // Create Projects Table
+      await supabase.rpc('execute_sql', {
+        sql_query: `
+          CREATE TABLE IF NOT EXISTS public.projects (
+            id SERIAL PRIMARY KEY,
+            name TEXT NOT NULL,
+            client_name TEXT,
+            created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+            user_id INTEGER NOT NULL
+          );
+        `
+      }).maybeSingle();
+      
+      // Create Brand Concepts Table
+      await supabase.rpc('execute_sql', {
+        sql_query: `
+          CREATE TABLE IF NOT EXISTS public.brand_concepts (
+            id SERIAL PRIMARY KEY,
+            project_id INTEGER NOT NULL,
+            name TEXT NOT NULL,
+            created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+            brand_inputs JSONB NOT NULL,
+            brand_output JSONB NOT NULL,
+            is_active BOOLEAN DEFAULT FALSE
+          );
+        `
+      }).maybeSingle();
+      
+      // Add foreign key constraints
+      await supabase.rpc('execute_sql', {
+        sql_query: `
+          DO $$
+          BEGIN
+            IF NOT EXISTS (
+              SELECT 1 FROM pg_constraint WHERE conname = 'fk_projects_user_id'
+            ) THEN
+              ALTER TABLE public.projects 
+                ADD CONSTRAINT fk_projects_user_id 
+                FOREIGN KEY (user_id) 
+                REFERENCES public.users(id) 
+                ON DELETE CASCADE;
+            END IF;
+            
+            IF NOT EXISTS (
+              SELECT 1 FROM pg_constraint WHERE conname = 'fk_brand_concepts_project_id'
+            ) THEN
+              ALTER TABLE public.brand_concepts 
+                ADD CONSTRAINT fk_brand_concepts_project_id 
+                FOREIGN KEY (project_id) 
+                REFERENCES public.projects(id) 
+                ON DELETE CASCADE;
+            END IF;
+          END
+          $$;
+        `
+      }).maybeSingle();
+      
+      // Insert demo user
+      await supabase.rpc('execute_sql', {
+        sql_query: `
+          INSERT INTO public.users (username, password)
+          VALUES ('demo', 'password')
+          ON CONFLICT (username) DO NOTHING;
+        `
+      }).maybeSingle();
+      
+      // Insert sample project
+      await supabase.rpc('execute_sql', {
+        sql_query: `
+          INSERT INTO public.projects (name, client_name, user_id)
+          SELECT 'Solystra', 'Sample Client', id
+          FROM public.users
+          WHERE username = 'demo'
+          AND NOT EXISTS (
+            SELECT 1 FROM public.projects WHERE name = 'Solystra'
+          )
+          LIMIT 1;
+        `
+      }).maybeSingle();
+      
       console.log('Tables created successfully!');
     } catch (error) {
       logSupabaseError('createTablesIfNotExist', error);
-      console.error('Failed to create tables. Trying individual inserts...');
+      console.error('Failed to create tables using RPC. Trying individual inserts...');
       await this.insertSampleData();
     }
   }
