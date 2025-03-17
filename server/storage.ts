@@ -297,18 +297,16 @@ export class MemStorage implements IStorage {
   }
 }
 
-// Import from ./supabase.ts to avoid circular dependencies
-import { supabaseStorage } from './supabase';
+// Import PostgreSQL storage implementation
+import { postgresStorage } from './db';
 
 // Determine which storage implementation to use
 let storageImplementation: IStorage;
 
-// Check if Supabase credentials are available
-const useSupabase = process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY;
-
-if (useSupabase) {
-  console.log('Using Supabase storage backend');
-  storageImplementation = supabaseStorage;
+// Check if database credentials are available
+if (process.env.DATABASE_URL) {
+  console.log('Using PostgreSQL storage backend');
+  storageImplementation = postgresStorage;
 } else {
   console.log('Using in-memory storage backend');
   storageImplementation = new MemStorage();

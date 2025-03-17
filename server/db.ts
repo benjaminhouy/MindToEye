@@ -1,7 +1,7 @@
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import { sql as sqlQuery } from 'drizzle-orm';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, desc } from 'drizzle-orm';
 import { 
   users, projects, brandConcepts,
   User, InsertUser, Project, InsertProject, BrandConcept, InsertBrandConcept 
@@ -16,33 +16,109 @@ if (!databaseUrl) {
 }
 
 // Create PostgreSQL client with Drizzle ORM only if DATABASE_URL is provided
-const pgClient = databaseUrl ? postgres(databaseUrl, { ssl: 'require' }) : null;
-const db = pgClient ? drizzle(pgClient) : null;
+// For querying - use prepared statements by default
+const queryClient = databaseUrl ? postgres(databaseUrl, { 
+  ssl: 'require',
+  prepare: true,
+  debug: true,
+  max: 10
+}) : null;
+
+// For migrations - disable prepared statements
+const migrationClient = databaseUrl ? postgres(databaseUrl, { 
+  ssl: 'require',
+  max: 1
+}) : null;
+
+// Initialize Drizzle ORM
+const db = queryClient ? drizzle(queryClient) : null;
+
+// Create schema tables if they don't exist
+async function createTablesIfNotExist() {
+  if (!migrationClient) return;
+  
+  try {
+    console.log('Creating database schema if it doesn\'t exist...');
+    
+    // Create users table
+    await migrationClient`
+      CREATE TABLE IF NOT EXISTS "users" (
+        "id" SERIAL PRIMARY KEY,
+        "username" TEXT NOT NULL UNIQUE,
+        "password" TEXT NOT NULL
+      )
+    `;
+    
+    // Create projects table
+    await migrationClient`
+      CREATE TABLE IF NOT EXISTS "projects" (
+        "id" SERIAL PRIMARY KEY,
+        "name" TEXT NOT NULL,
+        "client_name" TEXT,
+        "created_at" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+        "user_id" INTEGER NOT NULL,
+        CONSTRAINT "fk_user" FOREIGN KEY ("user_id") REFERENCES "users" ("id") ON DELETE CASCADE
+      )
+    `;
+    
+    // Create brand_concepts table
+    await migrationClient`
+      CREATE TABLE IF NOT EXISTS "brand_concepts" (
+        "id" SERIAL PRIMARY KEY,
+        "project_id" INTEGER NOT NULL,
+        "name" TEXT NOT NULL,
+        "created_at" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+        "brand_inputs" JSONB NOT NULL,
+        "brand_output" JSONB NOT NULL,
+        "is_active" BOOLEAN DEFAULT FALSE,
+        CONSTRAINT "fk_project" FOREIGN KEY ("project_id") REFERENCES "projects" ("id") ON DELETE CASCADE
+      )
+    `;
+    
+    console.log('Database schema created successfully.');
+    
+    // Create demo user
+    await migrationClient`
+      INSERT INTO "users" ("username", "password")
+      VALUES ('demo', 'demo123')
+      ON CONFLICT ("username") DO NOTHING
+    `;
+    
+    console.log('Demo user created (or already exists).');
+    
+  } catch (error) {
+    console.error('Error creating database schema:', error);
+  }
+}
+
+// Run schema creation before exporting storage
+if (migrationClient) {
+  createTablesIfNotExist().catch(err => {
+    console.error('Failed to create database schema:', err);
+  });
+}
 
 /**
  * PostgreSQL storage implementation for the application
  * This class implements the IStorage interface to provide
- * persistent storage using PostgreSQL directly (not Supabase JS client)
+ * persistent storage using Drizzle ORM with PostgreSQL
  */
 export class PostgresStorage implements IStorage {
   /**
    * User Operations
    */
   async getUser(id: number): Promise<User | undefined> {
-    if (!sql) {
+    if (!db) {
       console.warn('PostgreSQL client not initialized. Cannot get user.');
       return undefined;
     }
     
     try {
-      const users = await sql`
-        SELECT * FROM users WHERE id = ${id}
-      `;
+      const result = await db.select().from(users).where(eq(users.id, id));
       
-      if (users.length === 0) return undefined;
+      if (result.length === 0) return undefined;
       
-      // Convert snake_case to camelCase if needed
-      return users[0] as User;
+      return result[0];
     } catch (error) {
       console.error('Error getting user:', error);
       return undefined;
@@ -50,19 +126,17 @@ export class PostgresStorage implements IStorage {
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    if (!sql) {
+    if (!db) {
       console.warn('PostgreSQL client not initialized. Cannot get user by username.');
       return undefined;
     }
     
     try {
-      const users = await sql`
-        SELECT * FROM users WHERE username = ${username}
-      `;
+      const result = await db.select().from(users).where(eq(users.username, username));
       
-      if (users.length === 0) return undefined;
+      if (result.length === 0) return undefined;
       
-      return users[0] as User;
+      return result[0];
     } catch (error) {
       console.error('Error getting user by username:', error);
       return undefined;
@@ -70,19 +144,15 @@ export class PostgresStorage implements IStorage {
   }
 
   async createUser(user: InsertUser): Promise<User> {
-    if (!sql) {
+    if (!db) {
       console.warn('PostgreSQL client not initialized. Cannot create user.');
       throw new Error('PostgreSQL client not initialized');
     }
     
     try {
-      const result = await sql`
-        INSERT INTO users (username, password)
-        VALUES (${user.username}, ${user.password})
-        RETURNING *
-      `;
+      const result = await db.insert(users).values(user).returning();
       
-      return result[0] as User;
+      return result[0];
     } catch (error) {
       console.error('Error creating user:', error);
       throw error;
@@ -93,20 +163,19 @@ export class PostgresStorage implements IStorage {
    * Project Operations
    */
   async getProjects(userId: number): Promise<Project[]> {
-    if (!sql) {
+    if (!db) {
       console.warn('PostgreSQL client not initialized. Cannot get projects.');
       return [];
     }
     
     try {
-      const projects = await sql`
-        SELECT id, name, client_name as "clientName", created_at as "createdAt", user_id as "userId" 
-        FROM projects 
-        WHERE user_id = ${userId}
-        ORDER BY created_at DESC
-      `;
+      const result = await db
+        .select()
+        .from(projects)
+        .where(eq(projects.userId, userId))
+        .orderBy(desc(projects.createdAt));
       
-      return projects as unknown as Project[];
+      return result;
     } catch (error) {
       console.error('Error getting projects:', error);
       return [];
@@ -114,21 +183,20 @@ export class PostgresStorage implements IStorage {
   }
 
   async getProject(id: number): Promise<Project | undefined> {
-    if (!sql) {
+    if (!db) {
       console.warn('PostgreSQL client not initialized. Cannot get project.');
       return undefined;
     }
     
     try {
-      const projects = await sql`
-        SELECT id, name, client_name as "clientName", created_at as "createdAt", user_id as "userId" 
-        FROM projects 
-        WHERE id = ${id}
-      `;
+      const result = await db
+        .select()
+        .from(projects)
+        .where(eq(projects.id, id));
       
-      if (projects.length === 0) return undefined;
+      if (result.length === 0) return undefined;
       
-      return projects[0] as Project;
+      return result[0];
     } catch (error) {
       console.error('Error getting project:', error);
       return undefined;
@@ -136,24 +204,25 @@ export class PostgresStorage implements IStorage {
   }
 
   async createProject(project: InsertProject): Promise<Project> {
-    if (!sql) {
+    if (!db) {
       console.warn('PostgreSQL client not initialized. Cannot create project.');
       throw new Error('PostgreSQL client not initialized');
     }
     
     try {
-      const result = await sql`
-        INSERT INTO projects (name, client_name, user_id, created_at)
-        VALUES (
-          ${project.name}, 
-          ${project.clientName}, 
-          ${project.userId}, 
-          ${project.createdAt || new Date().toISOString()}
-        )
-        RETURNING id, name, client_name as "clientName", created_at as "createdAt", user_id as "userId"
-      `;
+      // Ensure createdAt is set to now if not provided
+      const values = {
+        ...project,
+        // Not needed since schema has defaultNow()
+        // createdAt: project.createdAt || new Date()
+      };
       
-      return result[0] as Project;
+      const result = await db
+        .insert(projects)
+        .values(values)
+        .returning();
+      
+      return result[0];
     } catch (error) {
       console.error('Error creating project:', error);
       throw error;
@@ -161,50 +230,28 @@ export class PostgresStorage implements IStorage {
   }
 
   async updateProject(id: number, project: Partial<Project>): Promise<Project | undefined> {
-    if (!sql) {
+    if (!db) {
       console.warn('PostgreSQL client not initialized. Cannot update project.');
       return undefined;
     }
     
     try {
-      // Build the SET clause dynamically based on what fields are provided
-      const updates: any[] = [];
-      const values: any[] = [];
+      // Exclude id from update values
+      const { id: _, ...updateValues } = project;
       
-      if (project.name !== undefined) {
-        updates.push('name = $1');
-        values.push(project.name);
-      }
-      
-      if (project.clientName !== undefined) {
-        updates.push('client_name = $' + (values.length + 1));
-        values.push(project.clientName);
-      }
-      
-      if (project.userId !== undefined) {
-        updates.push('user_id = $' + (values.length + 1));
-        values.push(project.userId);
-      }
-      
-      if (updates.length === 0) {
+      if (Object.keys(updateValues).length === 0) {
         return await this.getProject(id);
       }
-
-      // Add the id as the last parameter
-      values.push(id);
       
-      const updateQuery = `
-        UPDATE projects 
-        SET ${updates.join(', ')} 
-        WHERE id = $${values.length}
-        RETURNING id, name, client_name as "clientName", created_at as "createdAt", user_id as "userId"
-      `;
-      
-      const result = await sql.unsafe(updateQuery, ...values);
+      const result = await db
+        .update(projects)
+        .set(updateValues)
+        .where(eq(projects.id, id))
+        .returning();
       
       if (result.length === 0) return undefined;
       
-      return result[0] as Project;
+      return result[0];
     } catch (error) {
       console.error('Error updating project:', error);
       return undefined;
@@ -212,23 +259,19 @@ export class PostgresStorage implements IStorage {
   }
 
   async deleteProject(id: number): Promise<boolean> {
-    if (!sql) {
+    if (!db) {
       console.warn('PostgreSQL client not initialized. Cannot delete project.');
       return false;
     }
     
     try {
-      // Delete related brand concepts first (should happen automatically due to CASCADE)
-      await sql`
-        DELETE FROM brand_concepts WHERE project_id = ${id}
-      `;
+      // Delete project (brand concepts will be automatically deleted via CASCADE)
+      const result = await db
+        .delete(projects)
+        .where(eq(projects.id, id))
+        .returning();
       
-      // Then delete the project
-      const result = await sql`
-        DELETE FROM projects WHERE id = ${id}
-      `;
-      
-      return result.count > 0;
+      return result.length > 0;
     } catch (error) {
       console.error('Error deleting project:', error);
       return false;
@@ -239,27 +282,19 @@ export class PostgresStorage implements IStorage {
    * Brand Concept Operations
    */
   async getBrandConcepts(projectId: number): Promise<BrandConcept[]> {
-    if (!sql) {
+    if (!db) {
       console.warn('PostgreSQL client not initialized. Cannot get brand concepts.');
       return [];
     }
     
     try {
-      const concepts = await sql`
-        SELECT 
-          id, 
-          project_id as "projectId", 
-          name, 
-          created_at as "createdAt", 
-          brand_inputs as "brandInputs", 
-          brand_output as "brandOutput", 
-          is_active as "isActive"
-        FROM brand_concepts 
-        WHERE project_id = ${projectId}
-        ORDER BY created_at DESC
-      `;
+      const result = await db
+        .select()
+        .from(brandConcepts)
+        .where(eq(brandConcepts.projectId, projectId))
+        .orderBy(desc(brandConcepts.createdAt));
       
-      return concepts as BrandConcept[];
+      return result;
     } catch (error) {
       console.error('Error getting brand concepts:', error);
       return [];
@@ -267,28 +302,20 @@ export class PostgresStorage implements IStorage {
   }
 
   async getBrandConcept(id: number): Promise<BrandConcept | undefined> {
-    if (!sql) {
+    if (!db) {
       console.warn('PostgreSQL client not initialized. Cannot get brand concept.');
       return undefined;
     }
     
     try {
-      const concepts = await sql`
-        SELECT 
-          id, 
-          project_id as "projectId", 
-          name, 
-          created_at as "createdAt", 
-          brand_inputs as "brandInputs", 
-          brand_output as "brandOutput", 
-          is_active as "isActive"
-        FROM brand_concepts 
-        WHERE id = ${id}
-      `;
+      const result = await db
+        .select()
+        .from(brandConcepts)
+        .where(eq(brandConcepts.id, id));
       
-      if (concepts.length === 0) return undefined;
+      if (result.length === 0) return undefined;
       
-      return concepts[0] as BrandConcept;
+      return result[0];
     } catch (error) {
       console.error('Error getting brand concept:', error);
       return undefined;
@@ -296,40 +323,31 @@ export class PostgresStorage implements IStorage {
   }
 
   async createBrandConcept(concept: InsertBrandConcept): Promise<BrandConcept> {
-    if (!sql) {
+    if (!db) {
       console.warn('PostgreSQL client not initialized. Cannot create brand concept.');
       throw new Error('PostgreSQL client not initialized');
     }
     
     try {
-      const result = await sql`
-        INSERT INTO brand_concepts (
-          project_id, 
-          name, 
-          brand_inputs, 
-          brand_output, 
-          is_active,
-          created_at
-        )
-        VALUES (
-          ${concept.projectId}, 
-          ${concept.name}, 
-          ${concept.brandInputs}, 
-          ${concept.brandOutput}, 
-          ${concept.isActive || false},
-          ${concept.createdAt || new Date().toISOString()}
-        )
-        RETURNING 
-          id, 
-          project_id as "projectId", 
-          name, 
-          created_at as "createdAt", 
-          brand_inputs as "brandInputs", 
-          brand_output as "brandOutput", 
-          is_active as "isActive"
-      `;
+      // Ensure createdAt is set to now if not provided, isActive defaults to false
+      const values = {
+        ...concept,
+        // Not needed since schema has defaultNow()
+        // createdAt: concept.createdAt || new Date(),
+        // isActive is set in schema default
+      };
       
-      return result[0] as BrandConcept;
+      const result = await db
+        .insert(brandConcepts)
+        .values(values)
+        .returning();
+      
+      // If this is set as active, deactivate other concepts
+      if (concept.isActive) {
+        await this.setActiveBrandConcept(result[0].id, concept.projectId);
+      }
+      
+      return result[0];
     } catch (error) {
       console.error('Error creating brand concept:', error);
       throw error;
@@ -337,67 +355,37 @@ export class PostgresStorage implements IStorage {
   }
 
   async updateBrandConcept(id: number, concept: Partial<BrandConcept>): Promise<BrandConcept | undefined> {
-    if (!sql) {
+    if (!db) {
       console.warn('PostgreSQL client not initialized. Cannot update brand concept.');
       return undefined;
     }
     
     try {
-      // Build the SET clause dynamically based on what fields are provided
-      const updates: any[] = [];
-      const values: any[] = [];
+      // Store if isActive is true so we can update other concepts if needed
+      const isBeingSetActive = concept.isActive === true;
+      const projectId = concept.projectId;
       
-      if (concept.name !== undefined) {
-        updates.push('name = $1');
-        values.push(concept.name);
-      }
+      // Exclude id from update values
+      const { id: _, ...updateValues } = concept;
       
-      if (concept.projectId !== undefined) {
-        updates.push('project_id = $' + (values.length + 1));
-        values.push(concept.projectId);
-      }
-      
-      if (concept.brandInputs !== undefined) {
-        updates.push('brand_inputs = $' + (values.length + 1));
-        values.push(concept.brandInputs);
-      }
-      
-      if (concept.brandOutput !== undefined) {
-        updates.push('brand_output = $' + (values.length + 1));
-        values.push(concept.brandOutput);
-      }
-      
-      if (concept.isActive !== undefined) {
-        updates.push('is_active = $' + (values.length + 1));
-        values.push(concept.isActive);
-      }
-      
-      if (updates.length === 0) {
+      if (Object.keys(updateValues).length === 0) {
         return await this.getBrandConcept(id);
       }
-
-      // Add the id as the last parameter
-      values.push(id);
       
-      const updateQuery = `
-        UPDATE brand_concepts 
-        SET ${updates.join(', ')} 
-        WHERE id = $${values.length}
-        RETURNING 
-          id, 
-          project_id as "projectId", 
-          name, 
-          created_at as "createdAt", 
-          brand_inputs as "brandInputs", 
-          brand_output as "brandOutput", 
-          is_active as "isActive"
-      `;
-      
-      const result = await sql.unsafe(updateQuery, ...values);
+      const result = await db
+        .update(brandConcepts)
+        .set(updateValues)
+        .where(eq(brandConcepts.id, id))
+        .returning();
       
       if (result.length === 0) return undefined;
       
-      return result[0] as BrandConcept;
+      // If this concept is being set as active, deactivate other concepts
+      if (isBeingSetActive && projectId) {
+        await this.setActiveBrandConcept(id, projectId);
+      }
+      
+      return result[0];
     } catch (error) {
       console.error('Error updating brand concept:', error);
       return undefined;
@@ -405,17 +393,18 @@ export class PostgresStorage implements IStorage {
   }
 
   async deleteBrandConcept(id: number): Promise<boolean> {
-    if (!sql) {
+    if (!db) {
       console.warn('PostgreSQL client not initialized. Cannot delete brand concept.');
       return false;
     }
     
     try {
-      const result = await sql`
-        DELETE FROM brand_concepts WHERE id = ${id}
-      `;
+      const result = await db
+        .delete(brandConcepts)
+        .where(eq(brandConcepts.id, id))
+        .returning();
       
-      return result.count > 0;
+      return result.length > 0;
     } catch (error) {
       console.error('Error deleting brand concept:', error);
       return false;
@@ -423,27 +412,26 @@ export class PostgresStorage implements IStorage {
   }
 
   async setActiveBrandConcept(id: number, projectId: number): Promise<boolean> {
-    if (!sql) {
+    if (!db) {
       console.warn('PostgreSQL client not initialized. Cannot set active brand concept.');
       return false;
     }
     
     try {
       // First, set all concepts in the project to isActive = false
-      await sql`
-        UPDATE brand_concepts
-        SET is_active = false
-        WHERE project_id = ${projectId}
-      `;
+      await db
+        .update(brandConcepts)
+        .set({ isActive: false })
+        .where(eq(brandConcepts.projectId, projectId));
       
       // Then set the specific concept to isActive = true
-      const result = await sql`
-        UPDATE brand_concepts
-        SET is_active = true
-        WHERE id = ${id}
-      `;
+      const result = await db
+        .update(brandConcepts)
+        .set({ isActive: true })
+        .where(eq(brandConcepts.id, id))
+        .returning();
       
-      return result.count > 0;
+      return result.length > 0;
     } catch (error) {
       console.error('Error setting active brand concept:', error);
       return false;
