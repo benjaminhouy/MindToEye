@@ -26,9 +26,16 @@ if (fs.existsSync(envSupabasePath)) {
   console.log('Supabase environment variables loaded successfully');
 }
 
+import { initializeDatabase } from './init-db';
+
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+
+// Initialize database
+initializeDatabase().catch(err => {
+  console.error('Failed to initialize database:', err);
+});
 
 app.use((req, res, next) => {
   const start = Date.now();

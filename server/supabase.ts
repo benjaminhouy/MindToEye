@@ -40,22 +40,7 @@ export const supabase = supabaseUrl && supabaseKey
     })
   : null;
 
-// Check Supabase connection
-if (supabase) {
-  (async () => {
-    try {
-      // Simple query to verify connection
-      const { data, error } = await supabase.from('users').select('count').limit(1);
-      if (error) {
-        console.error('Supabase connection error:', error.message);
-      } else {
-        console.log('Successfully connected to Supabase');
-      }
-    } catch (err) {
-      console.error('Failed to connect to Supabase:', err);
-    }
-  })();
-}
+// The database initialization has been moved to init-db.ts
 
 /**
  * Supabase storage implementation for the application
