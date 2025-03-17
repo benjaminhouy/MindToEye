@@ -18,68 +18,49 @@ async function runMigration() {
     
     console.log('Running database migrations...');
     
-    // Create users table
-    console.log('Creating users table...');
-    const { error: usersError } = await supabase.schema.createTable('users', {
-      id: 'serial primary key',
-      username: 'text not null unique',
-      password: 'text not null',
-      created_at: 'timestamp with time zone default now()'
+    // Create tables and indexes
+    console.log('Creating tables and indexes...');
+    const { error: createError } = await supabase.rpc('exec_sql', {
+      sql: `
+        -- Create users table
+        CREATE TABLE IF NOT EXISTS users (
+          id SERIAL PRIMARY KEY,
+          username TEXT NOT NULL UNIQUE,
+          password TEXT NOT NULL,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        );
+
+        -- Create projects table
+        CREATE TABLE IF NOT EXISTS projects (
+          id SERIAL PRIMARY KEY,
+          name TEXT NOT NULL,
+          client_name TEXT,
+          user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        );
+
+        -- Create brand_concepts table
+        CREATE TABLE IF NOT EXISTS brand_concepts (
+          id SERIAL PRIMARY KEY,
+          project_id INTEGER REFERENCES projects(id) ON DELETE CASCADE,
+          name TEXT NOT NULL,
+          is_active BOOLEAN DEFAULT FALSE,
+          brand_inputs JSONB NOT NULL,
+          brand_output JSONB,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        );
+
+        -- Create indexes
+        CREATE INDEX IF NOT EXISTS idx_projects_user_id ON projects(user_id);
+        CREATE INDEX IF NOT EXISTS idx_brand_concepts_project_id ON brand_concepts(project_id);
+        CREATE INDEX IF NOT EXISTS idx_brand_concepts_is_active ON brand_concepts(is_active);
+      `
     });
-    
-    if (usersError) {
-      console.error('Error creating users table:', usersError);
+
+    if (createError) {
+      console.error('Error creating schema:', createError);
       process.exit(1);
     }
-
-    // Create projects table
-    console.log('Creating projects table...');
-    const { error: projectsError } = await supabase.schema.createTable('projects', {
-      id: 'serial primary key',
-      name: 'text not null',
-      client_name: 'text',
-      user_id: 'integer references users(id) on delete cascade',
-      created_at: 'timestamp with time zone default now()'
-    });
-    
-    if (projectsError) {
-      console.error('Error creating projects table:', projectsError);
-      process.exit(1);
-    }
-
-    // Create brand_concepts table
-    console.log('Creating brand_concepts table...');
-    const { error: conceptsError } = await supabase.schema.createTable('brand_concepts', {
-      id: 'serial primary key',
-      project_id: 'integer references projects(id) on delete cascade',
-      name: 'text not null',
-      is_active: 'boolean default false',
-      brand_inputs: 'jsonb not null',
-      brand_output: 'jsonb',
-      created_at: 'timestamp with time zone default now()'
-    });
-    
-    if (conceptsError) {
-      console.error('Error creating brand_concepts table:', conceptsError);
-      process.exit(1);
-    }
-
-    // Create indexes
-    console.log('Creating indexes...');
-    const createIndex = async (tableName: string, columnName: string) => {
-      const { error } = await supabase.schema.raw(`
-        CREATE INDEX IF NOT EXISTS idx_${tableName}_${columnName}
-        ON ${tableName}(${columnName})
-      `);
-      if (error) {
-        console.error(`Error creating index on ${tableName}.${columnName}:`, error);
-        process.exit(1);
-      }
-    };
-
-    await createIndex('projects', 'user_id');
-    await createIndex('brand_concepts', 'project_id');
-    await createIndex('brand_concepts', 'is_active');
 
     // Insert demo data
     console.log('Inserting demo data...');
