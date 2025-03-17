@@ -202,7 +202,7 @@ export class SupabaseStorage implements IStorage {
       await supabase
         .from('brand_concepts')
         .delete()
-        .eq('projectId', id);
+        .eq('project_id', id);
       
       // Then delete the project
       const { error } = await supabase

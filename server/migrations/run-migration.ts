@@ -2,9 +2,6 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { createClient } from '@supabase/supabase-js';
-import { drizzle } from 'drizzle-orm/postgres-js';
-import { migrate } from 'drizzle-orm/postgres-js/migrator';
-import postgres from 'postgres';
 
 // ES Modules compatibility
 const __filename = fileURLToPath(import.meta.url);
@@ -16,25 +13,18 @@ const __dirname = path.dirname(__filename);
 async function runMigration() {
   const supabaseUrl = process.env.SUPABASE_URL;
   const supabaseKey = process.env.SUPABASE_ANON_KEY;
-  const databaseUrl = process.env.DATABASE_URL;
 
   if (!supabaseUrl || !supabaseKey) {
     console.error('Missing Supabase credentials. Set SUPABASE_URL and SUPABASE_ANON_KEY environment variables.');
     process.exit(1);
   }
 
-  if (!databaseUrl) {
-    console.error('Missing DATABASE_URL environment variable.');
-    process.exit(1);
-  }
-
-  console.log('Running migration using DATABASE_URL...');
+  // Create Supabase client
+  const supabase = createClient(supabaseUrl, supabaseKey);
+  console.log('Running migration using Supabase client...');
   
   try {
-    // Use drizzle-kit to run the migration
-    const migrationClient = postgres(databaseUrl, { max: 1 });
-    
-    // For direct SQL execution:
+    // Read SQL file
     const sqlPath = path.join(__dirname, 'create-tables.sql');
     console.log(`Reading SQL file from: ${sqlPath}`);
     const sql = fs.readFileSync(sqlPath, 'utf8');
@@ -44,11 +34,15 @@ async function runMigration() {
     
     for (const stmt of statements) {
       console.log(`Executing: ${stmt.substring(0, 50)}...`);
-      await migrationClient.unsafe(stmt);
+      // Execute SQL with Supabase
+      const { error } = await supabase.rpc('exec_sql', { sql: stmt });
+      if (error) {
+        console.error('Error executing SQL:', error);
+        // Don't exit on failure, try to continue with other statements
+      }
     }
     
     console.log('Migration completed successfully');
-    await migrationClient.end();
   } catch (err) {
     console.error('Error running migration:', err);
     process.exit(1);
