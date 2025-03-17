@@ -1,6 +1,30 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import fs from 'fs';
+import path from 'path';
+
+// Load environment variables from .env.supabase if it exists
+const envSupabasePath = path.join(process.cwd(), '.env.supabase');
+if (fs.existsSync(envSupabasePath)) {
+  console.log('Loading environment variables from .env.supabase');
+  const envConfig = fs.readFileSync(envSupabasePath, 'utf8').split('\n')
+    .filter(line => line.trim() && !line.startsWith('#'))
+    .reduce((acc, line) => {
+      const [key, value] = line.split('=');
+      if (key && value) {
+        acc[key.trim()] = value.trim();
+      }
+      return acc;
+    }, {});
+  
+  // Set environment variables
+  Object.entries(envConfig).forEach(([key, value]) => {
+    process.env[key] = value;
+  });
+  
+  console.log('Supabase environment variables loaded successfully');
+}
 
 const app = express();
 app.use(express.json());
