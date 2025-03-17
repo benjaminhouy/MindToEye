@@ -4,41 +4,26 @@ import { setupVite, serveStatic, log } from "./vite";
 import fs from 'fs';
 import path from 'path';
 
-// Load environment variables function
-function loadEnvFile(filePath: string, logPrefix: string) {
-  if (fs.existsSync(filePath)) {
-    console.log(`${logPrefix} environment variables from ${path.basename(filePath)}`);
-    const envConfig = fs.readFileSync(filePath, 'utf8').split('\n')
-      .filter(line => line.trim() && !line.startsWith('#'))
-      .reduce<Record<string, string>>((acc, line) => {
-        const [key, value] = line.split('=');
-        if (key && value) {
-          acc[key.trim()] = value.trim();
-        }
-        return acc;
-      }, {});
-    
-    // Set environment variables
-    Object.entries(envConfig).forEach(([key, value]) => {
-      // Only set if not already defined
-      if (!process.env[key]) {
-        process.env[key] = value as string;
+// Load environment variables from .env.supabase if it exists
+const envSupabasePath = path.join(process.cwd(), '.env.supabase');
+if (fs.existsSync(envSupabasePath)) {
+  console.log('Loading environment variables from .env.supabase');
+  const envConfig = fs.readFileSync(envSupabasePath, 'utf8').split('\n')
+    .filter(line => line.trim() && !line.startsWith('#'))
+    .reduce((acc, line) => {
+      const [key, value] = line.split('=');
+      if (key && value) {
+        acc[key.trim()] = value.trim();
       }
-    });
-    
-    return true;
-  }
-  return false;
-}
-
-// First try to load from development environment (preferred for development)
-const envDevPath = path.join(process.cwd(), '.env.development');
-const devLoaded = loadEnvFile(envDevPath, 'Loading');
-
-// Fallback to Supabase environment if development wasn't loaded
-if (!devLoaded) {
-  const envSupabasePath = path.join(process.cwd(), '.env.supabase');
-  loadEnvFile(envSupabasePath, 'Falling back to');
+      return acc;
+    }, {});
+  
+  // Set environment variables
+  Object.entries(envConfig).forEach(([key, value]) => {
+    process.env[key] = value;
+  });
+  
+  console.log('Supabase environment variables loaded successfully');
 }
 
 const app = express();
