@@ -304,14 +304,37 @@ import { supabaseStorage, supabase } from './supabase';
 // Determine which storage implementation to use
 let storageImplementation: IStorage;
 
-// Prioritize Supabase client API
+// Check Supabase connection
+let supabaseReady = false;
 if (supabase) {
   console.log('Using Supabase client storage backend');
+  supabaseReady = true;
+  
+  // Test connection by trying to get a user
+  supabase.from('users')
+    .select('id')
+    .limit(1)
+    .then(({ data, error }) => {
+      if (error) {
+        console.error('Supabase connection error:', error.message);
+        supabaseReady = false;
+        console.log('Falling back to in-memory storage due to Supabase error');
+        storageImplementation = new MemStorage();
+      }
+    })
+    .catch(err => {
+      console.error('Error connecting to Supabase:', err);
+      supabaseReady = false;
+      console.log('Falling back to in-memory storage due to Supabase error');
+      storageImplementation = new MemStorage();
+    });
+}
+
+// Initialize with Supabase if available, otherwise use in-memory
+if (supabaseReady) {
   storageImplementation = supabaseStorage;
-} 
-// Fall back to in-memory storage if Supabase client is not available
-else {
-  console.log('Using in-memory storage backend - No Supabase connection available');
+} else {
+  console.log('Using in-memory storage backend');
   storageImplementation = new MemStorage();
 }
 
