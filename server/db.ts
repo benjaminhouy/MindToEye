@@ -1,17 +1,23 @@
+import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
-import type { RowList, Row } from 'postgres';
-import { User, InsertUser, Project, InsertProject, BrandConcept, InsertBrandConcept } from '@shared/schema';
+import { sql as sqlQuery } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
+import { 
+  users, projects, brandConcepts,
+  User, InsertUser, Project, InsertProject, BrandConcept, InsertBrandConcept 
+} from '@shared/schema';
 import type { IStorage } from './storage';
 
-// Initialize PostgreSQL client
+// Initialize PostgreSQL client for Drizzle ORM
 const databaseUrl = process.env.DATABASE_URL;
 
 if (!databaseUrl) {
   console.warn('DATABASE_URL environment variable is not set. Using in-memory storage instead.');
 }
 
-// Create PostgreSQL client only if DATABASE_URL is provided
-const sql = databaseUrl ? postgres(databaseUrl) : null;
+// Create PostgreSQL client with Drizzle ORM only if DATABASE_URL is provided
+const pgClient = databaseUrl ? postgres(databaseUrl, { ssl: 'require' }) : null;
+const db = pgClient ? drizzle(pgClient) : null;
 
 /**
  * PostgreSQL storage implementation for the application
