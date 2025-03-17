@@ -22,8 +22,8 @@ export const projects = pgTable("projects", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
   clientName: text("client_name"),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
-  userId: integer("user_id").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
 });
 
 export const insertProjectSchema = createInsertSchema(projects).pick({
@@ -38,9 +38,9 @@ export type Project = typeof projects.$inferSelect;
 // Brand Concepts schema
 export const brandConcepts = pgTable("brand_concepts", {
   id: serial("id").primaryKey(),
-  projectId: integer("project_id").notNull(),
+  projectId: integer("project_id").notNull().references(() => projects.id, { onDelete: "cascade" }),
   name: text("name").notNull(),
-  createdAt: timestamp("created_at").defaultNow().notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   brandInputs: json("brand_inputs").notNull(),
   brandOutput: json("brand_output").notNull(),
   isActive: boolean("is_active").default(false),
