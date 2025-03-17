@@ -28,13 +28,34 @@ export const supabase = supabaseUrl && supabaseKey
       db: {
         schema: 'public',
       },
+      auth: {
+        autoRefreshToken: true,
+        persistSession: true 
+      },
       global: {
         headers: {
-          'x-debug': 'true'
+          'x-application-name': 'mindtoeye'
         },
       },
     })
   : null;
+
+// Check Supabase connection
+if (supabase) {
+  (async () => {
+    try {
+      // Simple query to verify connection
+      const { data, error } = await supabase.from('users').select('count').limit(1);
+      if (error) {
+        console.error('Supabase connection error:', error.message);
+      } else {
+        console.log('Successfully connected to Supabase');
+      }
+    } catch (err) {
+      console.error('Failed to connect to Supabase:', err);
+    }
+  })();
+}
 
 /**
  * Supabase storage implementation for the application
@@ -164,110 +185,109 @@ export class SupabaseStorage implements IStorage {
     }
     
     try {
-      console.log('Creating tables in Supabase with individual create operations...');
+      console.log('Creating tables directly in Supabase...');
       
-      // Try to create the users table
-      const { error: usersError } = await supabase.rpc('execute_sql', {
-        sql_query: `
-          CREATE TABLE IF NOT EXISTS public.users (
-            id SERIAL PRIMARY KEY,
-            username TEXT NOT NULL UNIQUE,
-            password TEXT NOT NULL
-          );
-        `
-      }).maybeSingle();
+      // First check if users table exists by attempting to query it
+      const { error: checkUsersError } = await supabase
+        .from('users')
+        .select('id')
+        .limit(1);
       
-      if (usersError) {
-        // If RPC fails, try individual table operations
-        console.log('RPC method not available, creating tables via individual operations');
+      if (checkUsersError) {
+        console.log('Users table does not exist. Creating tables through SQL Editor...');
+        console.log('Please create the following tables in Supabase SQL Editor:');
+        console.log(`
+-- Create Users Table
+CREATE TABLE IF NOT EXISTS public.users (
+  id SERIAL PRIMARY KEY,
+  username TEXT NOT NULL UNIQUE,
+  password TEXT NOT NULL
+);
+
+-- Create Projects Table
+CREATE TABLE IF NOT EXISTS public.projects (
+  id SERIAL PRIMARY KEY,
+  name TEXT NOT NULL,
+  client_name TEXT,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  user_id INTEGER NOT NULL,
+  CONSTRAINT fk_projects_user_id FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE
+);
+
+-- Create Brand Concepts Table
+CREATE TABLE IF NOT EXISTS public.brand_concepts (
+  id SERIAL PRIMARY KEY,
+  project_id INTEGER NOT NULL,
+  name TEXT NOT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  brand_inputs JSONB NOT NULL,
+  brand_output JSONB NOT NULL,
+  is_active BOOLEAN DEFAULT FALSE,
+  CONSTRAINT fk_brand_concepts_project_id FOREIGN KEY (project_id) REFERENCES public.projects(id) ON DELETE CASCADE
+);
+
+-- Create an example user if it doesn't exist
+INSERT INTO public.users (username, password)
+VALUES ('demo', 'password')
+ON CONFLICT (username) DO NOTHING;
+
+-- Create a sample project if it doesn't exist
+INSERT INTO public.projects (name, client_name, user_id)
+SELECT 'Solystra', 'Sample Client', id
+FROM public.users
+WHERE username = 'demo'
+AND NOT EXISTS (
+  SELECT 1 FROM public.projects WHERE name = 'Solystra'
+)
+LIMIT 1;
+        `);
+        
+        // Fall back to direct inserts for sample data
         await this.insertSampleData();
         return;
       }
       
-      // Create Projects Table
-      await supabase.rpc('execute_sql', {
-        sql_query: `
-          CREATE TABLE IF NOT EXISTS public.projects (
-            id SERIAL PRIMARY KEY,
-            name TEXT NOT NULL,
-            client_name TEXT,
-            created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-            user_id INTEGER NOT NULL
-          );
-        `
-      }).maybeSingle();
+      console.log('Tables already exist. Checking sample data...');
       
-      // Create Brand Concepts Table
-      await supabase.rpc('execute_sql', {
-        sql_query: `
-          CREATE TABLE IF NOT EXISTS public.brand_concepts (
-            id SERIAL PRIMARY KEY,
-            project_id INTEGER NOT NULL,
-            name TEXT NOT NULL,
-            created_at TIMESTAMP NOT NULL DEFAULT NOW(),
-            brand_inputs JSONB NOT NULL,
-            brand_output JSONB NOT NULL,
-            is_active BOOLEAN DEFAULT FALSE
-          );
-        `
-      }).maybeSingle();
+      // Check if sample data exists
+      const { data: usersData, error: usersError } = await supabase
+        .from('users')
+        .select('id, username')
+        .eq('username', 'demo')
+        .single();
       
-      // Add foreign key constraints
-      await supabase.rpc('execute_sql', {
-        sql_query: `
-          DO $$
-          BEGIN
-            IF NOT EXISTS (
-              SELECT 1 FROM pg_constraint WHERE conname = 'fk_projects_user_id'
-            ) THEN
-              ALTER TABLE public.projects 
-                ADD CONSTRAINT fk_projects_user_id 
-                FOREIGN KEY (user_id) 
-                REFERENCES public.users(id) 
-                ON DELETE CASCADE;
-            END IF;
-            
-            IF NOT EXISTS (
-              SELECT 1 FROM pg_constraint WHERE conname = 'fk_brand_concepts_project_id'
-            ) THEN
-              ALTER TABLE public.brand_concepts 
-                ADD CONSTRAINT fk_brand_concepts_project_id 
-                FOREIGN KEY (project_id) 
-                REFERENCES public.projects(id) 
-                ON DELETE CASCADE;
-            END IF;
-          END
-          $$;
-        `
-      }).maybeSingle();
+      if (usersError || !usersData) {
+        // Insert demo user
+        await supabase
+          .from('users')
+          .insert({ username: 'demo', password: 'password' });
+      }
       
-      // Insert demo user
-      await supabase.rpc('execute_sql', {
-        sql_query: `
-          INSERT INTO public.users (username, password)
-          VALUES ('demo', 'password')
-          ON CONFLICT (username) DO NOTHING;
-        `
-      }).maybeSingle();
+      // If user exists, check for sample project
+      if (usersData) {
+        const { data: projectsData, error: projectsError } = await supabase
+          .from('projects')
+          .select('id, name')
+          .eq('name', 'Solystra')
+          .single();
+        
+        if (projectsError || !projectsData) {
+          // Insert sample project
+          await supabase
+            .from('projects')
+            .insert({
+              name: 'Solystra',
+              client_name: 'Sample Client',
+              user_id: usersData.id,
+              created_at: new Date().toISOString()
+            });
+        }
+      }
       
-      // Insert sample project
-      await supabase.rpc('execute_sql', {
-        sql_query: `
-          INSERT INTO public.projects (name, client_name, user_id)
-          SELECT 'Solystra', 'Sample Client', id
-          FROM public.users
-          WHERE username = 'demo'
-          AND NOT EXISTS (
-            SELECT 1 FROM public.projects WHERE name = 'Solystra'
-          )
-          LIMIT 1;
-        `
-      }).maybeSingle();
-      
-      console.log('Tables created successfully!');
+      console.log('Tables and sample data checked successfully!');
     } catch (error) {
       logSupabaseError('createTablesIfNotExist', error);
-      console.error('Failed to create tables using RPC. Trying individual inserts...');
+      console.error('Failed to check/create tables. Trying individual inserts...');
       await this.insertSampleData();
     }
   }

@@ -304,19 +304,14 @@ import { supabaseStorage, supabase } from './supabase';
 // Determine which storage implementation to use
 let storageImplementation: IStorage;
 
-// Check if Supabase credentials are available first
+// Check if Supabase credentials are available first - PREFERRED METHOD
 if (supabase) {
-  console.log('Using Supabase storage backend');
+  console.log('Using Supabase client storage backend');
   storageImplementation = supabaseStorage;
 } 
-// Fall back to direct PostgreSQL if Supabase is not available but DATABASE_URL is set
-else if (process.env.DATABASE_URL) {
-  console.log('Using PostgreSQL storage backend');
-  storageImplementation = postgresStorage;
-} 
-// Use in-memory storage as a last resort
+// Only fall back to in-memory storage if Supabase is not available
 else {
-  console.log('Using in-memory storage backend');
+  console.log('Using in-memory storage backend - Supabase client not initialized');
   storageImplementation = new MemStorage();
 }
 
