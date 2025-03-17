@@ -194,8 +194,75 @@ export class SupabaseStorage implements IStorage {
         .limit(1);
       
       if (checkUsersError) {
-        console.log('Users table does not exist. Creating tables through SQL Editor...');
-        console.log('Please create the following tables in Supabase SQL Editor:');
+        console.log('Users table does not exist. Creating tables through SQL...');
+        
+        // Use the SQL from our supabase_setup.sql file
+        // Try using the exec_sql RPC function first (requires setting this up in Supabase)
+        try {
+          const createUsersSql = `
+            CREATE TABLE IF NOT EXISTS public.users (
+              id SERIAL PRIMARY KEY,
+              username TEXT NOT NULL UNIQUE,
+              password TEXT NOT NULL
+            );
+          `;
+          
+          const { error: rpcError } = await supabase.rpc('exec_sql', { query: createUsersSql });
+          
+          if (!rpcError) {
+            console.log('Successfully created users table through RPC');
+            
+            // Create projects table
+            const createProjectsSql = `
+              CREATE TABLE IF NOT EXISTS public.projects (
+                id SERIAL PRIMARY KEY,
+                name TEXT NOT NULL,
+                client_name TEXT,
+                created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+                user_id INTEGER NOT NULL,
+                CONSTRAINT fk_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
+              );
+            `;
+            
+            await supabase.rpc('exec_sql', { query: createProjectsSql });
+            
+            // Create brand_concepts table
+            const createConceptsSql = `
+              CREATE TABLE IF NOT EXISTS public.brand_concepts (
+                id SERIAL PRIMARY KEY,
+                project_id INTEGER NOT NULL,
+                name TEXT NOT NULL,
+                created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+                brand_inputs JSONB NOT NULL,
+                brand_output JSONB NOT NULL,
+                is_active BOOLEAN DEFAULT FALSE,
+                CONSTRAINT fk_project FOREIGN KEY (project_id) REFERENCES projects (id) ON DELETE CASCADE
+              );
+            `;
+            
+            await supabase.rpc('exec_sql', { query: createConceptsSql });
+            
+            // Insert demo user
+            const insertDemoUserSql = `
+              INSERT INTO public.users (username, password)
+              VALUES ('demo', 'demo123')
+              ON CONFLICT (username) DO NOTHING;
+            `;
+            
+            await supabase.rpc('exec_sql', { query: insertDemoUserSql });
+            
+            // Show success message
+            console.log('All tables created successfully through RPC');
+            return;
+          }
+        } catch (rpcErr) {
+          console.log('SQL RPC execution not available:', rpcErr);
+        }
+        
+        // If RPC didn't work, show the SQL to run manually
+        console.log('Please create the tables manually in Supabase SQL Editor or run the node script:');
+        console.log('  $ node run-supabase-migration.js');
+        console.log('\nOr create the following tables in Supabase SQL Editor:');
         console.log(`
 -- Create Users Table
 CREATE TABLE IF NOT EXISTS public.users (
@@ -209,9 +276,9 @@ CREATE TABLE IF NOT EXISTS public.projects (
   id SERIAL PRIMARY KEY,
   name TEXT NOT NULL,
   client_name TEXT,
-  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
   user_id INTEGER NOT NULL,
-  CONSTRAINT fk_projects_user_id FOREIGN KEY (user_id) REFERENCES public.users(id) ON DELETE CASCADE
+  CONSTRAINT fk_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
 );
 
 -- Create Brand Concepts Table
@@ -219,27 +286,35 @@ CREATE TABLE IF NOT EXISTS public.brand_concepts (
   id SERIAL PRIMARY KEY,
   project_id INTEGER NOT NULL,
   name TEXT NOT NULL,
-  created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
   brand_inputs JSONB NOT NULL,
   brand_output JSONB NOT NULL,
   is_active BOOLEAN DEFAULT FALSE,
-  CONSTRAINT fk_brand_concepts_project_id FOREIGN KEY (project_id) REFERENCES public.projects(id) ON DELETE CASCADE
+  CONSTRAINT fk_project FOREIGN KEY (project_id) REFERENCES projects (id) ON DELETE CASCADE
 );
 
 -- Create an example user if it doesn't exist
 INSERT INTO public.users (username, password)
-VALUES ('demo', 'password')
+VALUES ('demo', 'demo123')
 ON CONFLICT (username) DO NOTHING;
 
--- Create a sample project if it doesn't exist
-INSERT INTO public.projects (name, client_name, user_id)
-SELECT 'Solystra', 'Sample Client', id
-FROM public.users
-WHERE username = 'demo'
-AND NOT EXISTS (
-  SELECT 1 FROM public.projects WHERE name = 'Solystra'
-)
-LIMIT 1;
+-- Create sample projects for demo user
+DO $$
+DECLARE
+  demo_user_id INTEGER;
+BEGIN
+  SELECT id INTO demo_user_id FROM users WHERE username = 'demo';
+  
+  -- Only insert sample projects if demo user exists and has no projects
+  IF demo_user_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM projects WHERE user_id = demo_user_id) THEN
+    -- Insert sample projects
+    INSERT INTO projects (name, client_name, user_id)
+    VALUES 
+      ('Eco Threads Rebrand', 'Sustainable Fashion Co.', demo_user_id),
+      ('TechVision App Launch', 'TechVision Inc.', demo_user_id),
+      ('Fresh Bites Cafe', 'Healthy Foods LLC', demo_user_id);
+  END IF;
+END $$;
         `);
         
         // Fall back to direct inserts for sample data
@@ -260,7 +335,7 @@ LIMIT 1;
         // Insert demo user
         await supabase
           .from('users')
-          .insert({ username: 'demo', password: 'password' });
+          .insert({ username: 'demo', password: 'demo123' });
       }
       
       // If user exists, check for sample project
@@ -268,7 +343,7 @@ LIMIT 1;
         const { data: projectsData, error: projectsError } = await supabase
           .from('projects')
           .select('id, name')
-          .eq('name', 'Solystra')
+          .eq('name', 'Eco Threads Rebrand')
           .single();
         
         if (projectsError || !projectsData) {
@@ -276,8 +351,8 @@ LIMIT 1;
           await supabase
             .from('projects')
             .insert({
-              name: 'Solystra',
-              client_name: 'Sample Client',
+              name: 'Eco Threads Rebrand',
+              client_name: 'Sustainable Fashion Co.',
               user_id: usersData.id,
               created_at: new Date().toISOString()
             });
