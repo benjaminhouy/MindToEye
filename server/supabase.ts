@@ -98,11 +98,12 @@ export class SupabaseStorage implements IStorage {
     }
     
     try {
+      // Note: Database column is snake_case (user_id), while our model uses camelCase (userId)
       const { data, error } = await supabase
         .from('projects')
         .select()
-        .eq('userId', userId)
-        .order('createdAt', { ascending: false });
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
       
       if (error) throw error;
       return data as Project[];
@@ -140,11 +141,14 @@ export class SupabaseStorage implements IStorage {
     }
     
     try {
+      // Convert camelCase to snake_case for Supabase
       const { data, error } = await supabase
         .from('projects')
         .insert({
-          ...project,
-          createdAt: new Date().toISOString()
+          name: project.name,
+          client_name: project.clientName,
+          user_id: project.userId,
+          created_at: new Date().toISOString()
         })
         .select()
         .single();
@@ -164,9 +168,17 @@ export class SupabaseStorage implements IStorage {
     }
     
     try {
+      // Convert camelCase to snake_case for Supabase
+      const updateData: any = {};
+      
+      if (project.name !== undefined) updateData.name = project.name;
+      if (project.clientName !== undefined) updateData.client_name = project.clientName;
+      if (project.userId !== undefined) updateData.user_id = project.userId;
+      if (project.createdAt !== undefined) updateData.created_at = project.createdAt;
+      
       const { data, error } = await supabase
         .from('projects')
-        .update(project)
+        .update(updateData)
         .eq('id', id)
         .select()
         .single();
@@ -216,11 +228,12 @@ export class SupabaseStorage implements IStorage {
     }
     
     try {
+      // Convert camelCase to snake_case for Supabase
       const { data, error } = await supabase
         .from('brand_concepts')
         .select()
-        .eq('projectId', projectId)
-        .order('createdAt', { ascending: false });
+        .eq('project_id', projectId)
+        .order('created_at', { ascending: false });
       
       if (error) throw error;
       return data as BrandConcept[];
@@ -258,11 +271,16 @@ export class SupabaseStorage implements IStorage {
     }
     
     try {
+      // Convert camelCase to snake_case for Supabase
       const { data, error } = await supabase
         .from('brand_concepts')
         .insert({
-          ...concept,
-          createdAt: new Date().toISOString()
+          project_id: concept.projectId,
+          name: concept.name,
+          brand_inputs: concept.brandInputs,
+          brand_output: concept.brandOutput,
+          is_active: concept.isActive,
+          created_at: new Date().toISOString()
         })
         .select()
         .single();
@@ -282,9 +300,19 @@ export class SupabaseStorage implements IStorage {
     }
     
     try {
+      // Convert camelCase to snake_case for Supabase
+      const updateData: any = {};
+      
+      if (concept.name !== undefined) updateData.name = concept.name;
+      if (concept.projectId !== undefined) updateData.project_id = concept.projectId;
+      if (concept.brandInputs !== undefined) updateData.brand_inputs = concept.brandInputs;
+      if (concept.brandOutput !== undefined) updateData.brand_output = concept.brandOutput;
+      if (concept.isActive !== undefined) updateData.is_active = concept.isActive;
+      if (concept.createdAt !== undefined) updateData.created_at = concept.createdAt;
+      
       const { data, error } = await supabase
         .from('brand_concepts')
-        .update(concept)
+        .update(updateData)
         .eq('id', id)
         .select()
         .single();
@@ -328,15 +356,15 @@ export class SupabaseStorage implements IStorage {
       // First, set all concepts in the project to isActive = false
       const { error: updateError } = await supabase
         .from('brand_concepts')
-        .update({ isActive: false })
-        .eq('projectId', projectId);
+        .update({ is_active: false })
+        .eq('project_id', projectId);
       
       if (updateError) throw updateError;
       
       // Then set the specific concept to isActive = true
       const { error } = await supabase
         .from('brand_concepts')
-        .update({ isActive: true })
+        .update({ is_active: true })
         .eq('id', id);
       
       if (error) throw error;
