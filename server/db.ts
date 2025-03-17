@@ -9,6 +9,7 @@ import {
 import type { IStorage } from './storage';
 
 // Initialize PostgreSQL client for Drizzle ORM
+// Just use the DATABASE_URL that's set up by default
 const databaseUrl = process.env.DATABASE_URL;
 
 if (!databaseUrl) {
