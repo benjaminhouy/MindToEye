@@ -170,85 +170,21 @@ export class SupabaseStorage implements IStorage {
     }
     
     try {
-      console.log('Creating tables directly in Supabase...');
+      console.log('Creating tables through Supabase REST API...');
       
-      // First check if users table exists by attempting to query it
-      const { error: checkUsersError } = await supabase
+      // Try to create the users table using the Supabase REST API
+      console.log('Creating users table...');
+      const { error: createUsersError } = await supabase
         .from('users')
-        .select('id')
-        .limit(1);
+        .insert({ id: 1, username: 'demo', password: 'demo123' })
+        .select()
+        .single();
       
-      if (checkUsersError) {
-        console.log('Users table does not exist. Creating tables through SQL...');
-        
-        // Use the SQL from our supabase_setup.sql file
-        // Try using the exec_sql RPC function first (requires setting this up in Supabase)
-        try {
-          const createUsersSql = `
-            CREATE TABLE IF NOT EXISTS public.users (
-              id SERIAL PRIMARY KEY,
-              username TEXT NOT NULL UNIQUE,
-              password TEXT NOT NULL
-            );
-          `;
-          
-          const { error: rpcError } = await supabase.rpc('exec_sql', { query: createUsersSql });
-          
-          if (!rpcError) {
-            console.log('Successfully created users table through RPC');
-            
-            // Create projects table
-            const createProjectsSql = `
-              CREATE TABLE IF NOT EXISTS public.projects (
-                id SERIAL PRIMARY KEY,
-                name TEXT NOT NULL,
-                client_name TEXT,
-                created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
-                user_id INTEGER NOT NULL,
-                CONSTRAINT fk_user FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
-              );
-            `;
-            
-            await supabase.rpc('exec_sql', { query: createProjectsSql });
-            
-            // Create brand_concepts table
-            const createConceptsSql = `
-              CREATE TABLE IF NOT EXISTS public.brand_concepts (
-                id SERIAL PRIMARY KEY,
-                project_id INTEGER NOT NULL,
-                name TEXT NOT NULL,
-                created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
-                brand_inputs JSONB NOT NULL,
-                brand_output JSONB NOT NULL,
-                is_active BOOLEAN DEFAULT FALSE,
-                CONSTRAINT fk_project FOREIGN KEY (project_id) REFERENCES projects (id) ON DELETE CASCADE
-              );
-            `;
-            
-            await supabase.rpc('exec_sql', { query: createConceptsSql });
-            
-            // Insert demo user
-            const insertDemoUserSql = `
-              INSERT INTO public.users (username, password)
-              VALUES ('demo', 'demo123')
-              ON CONFLICT (username) DO NOTHING;
-            `;
-            
-            await supabase.rpc('exec_sql', { query: insertDemoUserSql });
-            
-            // Show success message
-            console.log('All tables created successfully through RPC');
-            return;
-          }
-        } catch (rpcErr) {
-          console.log('SQL RPC execution not available:', rpcErr);
-        }
-        
-        // If RPC didn't work, show the SQL to run manually
-        console.log('Please create the tables manually in Supabase SQL Editor or run the node script:');
-        console.log('  $ node run-supabase-migration.js');
-        console.log('\nOr create the following tables in Supabase SQL Editor:');
-        console.log(`
+      if (createUsersError && createUsersError.code !== '23505') { // Ignore duplicate key error
+        if (createUsersError.code === '42P01') { // Table doesn't exist
+          console.error('Cannot create users table through API. Tables must be created in Supabase dashboard.');
+          console.log('\nPlease create the following tables in Supabase SQL Editor:');
+          console.log(`
 -- Create Users Table
 CREATE TABLE IF NOT EXISTS public.users (
   id SERIAL PRIMARY KEY,
@@ -277,74 +213,73 @@ CREATE TABLE IF NOT EXISTS public.brand_concepts (
   is_active BOOLEAN DEFAULT FALSE,
   CONSTRAINT fk_project FOREIGN KEY (project_id) REFERENCES projects (id) ON DELETE CASCADE
 );
-
--- Create an example user if it doesn't exist
-INSERT INTO public.users (username, password)
-VALUES ('demo', 'demo123')
-ON CONFLICT (username) DO NOTHING;
-
--- Create sample projects for demo user
-DO $$
-DECLARE
-  demo_user_id INTEGER;
-BEGIN
-  SELECT id INTO demo_user_id FROM users WHERE username = 'demo';
-  
-  -- Only insert sample projects if demo user exists and has no projects
-  IF demo_user_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM projects WHERE user_id = demo_user_id) THEN
-    -- Insert sample projects
-    INSERT INTO projects (name, client_name, user_id)
-    VALUES 
-      ('Eco Threads Rebrand', 'Sustainable Fashion Co.', demo_user_id),
-      ('TechVision App Launch', 'TechVision Inc.', demo_user_id),
-      ('Fresh Bites Cafe', 'Healthy Foods LLC', demo_user_id);
-  END IF;
-END $$;
-        `);
+          `);
+        } else {
+          console.error('Error creating users table:', createUsersError);
+        }
+      } else {
+        console.log('Users table exists or was created successfully');
         
-        // Fall back to direct inserts for sample data
-        await this.insertSampleData();
-        return;
-      }
-      
-      console.log('Tables already exist. Checking sample data...');
-      
-      // Check if sample data exists
-      const { data: usersData, error: usersError } = await supabase
-        .from('users')
-        .select('id, username')
-        .eq('username', 'demo')
-        .single();
-      
-      if (usersError || !usersData) {
-        // Insert demo user
-        await supabase
+        // Try to create some sample projects
+        console.log('Creating sample projects...');
+        
+        // Get demo user id
+        const { data: demoUser, error: demoUserError } = await supabase
           .from('users')
-          .insert({ username: 'demo', password: 'demo123' });
-      }
-      
-      // If user exists, check for sample project
-      if (usersData) {
-        const { data: projectsData, error: projectsError } = await supabase
-          .from('projects')
-          .select('id, name')
-          .eq('name', 'Eco Threads Rebrand')
+          .select('id')
+          .eq('username', 'demo')
           .single();
         
-        if (projectsError || !projectsData) {
-          // Insert sample project
-          await supabase
-            .from('projects')
-            .insert({
+        if (!demoUserError && demoUser) {
+          // Try to create projects table with sample data
+          const sampleProjects = [
+            {
               name: 'Eco Threads Rebrand',
               client_name: 'Sustainable Fashion Co.',
-              user_id: usersData.id,
+              user_id: demoUser.id,
               created_at: new Date().toISOString()
-            });
+            },
+            {
+              name: 'TechVision App Launch',
+              client_name: 'TechVision Inc.',
+              user_id: demoUser.id,
+              created_at: new Date().toISOString()
+            },
+            {
+              name: 'Fresh Bites Cafe',
+              client_name: 'Healthy Foods LLC',
+              user_id: demoUser.id,
+              created_at: new Date().toISOString()
+            }
+          ];
+          
+          for (const project of sampleProjects) {
+            const { error: projectError } = await supabase
+              .from('projects')
+              .insert(project);
+            
+            if (projectError && projectError.code === '42P01') {
+              console.log('Projects table does not exist. Please create it in Supabase dashboard.');
+              break;
+            }
+          }
         }
       }
       
-      console.log('Tables and sample data checked successfully!');
+      // Try to create a sample brand concept to ensure the table exists
+      console.log('Checking brand concepts table...');
+      const { error: conceptsError } = await supabase
+        .from('brand_concepts')
+        .select('id')
+        .limit(1);
+      
+      if (conceptsError && conceptsError.code === '42P01') {
+        console.log('Brand concepts table does not exist. Please create it in Supabase dashboard.');
+      } else {
+        console.log('Brand concepts table exists');
+      }
+      
+      console.log('Tables check completed!');
     } catch (error) {
       logSupabaseError('createTablesIfNotExist', error);
       console.error('Failed to check/create tables. Trying individual inserts...');
