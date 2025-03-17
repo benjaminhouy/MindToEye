@@ -1,9 +1,6 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
-import { spawn } from "child_process";
-import path from "path";
-import fs from "fs";
 
 const app = express();
 app.use(express.json());
@@ -68,63 +65,5 @@ app.use((req, res, next) => {
     reusePort: true,
   }, () => {
     log(`Express server serving on port ${port}`);
-    
-    // Start Flask server
-    try {
-      // Check if python is installed
-      const pythonPath = process.env.PYTHON_PATH || 'python';
-      const flaskScriptPath = path.resolve(process.cwd(), 'run_flask.py');
-      
-      if (fs.existsSync(flaskScriptPath)) {
-        log(`Starting Flask server from ${flaskScriptPath}`);
-        
-        // Launch Flask server as a child process
-        const flaskProcess = spawn(pythonPath, [flaskScriptPath], {
-          env: {
-            ...process.env,
-            FLASK_PORT: '5001',
-            FLASK_DEBUG: 'True',
-          },
-          stdio: 'inherit', // This will pipe stdout and stderr to the parent process
-        });
-        
-        flaskProcess.on('spawn', () => {
-          log(`Flask process spawned, waiting for server to start...`);
-        });
-        
-        flaskProcess.on('error', (err) => {
-          log(`Error starting Flask server: ${err.message}`);
-        });
-        
-        flaskProcess.on('exit', (code, signal) => {
-          if (code !== 0) {
-            log(`Flask process exited with code ${code} and signal ${signal}`);
-          }
-        });
-        
-        // Handle process exit
-        process.on('exit', () => {
-          log('Node process exiting, killing Flask server...');
-          flaskProcess.kill();
-        });
-        
-        // Handle SIGINT and SIGTERM
-        process.on('SIGINT', () => {
-          log('Received SIGINT signal, shutting down...');
-          flaskProcess.kill('SIGINT');
-          process.exit(0);
-        });
-        
-        process.on('SIGTERM', () => {
-          log('Received SIGTERM signal, shutting down...');
-          flaskProcess.kill('SIGTERM');
-          process.exit(0);
-        });
-      } else {
-        log(`Flask script not found at ${flaskScriptPath}`);
-      }
-    } catch (error) {
-      log(`Failed to start Flask server: ${error}`);
-    }
   });
 })();

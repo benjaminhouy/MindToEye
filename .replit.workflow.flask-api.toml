@@ -1,4 +1,0 @@
-name = "Flask API Server"
-command = "python run_flask.py"
-persistent = true
-path = "."

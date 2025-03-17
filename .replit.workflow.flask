@@ -1,2 +1,0 @@
-name = "Flask API"
-command = "python app.py"

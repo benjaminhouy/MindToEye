@@ -1,8 +1,0 @@
-{
-  "name": "Flask API Server",
-  "command": "./run_flask_server.sh",
-  "persistent": true,
-  "restartOn": {
-    "files": ["app.py", "routes.py", "config.py", "ai_helpers.py", "schema.py", "storage.py", "run_flask.py"]
-  }
-}
