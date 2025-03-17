@@ -298,22 +298,14 @@ export class MemStorage implements IStorage {
 }
 
 // Determine which storage implementation to use
-// Default to MemStorage if no environment variables are set for Supabase
+// For now, we'll use in-memory storage while we set up our database properly
 let storageImplementation: IStorage;
 
 // Import from ./supabase.ts if needed to avoid circular dependencies
 import { supabaseStorage } from './supabase';
 
-// Check if Supabase credentials are available
-const useSupabase = process.env.SUPABASE_URL && 
-                   process.env.SUPABASE_ANON_KEY;
-
-if (useSupabase) {
-  console.log('Using Supabase storage backend');
-  storageImplementation = supabaseStorage;
-} else {
-  console.log('Using in-memory storage backend');
-  storageImplementation = new MemStorage();
-}
+// Since we're having issues with Supabase, use in-memory storage for now
+console.log('Using in-memory storage backend');
+storageImplementation = new MemStorage();
 
 export const storage = storageImplementation;
