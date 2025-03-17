@@ -1,72 +1,69 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Initialize Supabase client
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_ANON_KEY;
-
-if (!supabaseUrl || !supabaseKey) {
-  console.error('Supabase URL or API key missing');
-  process.exit(1);
-}
-
-const supabase = createClient(supabaseUrl, supabaseKey);
-
 async function testSupabase() {
-  console.log('Testing Supabase connection...');
-  
   try {
-    // Test 1: Direct SQL query
-    console.log('Test 1: Running direct SQL query');
-    const { data: tableData, error: tableError } = await supabase.rpc(
-      'list_tables',
-      { schema_name: 'public' }
-    );
+    // Get Supabase configuration from environment
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const supabaseKey = process.env.SUPABASE_ANON_KEY;
     
-    if (tableError) {
-      console.error('Error listing tables:', tableError);
-    } else {
-      console.log('Tables in public schema:', tableData);
+    if (!supabaseUrl || !supabaseKey) {
+      console.error('Supabase URL or key not set');
+      return;
     }
-
-    // Test 2: Try to query projects table
-    console.log('\nTest 2: Querying projects table');
-    const { data: projectsData, error: projectsError } = await supabase
-      .from('projects')
-      .select('*')
-      .limit(5);
     
-    if (projectsError) {
-      console.error('Error querying projects:', projectsError);
-    } else {
-      console.log('Projects data:', projectsData);
-    }
-
-    // Test 3: Try explicitly specifying public schema
-    console.log('\nTest 3: Querying with explicit schema');
+    console.log('Testing Supabase connection...');
+    console.log('Supabase URL:', supabaseUrl);
+    
+    // Create Supabase client
+    const supabase = createClient(supabaseUrl, supabaseKey, {
+      db: {
+        schema: 'public',
+      },
+      auth: {
+        autoRefreshToken: true,
+        persistSession: true 
+      },
+    });
+    
+    // Test connection by trying to fetch schema
     const { data: schemaData, error: schemaError } = await supabase
-      .from('public.projects')
-      .select('*')
-      .limit(5);
+      .from('users')
+      .select('count')
+      .limit(1);
     
     if (schemaError) {
-      console.error('Error querying with explicit schema:', schemaError);
+      console.error('Supabase connection error:', schemaError.message);
+      console.error('Error details:', schemaError);
+      
+      // Try to check if the schema exists at all
+      console.log('Checking available schemas...');
+      try {
+        const { data: schemas } = await supabase.rpc('get_schemas');
+        console.log('Available schemas:', schemas);
+      } catch (err) {
+        console.error('Error querying schemas:', err.message);
+      }
     } else {
-      console.log('Projects with explicit schema:', schemaData);
+      console.log('Successfully connected to Supabase', schemaData);
+      
+      // If connection works, try to query tables
+      const { data: usersData, error: usersError } = await supabase
+        .from('users')
+        .select('*')
+        .limit(1);
+      
+      if (usersError) {
+        console.error('Error querying users:', usersError.message);
+      } else {
+        console.log('Users table data:', usersData);
+      }
     }
-
-    // Test 4: Try running raw SQL
-    console.log('\nTest 4: Running raw SQL query');
-    const { data: rawData, error: rawError } = await supabase
-      .rpc('execute_sql', { sql: 'SELECT * FROM projects LIMIT 5' });
     
-    if (rawError) {
-      console.error('Error running raw SQL:', rawError);
-    } else {
-      console.log('Raw SQL result:', rawData);
-    }
-  } catch (err) {
-    console.error('Unexpected error:', err);
+    console.log('Supabase connection test complete');
+  } catch (error) {
+    console.error('Error testing Supabase connection:', error);
   }
 }
 
+// Execute the test
 testSupabase();

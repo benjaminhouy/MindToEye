@@ -2,38 +2,58 @@ import postgres from 'postgres';
 
 async function testPgConnection() {
   try {
-    const databaseUrl = process.env.DATABASE_URL;
+    // Test direct PostgreSQL connection
+    const directUrl = process.env.DATABASE_URL;
     
-    if (!databaseUrl) {
-      console.error('DATABASE_URL environment variable is not set');
-      process.exit(1);
+    if (!directUrl) {
+      console.error('DATABASE_URL not set');
+      return;
     }
     
-    console.log('Connecting to PostgreSQL using DATABASE_URL...');
-    const sql = postgres(databaseUrl);
+    console.log('Testing direct PostgreSQL connection...');
+    console.log('Connection URL:', directUrl);
     
-    // Test 1: List tables in the public schema
-    console.log('Test 1: Listing tables in public schema');
-    const tables = await sql`
-      SELECT table_name 
+    const sql = postgres(directUrl, { 
+      ssl: 'require',
+      debug: true
+    });
+    
+    // Try to query the database
+    const result = await sql`SELECT table_name 
       FROM information_schema.tables 
-      WHERE table_schema = 'public'
-    `;
-    console.log('Tables in public schema:', tables);
+      WHERE table_schema = 'public'`;
     
-    // Test 2: Try to query the projects table
-    console.log('\nTest 2: Querying projects table');
-    const projects = await sql`
-      SELECT * FROM projects LIMIT 5
-    `;
-    console.log('Projects:', projects);
+    console.log('Available tables in public schema:');
+    console.log(result);
     
-    // Clean up
+    if (result.length === 0) {
+      console.log('No tables found in public schema');
+    }
+    
+    // Try to query users table
+    try {
+      const usersResult = await sql`SELECT * FROM users LIMIT 1`;
+      console.log('Users table exists, data:', usersResult);
+    } catch (err) {
+      console.error('Error querying users table:', err.message);
+    }
+    
+    // Try to query projects table
+    try {
+      const projectsResult = await sql`SELECT * FROM projects LIMIT 1`;
+      console.log('Projects table exists, data:', projectsResult);
+    } catch (err) {
+      console.error('Error querying projects table:', err.message);
+    }
+    
+    // Cleanup
     await sql.end();
-    console.log('Connection closed');
+    console.log('PostgreSQL connection test complete');
+    
   } catch (error) {
-    console.error('Error connecting to PostgreSQL:', error);
+    console.error('Error testing PostgreSQL connection:', error);
   }
 }
 
+// Execute the test
 testPgConnection();
