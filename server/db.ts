@@ -19,8 +19,9 @@ if (!databaseUrl) {
 // Create PostgreSQL client with Drizzle ORM only if DATABASE_URL is provided
 // For querying - use prepared statements by default
 const queryClient = databaseUrl ? postgres(databaseUrl, { 
-  // No SSL for Replit's internal PostgreSQL database
-  ssl: false,
+  // When connecting to PostgreSQL in Replit, we need to set ssl to 'prefer'
+  // This allows both SSL and non-SSL connections
+  ssl: 'prefer',
   prepare: true,
   debug: true,
   max: 10
@@ -28,8 +29,9 @@ const queryClient = databaseUrl ? postgres(databaseUrl, {
 
 // For migrations - disable prepared statements
 const migrationClient = databaseUrl ? postgres(databaseUrl, { 
-  // No SSL for Replit's internal PostgreSQL database
-  ssl: false,
+  // When connecting to PostgreSQL in Replit, we need to set ssl to 'prefer'
+  // This allows both SSL and non-SSL connections
+  ssl: 'prefer',
   max: 1
 }) : null;
 
