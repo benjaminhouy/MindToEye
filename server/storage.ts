@@ -302,39 +302,42 @@ import { postgresStorage } from './db';
 import { supabaseStorage, supabase } from './supabase';
 
 // Determine which storage implementation to use
+// Set up the storage implementation with fallback logic
 let storageImplementation: IStorage;
 
-// Check Supabase connection
-let supabaseReady = false;
-if (supabase) {
+// First, try to use the local PostgreSQL database
+if (process.env.DATABASE_URL) {
+  console.log('Using PostgreSQL database backend');
+  storageImplementation = postgresStorage;
+} 
+// If local database not available, check if Supabase is properly initialized
+else if (supabase) {
   console.log('Using Supabase client storage backend');
-  supabaseReady = true;
-  
-  // Test connection by trying to get a user
-  supabase.from('users')
-    .select('id')
-    .limit(1)
-    .then(({ data, error }) => {
-      if (error) {
-        console.error('Supabase connection error:', error.message);
-        supabaseReady = false;
-        console.log('Falling back to in-memory storage due to Supabase error');
-        storageImplementation = new MemStorage();
-      }
-    })
-    .catch(err => {
-      console.error('Error connecting to Supabase:', err);
-      supabaseReady = false;
-      console.log('Falling back to in-memory storage due to Supabase error');
-      storageImplementation = new MemStorage();
-    });
-}
-
-// Initialize with Supabase if available, otherwise use in-memory
-if (supabaseReady) {
   storageImplementation = supabaseStorage;
+  
+  // We'll do an async check for tables and create them if needed
+  (async () => {
+    try {
+      const { data, error } = await supabase.from('users').select('id').limit(1);
+      
+      if (error && error.message.includes('relation "public.users" does not exist')) {
+        console.warn('Supabase tables do not exist yet. Please create them manually using SQL Editor.');
+        console.warn('Some Supabase tables are missing. Using in-memory storage as fallback.');
+        console.warn('Run `node -r tsx/register server/init-supabase-db.ts` to create Supabase tables.');
+        storageImplementation = new MemStorage();
+      } else if (error) {
+        console.warn('Warning: Supabase connection error:', error.message);
+        console.warn('Application will continue using Supabase but operations may fail');
+      } else {
+        console.log('Successfully connected to Supabase database');
+      }
+    } catch (err: unknown) {
+      console.warn('Warning: Error connecting to Supabase:', err);
+      console.warn('Application will continue using Supabase but operations may fail');
+    }
+  })();
 } else {
-  console.log('Using in-memory storage backend');
+  console.log('Using in-memory storage backend - No database connection available');
   storageImplementation = new MemStorage();
 }
 

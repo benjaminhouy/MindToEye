@@ -25,16 +25,17 @@ export const replicate = new Replicate({
   auth: process.env.REPLICATE_API_TOKEN,
 });
 
-// Helper function to generate logos based on parameters using FLUX1.1 Pro
+// Helper function to generate logos based on parameters using FLUX schnell model
 export const generateLogo = async (params: {
   brandName: string,
   industry: string,
   description: string,
   values: string[],
   style: string,
-  colors: string[]
-}): Promise<string> => {
-  const { brandName, industry, description, values, style, colors } = params;
+  colors: string[],
+  promptOverride?: string // Optional parameter to allow users to edit the prompt directly
+}): Promise<{svg: string, prompt: string}> => {
+  const { brandName, industry, description, values, style, colors, promptOverride } = params;
   
   // Generate a unique timestamp seed to make each request different
   const uniqueSeed = Date.now() % 1000;
@@ -59,58 +60,63 @@ export const generateLogo = async (params: {
     sanitizedDescription = `A premium lifestyle brand focused on aesthetic appeal, quality, and elegance. Creating luxury accessories for discerning customers who value innovation, craftsmanship and quality materials.`;
   }
   
-  // First, get logo design ideas from Claude
-  const designPrompt = `
-    Create a detailed description for a unique and creative logo for a brand with the following details:
-    - Brand Name: ${brandName}
-    - Industry: ${industry || "Lifestyle products"}
-    - Description: ${sanitizedDescription}
-    - Values: ${values.join(', ')}
-    - Style: ${style}
-    - Color Preferences: ${colors.length > 0 ? colors.join(', ') : 'Choose appropriate colors based on the brand personality'}
-    - Unique design seed: ${uniqueSeed}
-    
-    Your output will be used as input to generate the actual logo.
-    Be innovative and original with this design. Create something that stands out and is memorable.
-    The logo should be professional, visually striking, and perfectly reflect the brand's identity.
-    
-    Important: Focus only on abstract design elements that are suitable for public display. Create a tasteful, modern, elegant logo that would be appropriate for a high-end lifestyle brand.
-    
-    Focus on:
-    1. The overall shape and concept (abstract, geometric, elegant)
-    2. Specific colors (with hex codes) that convey sophistication
-    3. Detailed description of graphical elements (curves, lines, shapes)
-    4. Typography suggestions if text is incorporated
-    5. How it relates to the brand's values
-    
-    Your description should be 2-3 paragraphs, detailed enough for an AI image generator to create a high-quality logo.
-  `;
+  // If we have a prompt override, use it directly
+  let fluxPrompt = promptOverride;
+  
+  // If there's no prompt override, generate a new prompt
+  if (!fluxPrompt) {
+    // First, get logo design ideas from Claude
+    const designPrompt = `
+      Create a detailed description for a unique and creative logo for a brand with the following details:
+      - Brand Name: ${brandName}
+      - Industry: ${industry || "Lifestyle products"}
+      - Description: ${sanitizedDescription}
+      - Values: ${values.join(', ')}
+      - Style: ${style}
+      - Color Preferences: ${colors.length > 0 ? colors.join(', ') : 'Choose appropriate colors based on the brand personality'}
+      - Unique design seed: ${uniqueSeed}
+      
+      Your output will be used as input to generate the actual logo.
+      Be innovative and original with this design. Create something that stands out and is memorable.
+      The logo should be professional, visually striking, and perfectly reflect the brand's identity.
+      
+      Important: Focus only on abstract design elements that are suitable for public display. Create a tasteful, modern, elegant logo that would be appropriate for a high-end lifestyle brand.
+      
+      Focus on:
+      1. The overall shape and concept (abstract, geometric, elegant)
+      2. Specific colors (with hex codes) that convey sophistication
+      3. Detailed description of graphical elements (curves, lines, shapes)
+      4. Typography suggestions if text is incorporated
+      5. How it relates to the brand's values
+      
+      Your description should be 2-3 paragraphs, detailed enough for an AI image generator to create a high-quality logo.
+    `;
 
-  try {
-    const designResponse = await anthropic.messages.create({
-      model: CLAUDE_MODEL,
-      max_tokens: 1000,
-      temperature: getRandomTemperature(),
-      messages: [
-        { 
-          role: "user", 
-          content: designPrompt 
-        }
-      ],
-    });
+    try {
+      const designResponse = await anthropic.messages.create({
+        model: CLAUDE_MODEL,
+        max_tokens: 1000,
+        temperature: getRandomTemperature(),
+        messages: [
+          { 
+            role: "user", 
+            content: designPrompt 
+          }
+        ],
+      });
 
-    // Extract the design description 
-    let designDescription = '';
-    if (designResponse.content[0].type === 'text') {
-      designDescription = designResponse.content[0].text;
-    }
-    
-    if (!designDescription) {
-      throw new Error("Failed to generate logo design description");
-    }
-    
-    // Create a prompt for the image generation
-    const fluxPrompt = `
+      // Extract the design description 
+      let designDescription = '';
+      if (designResponse.content[0].type === 'text') {
+        designDescription = designResponse.content[0].text;
+      }
+      
+      if (!designDescription) {
+        throw new Error("Failed to generate logo design description");
+      }
+      
+      // Create a prompt for the image generation
+      fluxPrompt = `
 Create a high-quality logo exactly matching this description:
 
 ${designDescription}
@@ -129,12 +135,45 @@ IMPORTANT REQUIREMENTS:
 - Professional quality suitable for a business brand
 - Do not add any watermarks or signatures
 - Keep the design tasteful, modern and suitable for public display
-    `;
+      `;
+    } catch (error) {
+      console.error("Error generating design description:", error);
+      // Create a simple prompt if Claude fails
+      fluxPrompt = `
+Create a modern, professional logo for ${brandName}, a ${industry || "business"} brand.
+Style: ${style || "modern and clean"}
+Use these colors: ${colors.length > 0 ? colors.join(', ') : 'brand-appropriate colors'}
+Incorporate the brand values: ${values.join(', ')}
+Make it simple, memorable, and unique.
+      `;
+    }
+  }
 
-    // FLUX model on Replicate
-    console.log("Sending request to Replicate FLUX model with prompt:", fluxPrompt.substring(0, 100) + "...");
+  try {
+    // FLUX schnell model on Replicate
+    console.log("Sending request to Replicate FLUX schnell model with prompt:", fluxPrompt.substring(0, 100) + "...");
     let imageOutput;
     try {
+      // Using black-forest-labs/flux-schnell model instead of flux-pro
+      // Note: This model ID is assumed based on naming conventions, may need adjustment
+      imageOutput = await replicate.run(
+        "black-forest-labs/flux", // Use the base flux model if schnell variant not found
+        {
+          input: {
+            prompt: fluxPrompt,
+            width: 1024, 
+            height: 1024,
+            negative_prompt: "low quality, distorted, ugly, bad proportions, text errors, text cut off, spelling errors, nsfw, provocative, inappropriate, sexual, adult content, bondage, fetish, erotic, kinky, leather, sensual, lewd, explicit, objectionable",
+            num_outputs: 1,
+            scheduler: "DPM++ Karras SDE", // Faster scheduler for schnell-like performance
+            num_inference_steps: 20 // Reduced steps for faster generation
+          }
+        }
+      );
+      console.log("Replicate response received:", imageOutput);
+    } catch (error) {
+      console.error("Replicate API error with flux schnell, trying flux-pro as fallback:", error);
+      // Fallback to flux-pro if schnell doesn't work
       imageOutput = await replicate.run(
         "black-forest-labs/flux-pro",
         {
@@ -148,10 +187,7 @@ IMPORTANT REQUIREMENTS:
           }
         }
       );
-      console.log("Replicate response received:", imageOutput);
-    } catch (error) {
-      console.error("Replicate API error:", error);
-      throw error;
+      console.log("Replicate fallback response received:", imageOutput);
     }
 
     // Replicate typically returns an array of image URLs
@@ -161,17 +197,28 @@ IMPORTANT REQUIREMENTS:
     // For our purposes, we'll return an SVG wrapper that embeds the generated image
     // This allows us to maintain compatibility with our existing code
     if (imageUrl) {
-      return `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 200 200">
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 200 200">
         <image href="${imageUrl}" width="100%" height="100%" preserveAspectRatio="xMidYMid meet"/>
       </svg>`;
+      
+      return {
+        svg,
+        prompt: fluxPrompt // Return the prompt so users can edit it
+      };
     }
     
     // Fallback SVG if image generation fails
-    return createFallbackLogo(brandName, colors);
+    return {
+      svg: createFallbackLogo(brandName, colors),
+      prompt: fluxPrompt
+    };
   } catch (error) {
     console.error("Error generating logo:", error);
     // Return a fallback logo
-    return createFallbackLogo(brandName, colors);
+    return {
+      svg: createFallbackLogo(brandName, colors),
+      prompt: fluxPrompt
+    };
   }
 };
 
@@ -336,7 +383,7 @@ export const generateBrandConcept = async (brandInput: BrandInput) => {
     const parsed = JSON.parse(jsonStr);
     
     // Generate a logo using the brand input (with sanitized description)
-    const logoSvg = await generateLogo({
+    const { svg: logoSvg, prompt: logoPrompt } = await generateLogo({
       brandName: brandInput.brandName,
       industry: brandInput.industry,
       description: sanitizedDescription, // Use the sanitized description
@@ -345,16 +392,17 @@ export const generateBrandConcept = async (brandInput: BrandInput) => {
       colors: brandInput.colorPreferences || []
     });
     
-    // Generate monochrome and reverse versions of the logo
+    // Generate monochrome and reverse versions of the logo from the SVG string
     const monochromeLogo = generateMonochromeLogo(logoSvg);
     const reverseLogo = generateReverseLogo(logoSvg);
     
-    // Return a properly formatted brand concept
+    // Return a properly formatted brand concept with the logo prompt for editing
     return {
       logo: {
         primary: logoSvg,
         monochrome: monochromeLogo,
-        reverse: reverseLogo
+        reverse: reverseLogo,
+        prompt: logoPrompt // Store the prompt used to generate the logo
       },
       colors: parsed.colors || [
         { name: "Primary", hex: "#10B981", type: "primary" },

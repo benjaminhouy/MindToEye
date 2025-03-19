@@ -1,6 +1,43 @@
-import { createClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
 import type { IStorage } from './storage';
 import { User, InsertUser, Project, InsertProject, BrandConcept, InsertBrandConcept } from '@shared/schema';
+import * as dotenv from 'dotenv';
+
+// Define Supabase database schema
+type Database = {
+  public: {
+    Tables: {
+      users: {
+        Row: User;
+        Insert: InsertUser;
+      };
+      projects: {
+        Row: Project;
+        Insert: {
+          name: string;
+          client_name: string | null;
+          user_id: number;
+          created_at: string;
+        };
+      };
+      brand_concepts: {
+        Row: BrandConcept;
+        Insert: {
+          project_id: number;
+          name: string;
+          brand_inputs: any;
+          brand_output: any;
+          is_active: boolean;
+          created_at: string;
+        };
+      };
+    };
+  };
+};
+
+// Load environment variables from .env.supabase
+console.log('Loading environment variables from .env.supabase');
+dotenv.config({ path: '.env.supabase' });
 
 // Helper function for debugging Supabase errors
 function logSupabaseError(operation: string, error: any) {
@@ -20,11 +57,13 @@ const supabaseKey = process.env.SUPABASE_ANON_KEY;
 // Ensure environment variables are set
 if (!supabaseUrl || !supabaseKey) {
   console.warn("Supabase URL or key is missing. In-memory storage will be used instead.");
+} else {
+  console.log("Supabase environment variables loaded successfully");
 }
 
-// Create Supabase client only if both URL and key are provided
-export const supabase = supabaseUrl && supabaseKey
-  ? createClient(supabaseUrl, supabaseKey, {
+// Create Supabase client with typed database schema
+export const supabase: SupabaseClient<Database> | null = supabaseUrl && supabaseKey
+  ? createClient<Database>(supabaseUrl, supabaseKey, {
       db: {
         schema: 'public',
       },
@@ -34,7 +73,7 @@ export const supabase = supabaseUrl && supabaseKey
       },
       global: {
         headers: {
-          'x-application-name': 'mindtoeye'
+          'x-application-name': 'MindToEye'
         },
       },
     })

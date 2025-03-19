@@ -1,41 +1,24 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
-import fs from 'fs';
-import path from 'path';
 
-// Load environment variables from .env.supabase if it exists
-const envSupabasePath = path.join(process.cwd(), '.env.supabase');
-if (fs.existsSync(envSupabasePath)) {
-  console.log('Loading environment variables from .env.supabase');
-  const envConfig = fs.readFileSync(envSupabasePath, 'utf8').split('\n')
-    .filter(line => line.trim() && !line.startsWith('#'))
-    .reduce((acc, line) => {
-      const [key, value] = line.split('=');
-      if (key && value) {
-        acc[key.trim()] = value.trim();
-      }
-      return acc;
-    }, {});
-  
-  // Set environment variables
-  Object.entries(envConfig).forEach(([key, value]) => {
-    process.env[key] = value;
-  });
-  
-  console.log('Supabase environment variables loaded successfully');
-}
-
-import { initializeDatabase } from './init-db';
+// Import necessary modules
+import { createTablesIfNotExist } from './db';
 
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Initialize database
-initializeDatabase().catch(err => {
-  console.error('Failed to initialize database:', err);
-});
+// Initialize the local PostgreSQL database
+console.log('Initializing local PostgreSQL database...');
+if (process.env.DATABASE_URL) {
+  console.log('Local PostgreSQL database detected. Tables will be created if they don\'t exist.');
+  createTablesIfNotExist().catch(err => {
+    console.error('Failed to create database tables:', err);
+  });
+} else {
+  console.warn('No DATABASE_URL found. Make sure PostgreSQL database is properly configured.');
+}
 
 app.use((req, res, next) => {
   const start = Date.now();

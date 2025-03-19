@@ -17,9 +17,13 @@ if (!databaseUrl) {
 }
 
 // Create PostgreSQL client with Drizzle ORM only if DATABASE_URL is provided
+// Determine if this is a Replit PostgreSQL database
+const isReplitDb = databaseUrl && !databaseUrl.includes('supabase');
+
 // For querying - use prepared statements by default
 const queryClient = databaseUrl ? postgres(databaseUrl, { 
-  ssl: 'require',
+  // Don't use SSL for Replit's internal PostgreSQL database
+  ...(isReplitDb ? {} : { ssl: 'require' }),
   prepare: true,
   debug: true,
   max: 10
@@ -27,15 +31,16 @@ const queryClient = databaseUrl ? postgres(databaseUrl, {
 
 // For migrations - disable prepared statements
 const migrationClient = databaseUrl ? postgres(databaseUrl, { 
-  ssl: 'require',
+  // Don't use SSL for Replit's internal PostgreSQL database
+  ...(isReplitDb ? {} : { ssl: 'require' }),
   max: 1
 }) : null;
 
 // Initialize Drizzle ORM
-const db = queryClient ? drizzle(queryClient) : null;
+export const db = queryClient ? drizzle(queryClient) : null;
 
 // Create schema tables if they don't exist
-async function createTablesIfNotExist() {
+export async function createTablesIfNotExist() {
   if (!migrationClient) return;
   
   try {

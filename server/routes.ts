@@ -800,21 +800,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Import the generateLogo function
           const { generateLogo, generateMonochromeLogo, generateReverseLogo } = await import('./openai');
           
-          // Check if we have a custom description
+          // Check if we have a custom description or prompt override
           let customDescription = '';
-          if (newValues && typeof newValues === 'object' && newValues.description) {
-            customDescription = newValues.description;
-            console.log(`Generating logo with custom description: ${customDescription}`);
+          let promptOverride = '';
+          
+          if (newValues && typeof newValues === 'object') {
+            // Check for custom description
+            if (newValues.description) {
+              customDescription = newValues.description;
+              console.log(`Generating logo with custom description: ${customDescription}`);
+            }
+            
+            // Check for prompt override (takes precedence over description)
+            if (newValues.prompt) {
+              promptOverride = newValues.prompt;
+              console.log(`Generating logo with custom prompt override`);
+            }
           }
           
           // Generate a new logo using the current brand input
-          const logoSvg = await generateLogo({
+          const { svg: logoSvg, prompt: logoPrompt } = await generateLogo({
             brandName: brandInputs.brandName,
             industry: brandInputs.industry || '',
             description: customDescription || brandInputs.description,
             values: brandInputs.values.map((v: any) => v.value),
             style: brandInputs.designStyle,
-            colors: brandInputs.colorPreferences || []
+            colors: brandInputs.colorPreferences || [],
+            promptOverride: promptOverride // Use the prompt override if provided
           });
           
           // Generate monochrome and reverse versions
@@ -825,7 +837,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           brandOutput.logo = {
             primary: logoSvg,
             monochrome: monochromeLogo,
-            reverse: reverseLogo
+            reverse: reverseLogo,
+            prompt: logoPrompt // Store the prompt for future edits
           };
           
           // Update the logo description in the brand output to match the custom description
