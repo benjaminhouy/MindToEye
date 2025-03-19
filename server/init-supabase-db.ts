@@ -4,9 +4,8 @@ import fs from 'fs';
 import path from 'path';
 import { PostgrestError } from '@supabase/supabase-js';
 
-// Load environment variables from .env.supabase
-console.log('Loading environment variables from .env.supabase');
-dotenv.config({ path: '.env.supabase' });
+// No longer loading Supabase environment variables
+// Using local PostgreSQL database instead
 
 /**
  * Initialize Supabase database tables according to schema

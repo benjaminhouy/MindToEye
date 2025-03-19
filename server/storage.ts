@@ -297,45 +297,17 @@ export class MemStorage implements IStorage {
   }
 }
 
-// Import storage implementations
-import { postgresStorage } from './db';
-import { supabaseStorage, supabase } from './supabase';
+// Import PostgreSQL storage implementation
+import { postgresStorage, db } from './db';
 
 // Determine which storage implementation to use
 // Set up the storage implementation with fallback logic
 let storageImplementation: IStorage;
 
-// First, try to use the local PostgreSQL database
-if (process.env.DATABASE_URL) {
+// Use PostgreSQL database if available
+if (process.env.DATABASE_URL && db) {
   console.log('Using PostgreSQL database backend');
   storageImplementation = postgresStorage;
-} 
-// If local database not available, check if Supabase is properly initialized
-else if (supabase) {
-  console.log('Using Supabase client storage backend');
-  storageImplementation = supabaseStorage;
-  
-  // We'll do an async check for tables and create them if needed
-  (async () => {
-    try {
-      const { data, error } = await supabase.from('users').select('id').limit(1);
-      
-      if (error && error.message.includes('relation "public.users" does not exist')) {
-        console.warn('Supabase tables do not exist yet. Please create them manually using SQL Editor.');
-        console.warn('Some Supabase tables are missing. Using in-memory storage as fallback.');
-        console.warn('Run `node -r tsx/register server/init-supabase-db.ts` to create Supabase tables.');
-        storageImplementation = new MemStorage();
-      } else if (error) {
-        console.warn('Warning: Supabase connection error:', error.message);
-        console.warn('Application will continue using Supabase but operations may fail');
-      } else {
-        console.log('Successfully connected to Supabase database');
-      }
-    } catch (err: unknown) {
-      console.warn('Warning: Error connecting to Supabase:', err);
-      console.warn('Application will continue using Supabase but operations may fail');
-    }
-  })();
 } else {
   console.log('Using in-memory storage backend - No database connection available');
   storageImplementation = new MemStorage();

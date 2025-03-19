@@ -35,9 +35,8 @@ type Database = {
   };
 };
 
-// Load environment variables from .env.supabase
-console.log('Loading environment variables from .env.supabase');
-dotenv.config({ path: '.env.supabase' });
+// No longer loading Supabase environment variables
+// Using local PostgreSQL database instead
 
 // Helper function for debugging Supabase errors
 function logSupabaseError(operation: string, error: any) {
