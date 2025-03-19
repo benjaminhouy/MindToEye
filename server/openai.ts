@@ -13,7 +13,7 @@ const CLAUDE_MODEL = "claude-3-5-sonnet-20240620";
 
 // Random value between 0.3 and 0.9 to add variability to responses
 // (Claude API requires temperature between 0 and 1)
-const getRandomTemperature = () => 0.3 + Math.random() * 0.6;
+const getRandomTemperature = (): number => 0.3 + Math.random() * 0.6;
 
 // Initialize Anthropic with API key from environment
 export const anthropic = new Anthropic({
@@ -150,14 +150,13 @@ Make it simple, memorable, and unique.
   }
 
   try {
-    // FLUX schnell model on Replicate
-    console.log("Sending request to Replicate FLUX schnell model with prompt:", fluxPrompt.substring(0, 100) + "...");
+    // Replicate model for logo generation
+    console.log("Sending request to Replicate logo generation model with prompt:", fluxPrompt.substring(0, 100) + "...");
     let imageOutput;
     try {
-      // Using black-forest-labs/flux-schnell model instead of flux-pro
-      // Note: This model ID is assumed based on naming conventions, may need adjustment
+      // Using the correct flux-schnell model per user specification
       imageOutput = await replicate.run(
-        "black-forest-labs/flux", // Use the base flux model if schnell variant not found
+        "black-forest-labs/flux-schnell", 
         {
           input: {
             prompt: fluxPrompt,
@@ -165,29 +164,39 @@ Make it simple, memorable, and unique.
             height: 1024,
             negative_prompt: "low quality, distorted, ugly, bad proportions, text errors, text cut off, spelling errors, nsfw, provocative, inappropriate, sexual, adult content, bondage, fetish, erotic, kinky, leather, sensual, lewd, explicit, objectionable",
             num_outputs: 1,
-            scheduler: "DPM++ Karras SDE", // Faster scheduler for schnell-like performance
-            num_inference_steps: 20 // Reduced steps for faster generation
+            scheduler: "DPM++ Karras SDE",
+            num_inference_steps: 20
           }
         }
       );
       console.log("Replicate response received:", imageOutput);
     } catch (error) {
-      console.error("Replicate API error with flux schnell, trying flux-pro as fallback:", error);
-      // Fallback to flux-pro if schnell doesn't work
-      imageOutput = await replicate.run(
-        "black-forest-labs/flux-pro",
-        {
-          input: {
-            prompt: fluxPrompt,
-            width: 1024, 
-            height: 1024,
-            negative_prompt: "low quality, distorted, ugly, bad proportions, text errors, text cut off, spelling errors, nsfw, provocative, inappropriate, sexual, adult content, bondage, fetish, erotic, kinky, leather, sensual, lewd, explicit, objectionable",
-            num_outputs: 1,
-            num_inference_steps: 25
+      console.error("Replicate API error with flux-schnell, trying fallback model:", error);
+      // Fallback to stability-ai/sdxl if flux-schnell doesn't work
+      try {
+        imageOutput = await replicate.run(
+          "stability-ai/sdxl", // Use a different model as fallback
+          {
+            input: {
+              prompt: fluxPrompt,
+              width: 1024, 
+              height: 1024,
+              negative_prompt: "low quality, distorted, ugly, bad proportions, text errors, text cut off, spelling errors, nsfw, provocative, inappropriate, sexual, adult content, bondage, fetish, erotic, kinky, leather, sensual, lewd, explicit, objectionable",
+              num_outputs: 1,
+              scheduler: "K_EULER",
+              num_inference_steps: 25
+            }
           }
-        }
-      );
-      console.log("Replicate fallback response received:", imageOutput);
+        );
+        console.log("Replicate fallback response received:", imageOutput);
+      } catch (secondError) {
+        // If both fail, create a simple SVG as ultimate fallback
+        console.error("All Replicate models failed, using fallback SVG generator:", secondError);
+        return {
+          svg: createFallbackLogo(brandName, colors.length > 0 ? colors : ['#3366CC', '#FF9900']),
+          prompt: fluxPrompt
+        };
+      }
     }
 
     // Replicate typically returns an array of image URLs
