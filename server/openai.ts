@@ -153,50 +153,62 @@ Make it simple, memorable, and unique.
     // Replicate model for logo generation
     console.log("Sending request to Replicate logo generation model with prompt:", fluxPrompt.substring(0, 100) + "...");
     let imageOutput;
+    // Try to create a logo using Replicate models, with fallbacks
     try {
-      // Using the correct flux-schnell model per user specification
-      imageOutput = await replicate.run(
-        "black-forest-labs/flux-schnell", 
-        {
+      // First attempt with prediction directly - using API version format
+      try {
+        console.log("Trying to use Replicate with black-forest-labs/flux-schnell model");
+        const prediction = await replicate.predictions.create({
+          version: "d99d8f1775c65bcfdff0b5d4bbc2b51782a013e351ea902e2926390c2b6eca66",
           input: {
             prompt: fluxPrompt,
-            width: 1024, 
+            width: 1024,
             height: 1024,
-            negative_prompt: "low quality, distorted, ugly, bad proportions, text errors, text cut off, spelling errors, nsfw, provocative, inappropriate, sexual, adult content, bondage, fetish, erotic, kinky, leather, sensual, lewd, explicit, objectionable",
+            negative_prompt: "low quality, distorted, ugly, bad proportions, text errors, text cut off, spelling errors, nsfw, provocative, inappropriate, sexual, adult content",
             num_outputs: 1,
-            scheduler: "DPM++ Karras SDE",
             num_inference_steps: 20
-          }
-        }
-      );
-      console.log("Replicate response received:", imageOutput);
-    } catch (error) {
-      console.error("Replicate API error with flux-schnell, trying fallback model:", error);
-      // Fallback to stability-ai/sdxl if flux-schnell doesn't work
-      try {
-        imageOutput = await replicate.run(
-          "stability-ai/sdxl", // Use a different model as fallback
-          {
+          },
+        });
+        
+        // Wait for the prediction to complete
+        const result = await replicate.wait(prediction);
+        console.log("Replicate prediction completed:", result);
+        imageOutput = result.output;
+      } catch (error) {
+        console.error("First Replicate attempt failed, trying alternative approach:", error);
+        
+        // Try alternative model - SD 3
+        try {
+          console.log("Trying alternative model: stabilityai/stable-diffusion-3");
+          const prediction = await replicate.predictions.create({
+            version: "539ae36668f741dce42bd3b5fa2af5a7a671ae2b80fb373e4526d508b488f981", // SD3 medium
             input: {
               prompt: fluxPrompt,
-              width: 1024, 
+              width: 1024,
               height: 1024,
-              negative_prompt: "low quality, distorted, ugly, bad proportions, text errors, text cut off, spelling errors, nsfw, provocative, inappropriate, sexual, adult content, bondage, fetish, erotic, kinky, leather, sensual, lewd, explicit, objectionable",
-              num_outputs: 1,
-              scheduler: "K_EULER",
-              num_inference_steps: 25
-            }
-          }
-        );
-        console.log("Replicate fallback response received:", imageOutput);
-      } catch (secondError) {
-        // If both fail, create a simple SVG as ultimate fallback
-        console.error("All Replicate models failed, using fallback SVG generator:", secondError);
-        return {
-          svg: createFallbackLogo(brandName, colors.length > 0 ? colors : ['#3366CC', '#FF9900']),
-          prompt: fluxPrompt
-        };
+              negative_prompt: "low quality, distorted, ugly, bad proportions, text errors, text cut off, spelling errors"
+            },
+          });
+          
+          // Wait for the prediction to complete
+          const result = await replicate.wait(prediction);
+          console.log("Alternative model prediction completed:", result);
+          imageOutput = result.output;
+        } catch (secondError) {
+          // If both fail, use simple SVG fallback
+          console.error("All Replicate models failed, using fallback SVG generator:", secondError);
+          return {
+            svg: createFallbackLogo(brandName, colors.length > 0 ? colors : ['#3366CC', '#FF9900']),
+            prompt: fluxPrompt
+          };
+        }
       }
+    } catch (outerError) {
+      console.error("Unexpected error in Replicate processing:", outerError);
+      return {
+        svg: createFallbackLogo(brandName, colors.length > 0 ? colors : ['#3366CC', '#FF9900']),
+        prompt: fluxPrompt
+      };
     }
 
     // Replicate typically returns an array of image URLs
