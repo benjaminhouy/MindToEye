@@ -82,11 +82,12 @@ export const generateLandingPageHero = async (params: {
 
     // Extract JSON from response
     let jsonStr = '';
+    let heroContent = null;
     if (response.content[0].type === 'text') {
       const content = response.content[0].text;
       if (!content) throw new Error("Empty response from Claude");
       
-      // Extract JSON from the response (Claude might add backticks or markdown formatting)
+      // First, try to extract JSON from the response using regex
       const jsonMatch = content.match(/\{[\s\S]*\}/);
       jsonStr = jsonMatch ? jsonMatch[0] : content;
       
@@ -97,26 +98,64 @@ export const generateLandingPageHero = async (params: {
       // Sanitize JSON before parsing - remove any characters that might cause parsing issues
       jsonStr = jsonStr.replace(/[\u0000-\u001F\u007F-\u009F]/g, "");
       
+      // Try direct parsing first
       try {
-        // Additional validation to ensure the JSON is properly formatted
-        if (!jsonStr.trim().startsWith('{') || !jsonStr.trim().endsWith('}')) {
-          throw new Error("Invalid JSON structure");
+        heroContent = JSON.parse(jsonStr);
+        console.log("Successfully parsed landing page hero JSON response directly");
+      } catch (error) {
+        // If direct parsing fails, try more advanced recovery
+        const directParseError = error as Error;
+        console.log("Direct landing page hero JSON parsing failed, attempting recovery:", directParseError.message);
+        
+        try {
+          // Ensure we have proper JSON structure
+          if (!jsonStr.trim().startsWith('{')) {
+            const openBraceIndex = jsonStr.indexOf('{');
+            if (openBraceIndex >= 0) {
+              jsonStr = jsonStr.substring(openBraceIndex);
+              console.log("Trimmed content before opening brace");
+            } else {
+              // No opening brace found, wrap the content
+              jsonStr = '{' + jsonStr;
+              console.log("Added missing opening brace");
+            }
+          }
+          
+          if (!jsonStr.trim().endsWith('}')) {
+            const closeBraceIndex = jsonStr.lastIndexOf('}');
+            if (closeBraceIndex >= 0) {
+              jsonStr = jsonStr.substring(0, closeBraceIndex + 1);
+              console.log("Trimmed content after closing brace");
+            } else {
+              // No closing brace found, add one
+              jsonStr = jsonStr + '}';
+              console.log("Added missing closing brace");
+            }
+          }
+          
+          // Replace any triple quotes with double quotes (common Claude markdown issue)
+          jsonStr = jsonStr.replace(/```json/g, '').replace(/```/g, '');
+          
+          // Fix common Claude JSON formatting issues
+          jsonStr = jsonStr.replace(/(\w+)(?=:)/g, '"$1"').replace(/'/g, '"');
+          
+          // Try parsing again after cleanup
+          heroContent = JSON.parse(jsonStr);
+          console.log("Successfully parsed landing page hero JSON after cleanup");
+        } catch (recoveryError) {
+          // If all parsing attempts fail, log and throw error
+          console.error("All landing page hero JSON parsing attempts failed:", recoveryError, 
+            "Raw response (first 300 chars):", jsonStr.substring(0, 300));
+          throw new Error("Could not parse Claude landing page hero response as valid JSON after multiple attempts");
         }
-      } catch (validateError) {
-        console.error("JSON validation error:", validateError);
-        throw new Error("Invalid JSON structure in Claude response");
       }
     } else {
       throw new Error("Unexpected response format from Claude");
     }
     
-    let heroContent;
-    try {
-      // Parse the JSON response with additional error handling
-      heroContent = JSON.parse(jsonStr);
-    } catch (jsonError) {
-      console.error("Failed to parse Claude response as JSON:", jsonError, "Raw response:", jsonStr);
-      throw new Error("Could not parse Claude response as valid JSON");
+    // If we reach here, we have a successfully parsed JSON object
+    if (!heroContent) {
+      throw new Error("Failed to parse Claude landing page hero response as JSON despite recovery attempts");
     }
     
     // Return the parsed hero content
@@ -501,11 +540,12 @@ export const generateBrandConcept = async (brandInput: BrandInput) => {
 
     // Check if the response has content of type "text"
     let jsonStr = '';
+    let parsed = null;
     if (response.content[0].type === 'text') {
       const content = response.content[0].text;
       if (!content) throw new Error("Empty response from Claude");
       
-      // Extract JSON from the response (Claude might add backticks or markdown formatting)
+      // First, try to extract JSON from the response using regex
       const jsonMatch = content.match(/\{[\s\S]*\}/);
       jsonStr = jsonMatch ? jsonMatch[0] : content;
       
@@ -516,27 +556,64 @@ export const generateBrandConcept = async (brandInput: BrandInput) => {
       // Sanitize JSON before parsing - remove any characters that might cause parsing issues
       jsonStr = jsonStr.replace(/[\u0000-\u001F\u007F-\u009F]/g, "");
       
+      // Try direct parsing first
       try {
-        // Validate JSON structure
-        if (!jsonStr.trim().startsWith('{') || !jsonStr.trim().endsWith('}')) {
-          throw new Error("Invalid JSON structure");
+        parsed = JSON.parse(jsonStr);
+        console.log("Successfully parsed JSON response directly");
+      } catch (error) {
+        // If direct parsing fails, try more advanced recovery
+        const directParseError = error as Error;
+        console.log("Direct JSON parsing failed, attempting recovery:", directParseError.message);
+        
+        try {
+          // Ensure we have proper JSON structure
+          if (!jsonStr.trim().startsWith('{')) {
+            const openBraceIndex = jsonStr.indexOf('{');
+            if (openBraceIndex >= 0) {
+              jsonStr = jsonStr.substring(openBraceIndex);
+              console.log("Trimmed content before opening brace");
+            } else {
+              // No opening brace found, wrap the content
+              jsonStr = '{' + jsonStr;
+              console.log("Added missing opening brace");
+            }
+          }
+          
+          if (!jsonStr.trim().endsWith('}')) {
+            const closeBraceIndex = jsonStr.lastIndexOf('}');
+            if (closeBraceIndex >= 0) {
+              jsonStr = jsonStr.substring(0, closeBraceIndex + 1);
+              console.log("Trimmed content after closing brace");
+            } else {
+              // No closing brace found, add one
+              jsonStr = jsonStr + '}';
+              console.log("Added missing closing brace");
+            }
+          }
+          
+          // Replace any triple quotes with double quotes (common Claude markdown issue)
+          jsonStr = jsonStr.replace(/```json/g, '').replace(/```/g, '');
+          
+          // Fix common Claude JSON formatting issues
+          jsonStr = jsonStr.replace(/(\w+)(?=:)/g, '"$1"').replace(/'/g, '"');
+          
+          // Try parsing again after cleanup
+          parsed = JSON.parse(jsonStr);
+          console.log("Successfully parsed JSON after cleanup");
+        } catch (recoveryError) {
+          // If all parsing attempts fail, log and throw error
+          console.error("All JSON parsing attempts failed:", recoveryError, 
+            "Raw response (first 300 chars):", jsonStr.substring(0, 300));
+          throw new Error("Could not parse Claude response as valid JSON after multiple attempts");
         }
-      } catch (validateError) {
-        console.error("JSON validation error:", validateError);
-        throw new Error("Invalid JSON structure in Claude response");
       }
     } else {
       throw new Error("Unexpected response format from Claude");
     }
     
-    let parsed;
-    try {
-      // Parse the JSON with error handling
-      parsed = JSON.parse(jsonStr);
-    } catch (jsonError) {
-      console.error("Failed to parse Claude brand concept response:", jsonError, 
-        "Raw response (first 200 chars):", jsonStr.substring(0, 200));
-      throw new Error("Could not parse Claude response as valid JSON");
+    // If we reach here, we have a successfully parsed JSON object
+    if (!parsed) {
+      throw new Error("Failed to parse Claude response as JSON despite recovery attempts");
     }
     
     // Generate a logo using the brand input (with sanitized description)
