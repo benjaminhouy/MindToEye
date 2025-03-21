@@ -331,48 +331,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Test route for FLUX logo generation 
   app.post("/api/test-flux-logo", async (req: Request, res: Response) => {
     try {
-      const { brandName, prompt } = req.body;
+      const { brandName, industry, description, values, style, colors } = req.body;
       
-      if (!brandName || !prompt) {
-        return res.status(400).json({ error: "Brand name and prompt are required" });
+      if (!brandName) {
+        return res.status(400).json({ error: "Brand name is required" });
       }
       
-      log("Testing direct FLUX logo generation...");
-      // Initialize client for this test
-      const testReplicate = new Replicate({
-        auth: process.env.REPLICATE_API_TOKEN,
+      log("Testing FLUX logo generation with new parameters...");
+      
+      // Import the logo generation function
+      const { generateLogo } = await import('./openai');
+      
+      // Call the generate logo function with the full parameter set
+      const logoResult = await generateLogo({
+        brandName,
+        industry: industry || "Technology",
+        description: description || `${brandName} is a professional and innovative company.`,
+        values: Array.isArray(values) ? values : ["Innovation", "Quality", "Trust"],
+        style: style || "Modern",
+        colors: Array.isArray(colors) ? colors : ["#3366CC", "#FF9900"],
+        promptOverride: req.body.prompt // Optional prompt override
       });
       
-      log("Sending logo prompt to FLUX model...");
-      const output = await testReplicate.run(
-        "black-forest-labs/flux-pro",
-        {
-          input: {
-            prompt: prompt,
-            width: 1024,
-            height: 1024,
-            negative_prompt: "low quality, distorted, ugly, bad proportions, text errors",
-            num_outputs: 1,
-            num_inference_steps: 25
-          }
-        }
-      );
-      
-      log("FLUX logo response: " + JSON.stringify(output));
-      
-      // Get the URL from the response
-      const imageUrl = Array.isArray(output) ? output[0] : String(output);
-      
-      // Create an SVG wrapper for the image
-      const logoSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
-        <image href="${imageUrl}" width="200" height="200" preserveAspectRatio="xMidYMid meet"/>
-      </svg>`;
+      log("Logo generation successful");
       
       res.json({
         success: true,
         message: "FLUX logo generation successful",
-        imageUrl: imageUrl,
-        logoSvg: logoSvg
+        logoSvg: logoResult.svg,
+        prompt: logoResult.prompt
       });
     } catch (error: any) {
       console.error("FLUX logo generation error:", error);
