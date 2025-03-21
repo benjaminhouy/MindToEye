@@ -2,10 +2,8 @@ import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import LogoExploration from "./LogoExploration";
 import BrandElementsOverview from "./BrandElementsOverview";
-import BrandApplications from "./BrandApplications";
-import PresentationControls from "./PresentationControls";
 import { BrandConcept } from "@shared/schema";
-import { CalendarIcon, MoreHorizontalIcon, MaximizeIcon, RefreshCwIcon } from "lucide-react";
+import { MaximizeIcon, RefreshCwIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { format } from "date-fns";
@@ -368,11 +366,32 @@ const VisualizationPanel = ({ concept: initialConcept, projectId }: Visualizatio
       
       <LogoExploration brandOutput={brandOutput} />
       
+      {/* Landing Page Hero Preview */}
       <Card className="shadow overflow-hidden mt-6 p-6">
-        <BrandApplications brandOutput={brandOutput} onElementEdit={handleElementEdit} />
+        <h2 className="text-xl font-semibold text-gray-900 mb-4">Landing Page Hero</h2>
+        <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg p-8 flex flex-col items-center justify-center text-center">
+          <h1 className="text-3xl md:text-4xl font-bold" 
+              style={{
+                fontFamily: brandOutput?.typography?.headings || 'Montserrat',
+                color: brandOutput?.colors?.find((c: any) => c.type === 'primary')?.hex || '#10B981'
+              }}>
+            {brandOutput?.landingPageHero?.heading || 'Brand Name - Industry'}
+          </h1>
+          <p className="mt-4 max-w-xl text-gray-700"
+             style={{
+               fontFamily: brandOutput?.typography?.body || 'Open Sans'
+             }}>
+            {brandOutput?.landingPageHero?.subheading || 'Your brand description will appear here.'}
+          </p>
+          <button className="mt-6 px-6 py-2 rounded-md text-white"
+                  style={{
+                    backgroundColor: brandOutput?.colors?.find((c: any) => c.type === 'primary')?.hex || '#10B981',
+                    fontFamily: brandOutput?.typography?.body || 'Open Sans'
+                  }}>
+            {brandOutput?.landingPageHero?.ctaText || 'Learn More'}
+          </button>
+        </div>
       </Card>
-      
-      <PresentationControls />
     </>
   );
 };

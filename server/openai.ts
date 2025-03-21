@@ -417,7 +417,7 @@ export const generateBrandConcept = async (brandInput: BrandInput) => {
     const monochromeLogo = generateMonochromeLogo(logoSvg);
     const reverseLogo = generateReverseLogo(logoSvg);
     
-    // Return a properly formatted brand concept with the logo prompt for editing
+    // Return a simplified brand concept focused on MVP elements: logo, colors, typography, and landing page hero
     return {
       logo: {
         primary: logoSvg,
@@ -435,7 +435,11 @@ export const generateBrandConcept = async (brandInput: BrandInput) => {
         headings: "Montserrat",
         body: "Open Sans"
       },
-      mockups: [],
+      landingPageHero: {
+        heading: `${brandInput.brandName} - ${brandInput.industry || 'Brand'}`,
+        subheading: brandInput.description.substring(0, 120) + (brandInput.description.length > 120 ? '...' : ''),
+        ctaText: "Learn More"
+      },
       logoDescription: parsed.logoDescription || "Modern and minimalist logo design"
     };
   } catch (error) {
