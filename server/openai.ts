@@ -302,14 +302,15 @@ Make it simple, memorable, and unique.
   try {
     // Replicate model for logo generation
     console.log("Sending request to Replicate logo generation model with prompt:", fluxPrompt.substring(0, 100) + "...");
-    let imageOutput;
-    // Try to create a logo using Replicate models, with fallbacks
+    
     try {
-      // First attempt with prediction directly - using API version format
-      try {
-        console.log("Trying to use Replicate with black-forest-labs/flux-schnell model");
-        const prediction = await replicate.predictions.create({
-          version: "d99d8f1775c65bcfdff0b5d4bbc2b51782a013e351ea902e2926390c2b6eca66",
+      console.log("Trying to use Replicate with black-forest-labs/flux-schnell model");
+      
+      // Use the run method with the correct model identifier
+      // This handles getting the latest version and waiting for completion
+      const output = await replicate.run(
+        "black-forest-labs/flux-schnell", // Use model identifier instead of version hash
+        {
           input: {
             prompt: fluxPrompt,
             width: 1024,
@@ -317,70 +318,39 @@ Make it simple, memorable, and unique.
             negative_prompt: "low quality, distorted, ugly, bad proportions, text errors, text cut off, spelling errors, nsfw, provocative, inappropriate, sexual, adult content",
             num_outputs: 1,
             num_inference_steps: 20
-          },
-        });
-        
-        // Wait for the prediction to complete
-        const result = await replicate.wait(prediction);
-        console.log("Replicate prediction completed:", result);
-        imageOutput = result.output;
-      } catch (error) {
-        console.error("First Replicate attempt failed, trying alternative approach:", error);
-        
-        // Try alternative model - SD 3
-        try {
-          console.log("Trying alternative model: stabilityai/stable-diffusion-3");
-          const prediction = await replicate.predictions.create({
-            version: "539ae36668f741dce42bd3b5fa2af5a7a671ae2b80fb373e4526d508b488f981", // SD3 medium
-            input: {
-              prompt: fluxPrompt,
-              width: 1024,
-              height: 1024,
-              negative_prompt: "low quality, distorted, ugly, bad proportions, text errors, text cut off, spelling errors"
-            },
-          });
-          
-          // Wait for the prediction to complete
-          const result = await replicate.wait(prediction);
-          console.log("Alternative model prediction completed:", result);
-          imageOutput = result.output;
-        } catch (secondError) {
-          // If both fail, use simple SVG fallback
-          console.error("All Replicate models failed, using fallback SVG generator:", secondError);
-          return {
-            svg: createFallbackLogo(brandName, colors.length > 0 ? colors : ['#3366CC', '#FF9900']),
-            prompt: fluxPrompt
-          };
+          }
         }
-      }
-    } catch (outerError) {
-      console.error("Unexpected error in Replicate processing:", outerError);
-      return {
-        svg: createFallbackLogo(brandName, colors.length > 0 ? colors : ['#3366CC', '#FF9900']),
-        prompt: fluxPrompt
-      };
-    }
-
-    // Replicate typically returns an array of image URLs
-    // Let's grab the first one (or the output if it's a string)
-    const imageUrl = Array.isArray(imageOutput) ? imageOutput[0] : String(imageOutput);
-    
-    // For our purposes, we'll return an SVG wrapper that embeds the generated image
-    // This allows us to maintain compatibility with our existing code
-    if (imageUrl) {
-      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 200 200">
-        <image href="${imageUrl}" width="100%" height="100%" preserveAspectRatio="xMidYMid meet"/>
-      </svg>`;
+      );
       
-      return {
-        svg,
-        prompt: fluxPrompt // Return the prompt so users can edit it
-      };
+      console.log("Replicate prediction completed successfully");
+      
+      // Replicate typically returns an array of image URLs
+      // Let's grab the first one (or the output if it's a string)
+      const imageUrl = Array.isArray(output) ? output[0] : String(output);
+      
+      // For our purposes, we'll return an SVG wrapper that embeds the generated image
+      // This allows us to maintain compatibility with our existing code
+      if (imageUrl) {
+        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 200 200">
+          <image href="${imageUrl}" width="100%" height="100%" preserveAspectRatio="xMidYMid meet"/>
+        </svg>`;
+        
+        return {
+          svg,
+          prompt: fluxPrompt // Return the prompt so users can edit it
+        };
+      }
+    } catch (error) {
+      console.error("Replicate Flux Schnell model failed:", error);
     }
     
-    // Fallback SVG if image generation fails
+    // If we reached here, it means either:
+    // 1. The image URL was falsy, or
+    // 2. There was an error in the try block
+    // Either way, fall back to our SVG generator
+    console.error("Using fallback SVG generator");
     return {
-      svg: createFallbackLogo(brandName, colors),
+      svg: createFallbackLogo(brandName, colors.length > 0 ? colors : ['#3366CC', '#FF9900']),
       prompt: fluxPrompt
     };
   } catch (error) {

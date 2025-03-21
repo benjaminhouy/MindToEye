@@ -399,9 +399,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Import Replicate from openai.ts
           const openaiModule = await import('./openai');
           
-          // Call Replicate's Flux model
+          // Call Replicate's Flux Schnell model
           const imageOutput = await openaiModule.replicate.run(
-            "black-forest-labs/flux-pro",
+            "black-forest-labs/flux-schnell", // Using the correct model
             {
               input: {
                 prompt: prompt,
