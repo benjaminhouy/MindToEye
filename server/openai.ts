@@ -25,6 +25,84 @@ export const replicate = new Replicate({
   auth: process.env.REPLICATE_API_TOKEN,
 });
 
+// Generate landing page hero visualization content with Claude
+export const generateLandingPageHero = async (params: {
+  brandName: string;
+  industry: string;
+  description: string;
+  colors: string[];
+  typography: { headings: string; body: string };
+}) => {
+  const { brandName, industry, description, colors, typography } = params;
+  
+  try {
+    // Create prompt for Claude to generate landing page hero content
+    const prompt = `
+    Design a modern, visually striking landing page hero section for the following brand:
+    
+    Brand Name: ${brandName}
+    Industry: ${industry || 'General business'}
+    Description: ${description}
+    Brand Colors: ${colors.join(', ')}
+    Typography: Headings - ${typography.headings}, Body - ${typography.body}
+    
+    Create a compelling hero section that effectively communicates the brand's value proposition in a concise way.
+    
+    The output should be formatted as a JSON object with the following structure:
+    {
+      "heading": "Primary headline (short, impactful, benefit-focused)",
+      "subheading": "Supporting text that elaborates on the value proposition (1-2 sentences)",
+      "ctaText": "Call-to-action button text",
+      "backgroundStyle": "CSS-valid gradient or color value that works well with the brand colors",
+      "imageDescription": "Description of an ideal hero image for the brand (optional)"
+    }
+    
+    Ensure the heading is concise (5-7 words) and focuses on the core value proposition. 
+    The subheading should be conversational but professional.
+    Return ONLY the JSON object with no additional text.
+    `;
+
+    // Call Claude API to generate landing page hero content
+    const response = await anthropic.messages.create({
+      model: CLAUDE_MODEL,
+      max_tokens: 1000,
+      temperature: 0.7,
+      system: "You are an expert UI/UX designer and copywriter specializing in landing page creation. Generate concise, compelling hero section content that effectively communicates a brand's value proposition.",
+      messages: [{ role: "user", content: prompt }],
+    });
+
+    // Extract JSON from response
+    let jsonStr = '';
+    if (response.content[0].type === 'text') {
+      const content = response.content[0].text;
+      if (!content) throw new Error("Empty response from Claude");
+      
+      // Extract JSON from the response (Claude might add backticks or markdown formatting)
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      jsonStr = jsonMatch ? jsonMatch[0] : content;
+    } else {
+      throw new Error("Unexpected response format from Claude");
+    }
+    
+    // Parse the JSON response
+    const heroContent = JSON.parse(jsonStr);
+    
+    // Return the parsed hero content
+    return heroContent;
+  } catch (error) {
+    console.error("Error generating landing page hero:", error);
+    
+    // Return fallback content if generation fails
+    return {
+      heading: `${brandName} - Innovative ${industry || 'Solutions'}`,
+      subheading: description.length > 120 ? description.substring(0, 120) + '...' : description,
+      ctaText: "Learn More",
+      backgroundStyle: "linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)",
+      imageDescription: null
+    };
+  }
+};
+
 // Helper function to generate logos based on parameters using FLUX schnell model
 export const generateLogo = async (params: {
   brandName: string,
@@ -435,11 +513,14 @@ export const generateBrandConcept = async (brandInput: BrandInput) => {
         headings: "Montserrat",
         body: "Open Sans"
       },
-      landingPageHero: {
-        heading: `${brandInput.brandName} - ${brandInput.industry || 'Brand'}`,
-        subheading: brandInput.description.substring(0, 120) + (brandInput.description.length > 120 ? '...' : ''),
-        ctaText: "Learn More"
-      },
+      // Generate a sophisticated landing page hero with Claude
+      landingPageHero: await generateLandingPageHero({
+        brandName: brandInput.brandName,
+        industry: brandInput.industry || 'Brand',
+        description: sanitizedDescription,
+        colors: parsed.colors?.map((c: any) => c.hex) || ['#10B981', '#0F766E', '#38BDF8'],
+        typography: parsed.typography || { headings: "Montserrat", body: "Open Sans" }
+      }),
       logoDescription: parsed.logoDescription || "Modern and minimalist logo design"
     };
   } catch (error) {

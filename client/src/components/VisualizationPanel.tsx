@@ -366,30 +366,78 @@ const VisualizationPanel = ({ concept: initialConcept, projectId }: Visualizatio
       
       <LogoExploration brandOutput={brandOutput} />
       
-      {/* Landing Page Hero Preview */}
+      {/* Landing Page Hero Preview - Enhanced with Claude 3.5 */}
       <Card className="shadow overflow-hidden mt-6 p-6">
-        <h2 className="text-xl font-semibold text-gray-900 mb-4">Landing Page Hero</h2>
-        <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-lg p-8 flex flex-col items-center justify-center text-center">
-          <h1 className="text-3xl md:text-4xl font-bold" 
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-semibold text-gray-900">Landing Page Hero</h2>
+          <span className="text-xs text-gray-500 bg-gray-100 rounded-full px-2 py-1">AI-generated with Claude 3.5</span>
+        </div>
+        
+        <div 
+          className="rounded-lg p-8 flex flex-col items-center justify-center text-center relative overflow-hidden" 
+          style={{
+            background: brandOutput?.landingPageHero?.backgroundStyle || 'linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)'
+          }}
+        >
+          {/* Optional decorative elements */}
+          <div className="absolute inset-0 opacity-10">
+            <svg className="h-full w-full" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+              <path fill={brandOutput?.colors?.find((c: any) => c.type === 'accent')?.hex || '#38BDF8'} 
+                d="M37.5,-48.7C47.5,-35.7,53.8,-22.3,56.8,-7.8C59.8,6.7,59.5,22.2,51.4,31.1C43.4,40.1,27.5,42.4,12.1,47C-3.2,51.6,-18,58.3,-32.2,56.2C-46.3,54.1,-59.8,43.2,-65.9,28.6C-71.9,14,-70.5,-4.4,-64.9,-21.1C-59.2,-37.8,-49.3,-52.7,-36.2,-64.6C-23.1,-76.4,-6.8,-85.2,6.1,-92.7C18.9,-100.1,27.6,-61.7,37.5,-48.7Z" transform="translate(100 100)" />
+            </svg>
+          </div>
+          
+          {/* Main content */}
+          <div className="relative z-10">
+            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-700" 
+                style={{
+                  fontFamily: brandOutput?.typography?.headings || 'Montserrat',
+                }}>
+              {brandOutput?.landingPageHero?.heading || 'Brand Name - Industry'}
+            </h1>
+            
+            <p className="mt-4 max-w-xl text-gray-700 text-lg"
               style={{
-                fontFamily: brandOutput?.typography?.headings || 'Montserrat',
-                color: brandOutput?.colors?.find((c: any) => c.type === 'primary')?.hex || '#10B981'
+                fontFamily: brandOutput?.typography?.body || 'Open Sans'
               }}>
-            {brandOutput?.landingPageHero?.heading || 'Brand Name - Industry'}
-          </h1>
-          <p className="mt-4 max-w-xl text-gray-700"
-             style={{
-               fontFamily: brandOutput?.typography?.body || 'Open Sans'
-             }}>
-            {brandOutput?.landingPageHero?.subheading || 'Your brand description will appear here.'}
-          </p>
-          <button className="mt-6 px-6 py-2 rounded-md text-white"
-                  style={{
-                    backgroundColor: brandOutput?.colors?.find((c: any) => c.type === 'primary')?.hex || '#10B981',
-                    fontFamily: brandOutput?.typography?.body || 'Open Sans'
-                  }}>
-            {brandOutput?.landingPageHero?.ctaText || 'Learn More'}
-          </button>
+              {brandOutput?.landingPageHero?.subheading || 'Your brand description will appear here.'}
+            </p>
+            
+            <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
+              <button className="px-8 py-3 rounded-md text-white font-semibold transition-all hover:scale-105"
+                      style={{
+                        backgroundColor: brandOutput?.colors?.find((c: any) => c.type === 'primary')?.hex || '#10B981',
+                        fontFamily: brandOutput?.typography?.body || 'Open Sans'
+                      }}>
+                {brandOutput?.landingPageHero?.ctaText || 'Learn More'}
+              </button>
+              
+              <button className="px-8 py-3 rounded-md font-semibold transition-all hover:scale-105 border-2"
+                      style={{
+                        borderColor: brandOutput?.colors?.find((c: any) => c.type === 'primary')?.hex || '#10B981',
+                        color: brandOutput?.colors?.find((c: any) => c.type === 'primary')?.hex || '#10B981',
+                        fontFamily: brandOutput?.typography?.body || 'Open Sans',
+                        background: 'rgba(255, 255, 255, 0.8)'
+                      }}>
+                Contact Us
+              </button>
+            </div>
+          </div>
+          
+          {/* If there's an image description, show an icon and the description */}
+          {brandOutput?.landingPageHero?.imageDescription && (
+            <div className="mt-6 bg-white bg-opacity-80 p-3 rounded-md text-sm max-w-md">
+              <div className="flex items-center gap-2 text-gray-500 mb-1">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <line x1="12" y1="16" x2="12" y2="12"></line>
+                  <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                </svg>
+                <span className="font-medium">Suggested visual element</span>
+              </div>
+              <p className="text-gray-700">{brandOutput?.landingPageHero?.imageDescription}</p>
+            </div>
+          )}
         </div>
       </Card>
     </>
