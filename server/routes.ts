@@ -377,6 +377,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Brand name and industry are required" });
       }
       
+      // Import the logo generation function from openai.ts
+      const { generateLogo } = await import('./openai');
+      
       // If a prompt is provided, use it for custom image generation (billboard, etc.)
       if (prompt) {
         try {
@@ -396,7 +399,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 height: 768, // Billboard aspect ratio
                 negative_prompt: "low quality, distorted, ugly, bad proportions, text errors, text cut off, spelling errors",
                 num_outputs: 1,
-                num_inference_steps: 25
+                num_inference_steps: 4  // Maximum allowed value for Flux Schnell model
               }
             }
           );
@@ -421,18 +424,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Default path: Generate a regular logo
-      const logo = await generateLogo({
+      const logoResult = await generateLogo({
         brandName,
         industry,
         description: description || "", // Handle undefined description
-        values: values || [],           // Handle undefined values
+        values: Array.isArray(values) ? values : [],  // Handle undefined values
         style: style || "modern",       // Default style
-        colors: colors || []            // Handle undefined colors
+        colors: Array.isArray(colors) ? colors : []   // Handle undefined colors
       });
       
       res.json({ 
         success: true,
-        logoSvg: logo
+        logoSvg: logoResult.svg,
+        prompt: logoResult.prompt
       });
     } catch (error) {
       console.error("Error generating logo or custom image:", error);

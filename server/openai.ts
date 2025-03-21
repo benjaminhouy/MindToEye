@@ -317,7 +317,7 @@ Make it simple, memorable, and unique.
             height: 1024,
             negative_prompt: "low quality, distorted, ugly, bad proportions, text errors, text cut off, spelling errors, nsfw, provocative, inappropriate, sexual, adult content",
             num_outputs: 1,
-            num_inference_steps: 20
+            num_inference_steps: 4  // Maximum allowed value for Flux Schnell model
           }
         }
       );
