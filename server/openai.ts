@@ -48,12 +48,21 @@ export const generateLandingPageHero = async (params: {
     
     Create a compelling hero section that effectively communicates the brand's value proposition in a concise way.
     
+    IMPORTANT READABILITY GUIDELINES:
+    - High contrast between background and text (WCAG AA compliant)
+    - If using a dark background, use light/white text
+    - If using a light background, use dark text
+    - Avoid using similar colors for both text and background
+    - Ensure the background enhances readability rather than reducing it
+    - Never use dark text on dark backgrounds or light text on light backgrounds
+    
     The output should be formatted as a JSON object with the following structure:
     {
       "heading": "Primary headline (short, impactful, benefit-focused)",
       "subheading": "Supporting text that elaborates on the value proposition (1-2 sentences)",
       "ctaText": "Call-to-action button text",
-      "backgroundStyle": "CSS-valid gradient or color value that works well with the brand colors",
+      "backgroundStyle": "CSS-valid gradient or color value that works well with the brand colors and ensures HIGH TEXT CONTRAST",
+      "textColor": "CSS-valid color for the text that ensures high contrast against the background (e.g., '#FFFFFF' for white or '#000000' for black)",
       "imageDescription": "Description of an ideal hero image for the brand (optional)"
     }
     
@@ -121,6 +130,7 @@ export const generateLandingPageHero = async (params: {
       subheading: description.length > 120 ? description.substring(0, 120) + '...' : description,
       ctaText: "Learn More",
       backgroundStyle: "linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)",
+      textColor: "#000000", // Default to black text for fallback
       imageDescription: null
     };
   }

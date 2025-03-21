@@ -389,16 +389,18 @@ const VisualizationPanel = ({ concept: initialConcept, projectId }: Visualizatio
           
           {/* Main content */}
           <div className="relative z-10">
-            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-slate-900 to-slate-700" 
+            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4" 
                 style={{
                   fontFamily: brandOutput?.typography?.headings || 'Montserrat',
+                  color: brandOutput?.landingPageHero?.textColor || '#000000'
                 }}>
               {brandOutput?.landingPageHero?.heading || 'Brand Name - Industry'}
             </h1>
             
-            <p className="mt-4 max-w-xl text-gray-700 text-lg"
+            <p className="mt-4 max-w-xl text-lg"
               style={{
-                fontFamily: brandOutput?.typography?.body || 'Open Sans'
+                fontFamily: brandOutput?.typography?.body || 'Open Sans',
+                color: brandOutput?.landingPageHero?.textColor || '#333333'
               }}>
               {brandOutput?.landingPageHero?.subheading || 'Your brand description will appear here.'}
             </p>
@@ -415,7 +417,7 @@ const VisualizationPanel = ({ concept: initialConcept, projectId }: Visualizatio
               <button className="px-8 py-3 rounded-md font-semibold transition-all hover:scale-105 border-2"
                       style={{
                         borderColor: brandOutput?.colors?.find((c: any) => c.type === 'primary')?.hex || '#10B981',
-                        color: brandOutput?.colors?.find((c: any) => c.type === 'primary')?.hex || '#10B981',
+                        color: brandOutput?.landingPageHero?.textColor || brandOutput?.colors?.find((c: any) => c.type === 'primary')?.hex || '#10B981',
                         fontFamily: brandOutput?.typography?.body || 'Open Sans',
                         background: 'rgba(255, 255, 255, 0.8)'
                       }}>
