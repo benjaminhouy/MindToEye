@@ -80,12 +80,35 @@ export const generateLandingPageHero = async (params: {
       // Extract JSON from the response (Claude might add backticks or markdown formatting)
       const jsonMatch = content.match(/\{[\s\S]*\}/);
       jsonStr = jsonMatch ? jsonMatch[0] : content;
+      
+      // Log the raw response for debugging - limited to first 100 chars to avoid overwhelming logs
+      console.log("Raw Claude landing page hero response (first 100 chars):", 
+        jsonStr.substring(0, 100) + (jsonStr.length > 100 ? '...' : ''));
+      
+      // Sanitize JSON before parsing - remove any characters that might cause parsing issues
+      jsonStr = jsonStr.replace(/[\u0000-\u001F\u007F-\u009F]/g, "");
+      
+      try {
+        // Additional validation to ensure the JSON is properly formatted
+        if (!jsonStr.trim().startsWith('{') || !jsonStr.trim().endsWith('}')) {
+          throw new Error("Invalid JSON structure");
+        }
+      } catch (validateError) {
+        console.error("JSON validation error:", validateError);
+        throw new Error("Invalid JSON structure in Claude response");
+      }
     } else {
       throw new Error("Unexpected response format from Claude");
     }
     
-    // Parse the JSON response
-    const heroContent = JSON.parse(jsonStr);
+    let heroContent;
+    try {
+      // Parse the JSON response with additional error handling
+      heroContent = JSON.parse(jsonStr);
+    } catch (jsonError) {
+      console.error("Failed to parse Claude response as JSON:", jsonError, "Raw response:", jsonStr);
+      throw new Error("Could not parse Claude response as valid JSON");
+    }
     
     // Return the parsed hero content
     return heroContent;
@@ -475,11 +498,36 @@ export const generateBrandConcept = async (brandInput: BrandInput) => {
       // Extract JSON from the response (Claude might add backticks or markdown formatting)
       const jsonMatch = content.match(/\{[\s\S]*\}/);
       jsonStr = jsonMatch ? jsonMatch[0] : content;
+      
+      // Log the raw response for debugging
+      console.log("Raw Claude brand concept response (first 100 chars):", 
+        jsonStr.substring(0, 100) + (jsonStr.length > 100 ? '...' : ''));
+      
+      // Sanitize JSON before parsing - remove any characters that might cause parsing issues
+      jsonStr = jsonStr.replace(/[\u0000-\u001F\u007F-\u009F]/g, "");
+      
+      try {
+        // Validate JSON structure
+        if (!jsonStr.trim().startsWith('{') || !jsonStr.trim().endsWith('}')) {
+          throw new Error("Invalid JSON structure");
+        }
+      } catch (validateError) {
+        console.error("JSON validation error:", validateError);
+        throw new Error("Invalid JSON structure in Claude response");
+      }
     } else {
       throw new Error("Unexpected response format from Claude");
     }
     
-    const parsed = JSON.parse(jsonStr);
+    let parsed;
+    try {
+      // Parse the JSON with error handling
+      parsed = JSON.parse(jsonStr);
+    } catch (jsonError) {
+      console.error("Failed to parse Claude brand concept response:", jsonError, 
+        "Raw response (first 200 chars):", jsonStr.substring(0, 200));
+      throw new Error("Could not parse Claude response as valid JSON");
+    }
     
     // Generate a logo using the brand input (with sanitized description)
     const { svg: logoSvg, prompt: logoPrompt } = await generateLogo({
