@@ -142,7 +142,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     log("Received request to generate brand concept");
     
     // Increase server timeout for this specific request
-    res.setTimeout(120000); // 2 minute timeout
+    res.setTimeout(180000); // 3 minute timeout
+    
+    // Helper function to safely write JSON to the response
+    const safeWrite = (data: any) => {
+      try {
+        const jsonString = JSON.stringify(data);
+        // Validate we're sending valid JSON by parsing it back
+        JSON.parse(jsonString);
+        res.write(jsonString);
+        return true;
+      } catch (err) {
+        console.error("Failed to serialize response data:", err);
+        return false;
+      }
+    };
     
     // First, validate the input data
     try {
@@ -157,33 +171,79 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       // Send initial response to keep connection alive
-      res.write(JSON.stringify({
+      safeWrite({
         status: "processing",
+        progress: 10,
         message: "Brand concept generation has started. This may take up to 1-2 minutes to complete."
-      }));
+      });
       
       // Process the request asynchronously
       (async () => {
         try {
+          // Send a progress update at 25% after 5 seconds
+          setTimeout(() => {
+            safeWrite({
+              status: "progress",
+              progress: 25,
+              message: "Generating brand concept elements..."
+            });
+          }, 5000);
+          
+          // Send a progress update at 50% after 15 seconds
+          setTimeout(() => {
+            safeWrite({
+              status: "progress",
+              progress: 50,
+              message: "Creating brand visual assets..."
+            });
+          }, 15000);
+          
           log("Calling AI service to generate brand concept");
           const brandOutput = await generateBrandConcept(brandInput);
           log("AI service returned brand concept successfully");
           
-          // Send the final result
-          res.write(JSON.stringify({ 
-            success: true,
-            status: "complete",
-            brandOutput
-          }));
+          // Send a progress update at 90% before final response
+          safeWrite({
+            status: "progress",
+            progress: 90,
+            message: "Finalizing brand concept..."
+          });
           
-          res.end();
+          // Wait a moment before sending final result (helps client processing)
+          setTimeout(() => {
+            // Send the final result
+            const success = safeWrite({ 
+              success: true,
+              status: "complete",
+              brandOutput
+            });
+            
+            // If the write failed, try a simplified format
+            if (!success) {
+              console.warn("Failed to write complete brand output, sending simplified response");
+              safeWrite({
+                success: true,
+                status: "complete",
+                brandOutput: {
+                  logo: brandOutput.logo,
+                  colors: brandOutput.colors || [],
+                  typography: brandOutput.typography || { headings: "Arial", body: "Arial" },
+                  landingPageHero: brandOutput.landingPageHero || {},
+                  logoDescription: brandOutput.logoDescription || "Logo"
+                }
+              });
+            }
+            
+            res.end();
+          }, 1000);
         } catch (error) {
           console.error("Error generating brand concept:", error);
-          res.write(JSON.stringify({ 
+          safeWrite({ 
             success: false, 
+            status: "error",
             error: "Failed to generate brand concept",
             message: error instanceof Error ? error.message : String(error)
-          }));
+          });
           res.end();
         }
       })();
@@ -337,12 +397,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Brand name is required" });
       }
       
-      log("Testing FLUX logo generation with new parameters...");
+      log("Testing FLUX logo generation with correct parameters...");
       
       // Import the logo generation function
       const { generateLogo } = await import('./openai');
       
       // Call the generate logo function with the full parameter set
+      // Including the optimal parameters for Flux Schnell model
       const logoResult = await generateLogo({
         brandName,
         industry: industry || "Technology",
@@ -353,7 +414,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         promptOverride: req.body.prompt // Optional prompt override
       });
       
-      log("Logo generation successful");
+      log("Logo generation successful with Flux Schnell model");
       
       res.json({
         success: true,

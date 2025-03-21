@@ -43,8 +43,9 @@ export const generateBrandConcept = async (brandInput: BrandInput, onProgress?: 
     
     // Process the streamed response
     let result = '';
+    let previousIncomplete = '';
     let receivedFirstResponse = false;
-    let chunks = 0;
+    let lastProgress = 0;
     
     // Process the stream chunks
     while (true) {
@@ -57,129 +58,174 @@ export const generateBrandConcept = async (brandInput: BrandInput, onProgress?: 
       }
       
       // Convert the chunk to string
-      const chunk = new TextDecoder().decode(value);
-      result += chunk;
+      const chunkText = new TextDecoder().decode(value);
+      result += chunkText;
       
-      chunks++;
+      // Combine with any previously incomplete chunk
+      const chunk = previousIncomplete + chunkText;
+      previousIncomplete = '';
       
-      // Implement a simple artificial progress that moves forward
-      // even if we don't have concrete progress from the server
-      if (onProgress) {
-        // Even if we can't parse the chunk, we'll still show progress increasing
-        // Start at 10%, simulate progress up to 90% during processing
-        const artificialProgress = Math.min(90, 10 + ((chunks * 5) % 80));
-        onProgress(artificialProgress);
-        console.log(`Updating progress to ${artificialProgress}%`);
-      }
+      // Split by possible complete JSON objects
+      const objects = chunk.split('}{');
       
-      // Try to parse the JSON when we have complete chunks
-      try {
-        // Look for progress indicators in the raw chunk first
-        if (chunk.includes("progress")) {
-          const progressMatch = chunk.match(/progress["\s:]+(\d+)/);
-          if (progressMatch && progressMatch[1]) {
-            const progressValue = parseInt(progressMatch[1], 10);
-            if (!isNaN(progressValue) && progressValue > 0) {
-              console.log(`Generation progress: ${progressValue}%`);
-              onProgress?.(progressValue);
-            }
-          }
+      // Process each potential JSON object in the chunk
+      for (let i = 0; i < objects.length; i++) {
+        let objStr = objects[i];
+        
+        // Add the brackets back except for first and last item 
+        // which may be incomplete
+        if (i > 0) objStr = '{' + objStr;
+        if (i < objects.length - 1) objStr = objStr + '}';
+        
+        // If this is the last object and we're not done, it might be incomplete
+        if (i === objects.length - 1 && !done) {
+          previousIncomplete = objStr;
+          continue;
         }
         
         // Try to parse as JSON
-        const data = JSON.parse(chunk);
-        
-        // If this is the first response (the "processing" notification)
-        if (data.status === "processing" && !receivedFirstResponse) {
-          receivedFirstResponse = true;
-          // Start at 10% progress
-          onProgress?.(10);
-          console.log("Generation process started");
-        } 
-        // For the final response with the brand output
-        else if (data.status === "complete" && data.success) {
-          // Complete the progress
-          onProgress?.(100);
-          console.log("Generation complete, returning brand output");
-          return data.brandOutput;
+        try {
+          const data = JSON.parse(objStr);
+          
+          // Check for progress updates
+          if (data.progress && typeof data.progress === 'number') {
+            const progressValue = Math.max(lastProgress, data.progress);
+            if (progressValue > lastProgress) {
+              console.log(`Generation progress: ${progressValue}%`);
+              onProgress?.(progressValue);
+              lastProgress = progressValue;
+            }
+          }
+          
+          // If this is a status update
+          if (data.status) {
+            // Initial processing notification
+            if (data.status === "processing" && !receivedFirstResponse) {
+              receivedFirstResponse = true;
+              onProgress?.(10);
+              console.log("Generation process started");
+            } 
+            // Progress update
+            else if (data.status === "progress" && data.progress) {
+              const progressValue = Math.max(lastProgress, data.progress);
+              console.log(`Explicit progress update: ${progressValue}%`);
+              onProgress?.(progressValue);
+              lastProgress = progressValue;
+            }
+            // Final result with complete data
+            else if (data.status === "complete" && data.success && data.brandOutput) {
+              // Complete the progress
+              onProgress?.(100);
+              console.log("Generation complete, returning brand output");
+              return data.brandOutput;
+            }
+          }
+          
+          // If we have brandOutput in any format
+          if (data.brandOutput) {
+            onProgress?.(100);
+            console.log("Received brand output");
+            return data.brandOutput;
+          }
+          
+          // For error responses
+          if (data.status === "error" || (data.success === false && data.error)) {
+            throw new Error(data.message || data.error || "Failed to generate brand concept");
+          }
+        } catch (e) {
+          // Non-critical error, might be an incomplete JSON chunk
+          if (objStr.trim()) {
+            console.log("Couldn't parse JSON chunk, may be incomplete");
+          }
         }
-        // If we got a brand output without status flags
-        else if (data.brandOutput) {
-          onProgress?.(100);
-          console.log("Received brand output directly");
-          return data.brandOutput;
+      }
+      
+      // Implement a simple artificial progress that moves forward
+      // This ensures the progress bar keeps moving even if we don't get explicit updates
+      if (onProgress && lastProgress < 90) {
+        // Gently increase progress if we haven't received an update
+        const artificialProgress = Math.min(85, lastProgress + 1);
+        if (artificialProgress > lastProgress) {
+          lastProgress = artificialProgress;
+          onProgress(artificialProgress);
         }
-        // For error responses
-        else if (!data.success) {
-          throw new Error(data.message || "Failed to generate brand concept");
-        }
-      } catch (e) {
-        // This might happen if we get a partial JSON chunk
-        // Just continue and try to parse the next chunk
-        console.log("Received partial data chunk, continuing...");
       }
     }
     
+    // If we reach here, we need to try to extract a complete response from everything we received
+    console.log("Trying to extract final result from complete response...");
+    
     // Process the complete result if we couldn't parse individual chunks
     try {
-      // First try to find a complete JSON response with a regex
-      const jsonMatch = result.match(/\{[\s\S]*\}/);
-      let possibleJsonString = '';
+      // Look for complete JSON objects
+      const jsonRegex = /\{(?:[^{}]|(\{(?:[^{}]|(\{(?:[^{}]|(\{[^{}]*\}))*\}))*\}))*\}/g;
       
-      if (jsonMatch) {
-        possibleJsonString = jsonMatch[0];
-        console.log("Found potential JSON object with regex");
-      } else {
-        // If that fails, look for the last opening brace
-        const lastJsonStart = result.lastIndexOf('{');
-        if (lastJsonStart !== -1) {
-          possibleJsonString = result.substring(lastJsonStart);
-          console.log("Extracted JSON from last opening brace");
+      // Get all matches but compatible with older ES versions
+      const matches: RegExpExecArray[] = [];
+      let match: RegExpExecArray | null;
+      while ((match = jsonRegex.exec(result)) !== null) {
+        matches.push(match);
+      }
+      
+      // Try each match, starting with the last (most likely to be complete)
+      for (let i = matches.length - 1; i >= 0; i--) {
+        try {
+          const match = matches[i][0];
+          const data = JSON.parse(match);
+          
+          if (data.brandOutput) {
+            console.log(`Successfully parsed JSON match ${i+1} of ${matches.length}`);
+            return data.brandOutput;
+          }
+        } catch (e) {
+          console.log(`Failed to parse match ${i+1}`);
         }
       }
       
-      // If we found something that might be JSON
-      if (possibleJsonString) {
-        // Try to parse it directly
-        try {
-          const finalData = JSON.parse(possibleJsonString);
-          if (finalData.success && finalData.brandOutput) {
-            console.log("Successfully parsed final JSON response");
-            return finalData.brandOutput;
-          } else if (finalData.brandOutput) {
-            // If success flag is missing but we have brand output
-            console.log("Found brandOutput without success flag");
-            return finalData.brandOutput;
-          }
-        } catch (jsonError) {
-          console.error("Error parsing extracted JSON:", jsonError);
+      // If no matches worked, try our last resort approach
+      // Find the last occurrence of {"brandOutput":
+      const brandOutputStart = result.lastIndexOf('{"brandOutput"');
+      if (brandOutputStart >= 0) {
+        // Try to find where this object ends by balancing braces
+        let braceCount = 1;
+        let endPos = -1;
+        
+        for (let i = brandOutputStart + 1; i < result.length; i++) {
+          if (result[i] === '{') braceCount++;
+          if (result[i] === '}') braceCount--;
           
-          // Try to fix common JSON issues
-          let fixedJson = possibleJsonString
-            .replace(/'/g, '"')  // Replace single quotes with double quotes
-            .replace(/\,\s*\}/g, '}')  // Remove trailing commas
-            .replace(/\,\s*\]/g, ']'); // Remove trailing commas in arrays
-            
+          if (braceCount === 0) {
+            endPos = i + 1;
+            break;
+          }
+        }
+        
+        if (endPos > 0) {
+          const potentialJson = result.substring(brandOutputStart, endPos);
+          
           try {
-            const finalData = JSON.parse(fixedJson);
-            if (finalData.brandOutput) {
-              console.log("Successfully parsed fixed JSON");
-              return finalData.brandOutput;
+            const data = JSON.parse(potentialJson);
+            if (data.brandOutput) {
+              console.log("Successfully extracted brandOutput using brace balancing");
+              return data.brandOutput;
             }
-          } catch (fixError) {
-            console.error("Error parsing fixed JSON:", fixError);
+          } catch (e) {
+            console.error("Failed to parse extracted JSON:", e);
           }
         }
       }
     } catch (e) {
-      console.error("Error in final parsing attempt:", e);
+      console.error("Error in final parsing attempts:", e);
     }
     
-    // Log the entire response for debugging
-    console.error("All JSON parsing attempts failed. First 200 chars of response:", 
-      result.substring(0, 200) + (result.length > 200 ? '...' : ''));
+    // Last resort - return a more helpful error with debugging info
+    console.error("All JSON parsing attempts failed. Response preview:", 
+      result.substring(0, 500) + (result.length > 500 ? '...' : ''));
     
-    throw new Error("Could not parse response from server. Please try again.");
+    throw new Error(
+      "Could not parse response from server. The AI service may have returned malformed data. " +
+      "Please try again or contact support if this issue persists."
+    );
   } catch (error) {
     console.error("Error generating brand concept:", error);
     throw new Error(error instanceof Error ? error.message : "Failed to generate brand concept");
