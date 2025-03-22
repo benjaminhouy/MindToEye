@@ -21,7 +21,7 @@ const Dashboard = () => {
     <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-900">Your Projects</h1>
-        <Link href="/new-project">
+        <Link href="/projects/new">
           <Button>
             <PlusIcon className="mr-2 h-4 w-4" />
             New Project
@@ -55,7 +55,7 @@ const Dashboard = () => {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {projects.map((project) => (
             <div key={project.id} className="block">
-              <Link href={`/project/${project.id}`}>
+              <Link href={`/projects/${project.id}`}>
                 <Card className="hover:shadow-md transition-shadow duration-300 cursor-pointer h-full">
                   <CardHeader className="bg-gradient-to-r from-primary-100 to-primary-50">
                     <CardTitle className="text-lg">{project.name}</CardTitle>
@@ -86,7 +86,7 @@ const Dashboard = () => {
           <h3 className="mt-2 text-lg font-medium text-gray-900">No projects yet</h3>
           <p className="mt-1 text-sm text-gray-500">Get started by creating a new project.</p>
           <div className="mt-6">
-            <Link href="/new-project">
+            <Link href="/projects/new">
               <Button>
                 <PlusIcon className="mr-2 h-4 w-4" />
                 New Project
