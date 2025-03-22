@@ -775,8 +775,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Standard image upload test (general storage)
         log(`Testing Supabase general storage with image URL: ${testImageUrl}`);
         
-        // Attempt to upload the image
-        const storedImageUrl = await uploadImageFromUrl(testImageUrl);
+        // Attempt to upload the image with authId for proper user storage path
+        const storedImageUrl = await uploadImageFromUrl(testImageUrl, authId);
         
         if (storedImageUrl) {
           log(`Successfully stored image in Supabase: ${storedImageUrl}`);

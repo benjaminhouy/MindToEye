@@ -250,10 +250,14 @@ export async function uploadImageFromUrl(imageUrl: string, authId?: string): Pro
     // This matches the structure expected by the RLS policies
     // For public files, use the public folder instead
     const usePublicFolder = false; // Set to true for files that should be public to all users
-    const userId = usePublicFolder ? PUBLIC_FOLDER : DEMO_USER_ID;
+    
+    // Use the provided authId if available, or fall back to demo user
+    // The authId is the Supabase user's UUID that will match our storage policy
+    const userId = authId || DEMO_USER_ID;
+    console.log(`Using user ID for storage path in uploadImageFromUrl: ${userId}`);
     
     // Use the same hierarchical structure as in uploadLogoFromUrl
-    const filePath = `${userId}/images/logo-${timestamp}-${randomId}.png`;
+    const filePath = `${userId}/images/image-${timestamp}-${randomId}.png`;
     
     // Upload the image to Supabase storage
     console.log(`Attempting to upload image to Supabase storage bucket '${STORAGE_BUCKET}' as '${filePath}'...`);
