@@ -10,7 +10,9 @@ import { useAuth } from "@/lib/auth-context";
 
 const Dashboard = () => {
   const { user } = useAuth();
-  const userId = user?.id || 1; // Fallback to ID 1 if no user is found
+  // For now, always use ID 1 for the demo account since we're using Supabase Auth
+  // but our database has numeric IDs
+  const userId = 1;
   
   const { data: projects, isLoading, error } = useQuery<Project[]>({
     queryKey: [`/api/projects?userId=${userId}`],
