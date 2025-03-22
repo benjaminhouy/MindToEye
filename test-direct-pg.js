@@ -4,7 +4,7 @@ const { Pool } = pkg;
 import 'dotenv/config';
 
 // Get PostgreSQL connection details
-const dbUrl = process.env.SUPABASE_DB_URL || process.env.DATABASE_URL;
+const dbUrl = process.env.DATABASE_URL;
 
 async function testDirectPgConnection() {
   if (!dbUrl) {

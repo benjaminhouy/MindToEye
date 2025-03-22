@@ -9,18 +9,12 @@ import {
 import type { IStorage } from './storage';
 
 // Initialize PostgreSQL client for Drizzle ORM with Supabase
-// Primary connection string is SUPABASE_DB_URL, with DATABASE_URL as fallback
-// Both should be set to the same pooled connection string value
-const databaseUrl = process.env.SUPABASE_DB_URL || process.env.DATABASE_URL;
+// Use DATABASE_URL for database connections (standard convention)
+const databaseUrl = process.env.DATABASE_URL;
 
 if (!databaseUrl) {
-  console.error('SUPABASE_DB_URL and DATABASE_URL environment variables are not set.');
-  console.error('The application requires at least one of these to be set to a valid Supabase pooled connection string.');
-} else if (process.env.SUPABASE_DB_URL && process.env.DATABASE_URL && 
-           process.env.SUPABASE_DB_URL !== process.env.DATABASE_URL) {
-  console.warn('WARNING: SUPABASE_DB_URL and DATABASE_URL have different values.');
-  console.warn('Using SUPABASE_DB_URL as the primary connection string.');
-  console.warn('It is recommended to set both to the same pooled connection string value.');
+  console.error('DATABASE_URL environment variable is not set.');
+  console.error('The application requires DATABASE_URL to be set to a valid Supabase pooled connection string.');
 }
 
 // Configuration for pooled connections to Supabase PostgreSQL
@@ -29,8 +23,8 @@ const sslMode = 'require';
 type SSLMode = 'prefer' | 'require' | 'allow' | 'verify-full';
 
 // Create PostgreSQL client with Supabase's pooled connection
-// Note: SUPABASE_DB_URL is already a pooled connection string managed by Supabase
-console.log('Initializing database with Supabase pooled connection string...');
+// DATABASE_URL contains the pooled connection string managed by Supabase
+console.log('Initializing database with pooled connection string from DATABASE_URL...');
 const queryClient = databaseUrl ? postgres(databaseUrl, { 
   ssl: {
     rejectUnauthorized: false // Allow self-signed certificates

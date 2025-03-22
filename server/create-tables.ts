@@ -8,10 +8,10 @@ config({ path: '.env.supabase' });
 
 async function createTables() {
   // Get the database URL from environment variables
-  const databaseUrl = process.env.DATABASE_URL || process.env.SUPABASE_DB_URL;
+  const databaseUrl = process.env.DATABASE_URL;
   
   if (!databaseUrl) {
-    console.error('Error: DATABASE_URL or SUPABASE_DB_URL is not set in environment variables.');
+    console.error('Error: DATABASE_URL is not set in environment variables.');
     process.exit(1);
   }
   
