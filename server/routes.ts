@@ -1397,6 +1397,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (originalLogoUrl) {
             try {
               console.log(`Storing logo for concept ${conceptId} in permanent storage...`);
+              console.log(`Logo storage details:
+                - Original logo URL: ${originalLogoUrl}
+                - Project ID: ${projectId}
+                - Concept ID: ${conceptId}
+                - Auth ID: ${authId || 'not provided'}
+              `);
               
               // Store the logo in Supabase storage with proper project/concept hierarchy
               const storedLogoUrl = await uploadLogoFromUrl(
@@ -1406,6 +1412,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 'svg', // Assuming SVG format for logos
                 authId // Pass the authenticated user ID for proper storage path
               );
+              
+              console.log(`Storage result: ${storedLogoUrl ? 'Success - URL: ' + storedLogoUrl.substring(0, 30) + '...' : 'Failed - using original URL'}`);
               
               // If we got back a permanent URL, update the SVG
               if (storedLogoUrl && storedLogoUrl !== originalLogoUrl) {

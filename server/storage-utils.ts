@@ -425,7 +425,17 @@ export async function uploadLogoFromUrl(
     // Use the provided authId if available, or fall back to demo user
     // The authId is the Supabase user's UUID that will match our storage policy
     const userId = authId || DEMO_USER_ID;
-    console.log(`Using user ID for storage path: ${userId}`)
+    console.log(`Using user ID for storage path: ${userId}`);
+    
+    // Additional detailed logging for debugging storage issues
+    console.log(`Storage details:
+      - SUPABASE_URL: ${supabaseUrl ? 'Set (starts with ' + supabaseUrl.substring(0, 12) + '...)' : 'Not set'}
+      - SUPABASE_ANON_KEY: ${supabaseKey ? 'Set (length: ' + supabaseKey.length + ')' : 'Not set'}
+      - Auth ID used: ${userId}
+      - Storage bucket: ${STORAGE_BUCKET}
+      - Project ID: ${projectId}
+      - Concept ID: ${conceptId}
+    `);
     
     // Improved path structure: userId/projectId/conceptId/logos/logo-timestamp-randomId.fileType
     // This structure provides better isolation, security, and organization
