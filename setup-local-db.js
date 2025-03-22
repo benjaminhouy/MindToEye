@@ -1,4 +1,4 @@
-// Script to create tables in local PostgreSQL database
+// Script to create tables in Supabase PostgreSQL database
 import pg from 'pg';
 import dotenv from 'dotenv';
 import fs from 'fs';
@@ -9,22 +9,25 @@ dotenv.config();
 const { Pool } = pg;
 
 async function createTables() {
-  if (!process.env.DATABASE_URL) {
-    console.error('Error: DATABASE_URL environment variable is not set');
+  if (!process.env.SUPABASE_DB_URL) {
+    console.error('Error: SUPABASE_DB_URL environment variable is not set');
     process.exit(1);
   }
 
-  console.log('DATABASE_URL is defined. Attempting to connect to local PostgreSQL...');
+  console.log('SUPABASE_DB_URL is defined. Attempting to connect to Supabase PostgreSQL...');
   
-  // Create a connection pool
+  // Create a connection pool to Supabase
   const pool = new Pool({
-    connectionString: process.env.DATABASE_URL
+    connectionString: process.env.SUPABASE_DB_URL,
+    ssl: {
+      require: true,
+    }
   });
 
   try {
     // Test connection
     const client = await pool.connect();
-    console.log('Successfully connected to the local PostgreSQL database');
+    console.log('Successfully connected to the Supabase PostgreSQL database');
     
     // Create tables directly
     console.log('Creating tables...');
