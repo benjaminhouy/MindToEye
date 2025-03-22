@@ -6,15 +6,15 @@ const { Pool } = pkg;
 // Load environment variables
 dotenv.config();
 
-// Log supabase environment variables (without showing the actual values)
+// Log environment variables (without showing the actual values)
 console.log('SUPABASE_URL exists:', !!process.env.SUPABASE_URL);
 console.log('SUPABASE_ANON_KEY exists:', !!process.env.SUPABASE_ANON_KEY);
-console.log('SUPABASE_DB_URL exists:', !!process.env.SUPABASE_DB_URL);
+console.log('DATABASE_URL exists:', !!process.env.DATABASE_URL);
 
-// Create Supabase client
+// Create clients
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_ANON_KEY;
-const supabaseDbUrl = process.env.SUPABASE_DB_URL;
+const databaseUrl = process.env.DATABASE_URL;
 
 // Test Supabase API connection using a simple request
 async function testSupabaseConnection() {
@@ -68,16 +68,16 @@ async function testSupabaseConnection() {
 async function testDatabaseConnection() {
   console.log('\n--- Testing Direct PostgreSQL Connection ---');
   
-  if (!supabaseDbUrl) {
-    console.error('SUPABASE_DB_URL is not defined');
+  if (!databaseUrl) {
+    console.error('DATABASE_URL is not defined');
     return false;
   }
   
   // Create a connection pool with SSL settings
   const pool = new Pool({
-    connectionString: supabaseDbUrl,
+    connectionString: databaseUrl,
     ssl: {
-      rejectUnauthorized: false // Required for Supabase connections from most environments
+      rejectUnauthorized: false // Accept self-signed certificates
     }
   });
   
@@ -98,8 +98,8 @@ async function testDatabaseConnection() {
   } catch (error: any) {
     console.error('Error connecting to PostgreSQL database:', error.message);
     console.log('\nTroubleshooting tips:');
-    console.log('1. Check that the SUPABASE_DB_URL is correct');
-    console.log('2. Make sure your IP is allowed in the Supabase database settings');
+    console.log('1. Check that the DATABASE_URL is correct');
+    console.log('2. Make sure your IP is allowed in the database settings');
     console.log('3. Check that the database password is correct');
     
     await pool.end().catch(() => {});
@@ -114,14 +114,14 @@ async function runTests() {
   
   console.log('\n--- Test Results ---');
   console.log('Supabase API Connection:', apiSuccess ? 'SUCCESS ✅' : 'FAILED ❌');
-  console.log('Supabase Database Connection:', dbSuccess ? 'SUCCESS ✅' : 'FAILED ❌');
+  console.log('PostgreSQL Database Connection:', dbSuccess ? 'SUCCESS ✅' : 'FAILED ❌');
   
   if (!apiSuccess || !dbSuccess) {
-    console.log('\n⚠️ Some tests failed. Please check your Supabase credentials and network connectivity.');
+    console.log('\n⚠️ Some tests failed. Please check your environment variables and network connectivity.');
     process.exit(1);
   }
   
-  console.log('\n✅ All tests passed! Your Supabase connection is working properly.');
+  console.log('\n✅ All tests passed! Your connections are working properly.');
 }
 
 runTests();
