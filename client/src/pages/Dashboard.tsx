@@ -10,13 +10,24 @@ import { useAuth } from "@/lib/auth-context";
 
 const Dashboard = () => {
   const { user } = useAuth();
-  // Extract database user ID from Supabase Auth ID
-  // The database records the numeric user ID in the user metadata
-  const userId = user?.id ? parseInt(user.id) : undefined;
+  // Use the Supabase Auth ID directly
+  const authId = user?.id;
   
   const { data: projects, isLoading, error } = useQuery<Project[]>({
-    queryKey: [`/api/projects?userId=${userId}`],
-    enabled: !!userId, // Only run query when we have a userId
+    queryKey: ['/api/projects'],
+    enabled: !!authId, // Only run query when we have an authId
+    queryFn: async () => {
+      const response = await fetch('/api/projects', {
+        headers: {
+          'Authorization': 'Bearer token',  // The token itself doesn't matter for our simplified auth
+          'x-auth-id': authId || ''  // Send the auth ID in the custom header
+        }
+      });
+      if (!response.ok) {
+        throw new Error('Failed to fetch projects');
+      }
+      return response.json();
+    }
   });
 
   return (

@@ -18,23 +18,28 @@ const NewProject = () => {
   // Pass the Supabase Auth ID directly (our API will handle the mapping)
   const authId = user?.id;
   
-  const [projectData, setProjectData] = useState({
+  interface ProjectFormData {
+    name: string;
+    clientName: string;
+  }
+  
+  const [projectData, setProjectData] = useState<ProjectFormData>({
     name: "",
     clientName: "",
   });
 
   const createProjectMutation = useMutation({
-    mutationFn: async (data: typeof projectData) => {
+    mutationFn: async (formData: ProjectFormData) => {
       // Ensure data matches the server-side schema (key names must match exactly)
       const projectData = { 
-        name: data.name,
-        clientName: data.clientName
+        name: formData.name,
+        clientName: formData.clientName
       };
       
       console.log("Sending project data:", JSON.stringify(projectData));
       
       // Use headers to pass auth information
-      const headers = {
+      const headers: Record<string, string> = {
         "Content-Type": "application/json"
       };
       

@@ -293,25 +293,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let userId: number | undefined;
       let authId: string | undefined;
 
-      if (req.headers.authorization) {
+      // Always check for x-auth-id header first (the most reliable method)
+      if (req.headers['x-auth-id']) {
+        authId = req.headers['x-auth-id'] as string;
+        console.log("Auth ID from header:", authId);
+        
+        // Look up the user by authId
+        if (authId) {
+          try {
+            const user = await storage.getUserByAuthId(authId);
+            if (user) {
+              userId = user.id;
+              console.log("Found user by authId for project creation:", userId);
+            } else {
+              console.log("User not found for authId:", authId);
+            }
+          } catch (err) {
+            console.error("Error looking up user by authId:", err);
+          }
+        }
+      } 
+      // Also check Authorization header as fallback
+      else if (req.headers.authorization) {
         try {
           // Get the token from the Authorization header
           const token = req.headers.authorization.replace('Bearer ', '');
           
-          // Get the auth ID from a custom header if available (for testing)
-          if (req.headers['x-auth-id']) {
-            authId = req.headers['x-auth-id'] as string;
-            console.log("Auth ID from header:", authId);
-            
-            // Look up the user by authId
-            if (authId) {
-              const user = await storage.getUserByAuthId(authId);
-              if (user) {
-                userId = user.id;
-                console.log("Found user by authId for project creation:", userId);
-              }
-            }
-          }
+          // In a real app, we would decode the JWT to get the auth ID
+          console.log("Using token from Authorization header");
         } catch (err) {
           console.error("Error processing authorization:", err);
         }
@@ -323,7 +332,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log("Using fallback userId from body:", userId);
       }
       
-      if (isNaN(userId as number)) {
+      if (isNaN(userId as number) || userId === undefined) {
         return res.status(401).json({ error: "Unauthorized: Valid user ID not provided" });
       }
       
