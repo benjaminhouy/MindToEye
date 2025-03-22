@@ -26,18 +26,29 @@ const NewProject = () => {
   const createProjectMutation = useMutation({
     mutationFn: async (data: typeof projectData) => {
       // Ensure data matches the server-side schema (key names must match exactly)
-      const projectWithUserId = { 
+      const projectData = { 
         name: data.name,
-        clientName: data.clientName, 
-        userId: 1  // Use the demo user ID temporarily until we implement auth ID lookup
+        clientName: data.clientName
       };
-      console.log("Sending project data:", JSON.stringify(projectWithUserId));
+      
+      console.log("Sending project data:", JSON.stringify(projectData));
+      
+      // Use headers to pass auth information
+      const headers = {
+        "Content-Type": "application/json"
+      };
+      
+      // Add auth information if available
+      if (authId) {
+        // Set custom header for authId that our backend will look for
+        headers["x-auth-id"] = authId;
+        console.log("Including auth ID in request:", authId);
+      }
+      
       const response = await fetch("/api/projects", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(projectWithUserId)
+        headers,
+        body: JSON.stringify(projectData)
       });
       return response.json();
     },

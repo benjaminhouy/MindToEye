@@ -33,23 +33,38 @@ async function verifyProjectOwnership(req: Request, res: Response, next: NextFun
     // Get the authenticated user ID from the request
     // Extract from the Authorization header (Bearer token)
     let userId: number | undefined;
+    let authId: string | undefined;
 
-    // Extract from session or the fallback to query/body
+    // Extract from the Authorization header (Bearer token from Supabase)
     if (req.headers.authorization) {
-      // Real implementation would verify the Supabase JWT token
-      // For now, we're using a simple parsing approach
       try {
-        // Note: In a real app, we would verify the JWT and extract the user ID
-        // This is a simplified version for demonstration
+        // Get the Supabase token from Authorization header
         const token = req.headers.authorization.replace('Bearer ', '');
-        // In a real implementation, you would verify and decode the JWT
-        userId = parseInt(req.query.userId as string || req.body.userId);
+        
+        // Extract authId from the token (in a real app, we would verify the JWT properly)
+        // For now, take auth ID from a custom header for testing purposes
+        if (req.headers['x-auth-id']) {
+          authId = req.headers['x-auth-id'] as string;
+          console.log("Auth ID from header:", authId);
+          
+          // Look up the user by authId
+          if (authId) {
+            const user = await storage.getUserByAuthId(authId);
+            if (user) {
+              userId = user.id;
+              console.log("Found user by authId:", userId);
+            }
+          }
+        }
       } catch (err) {
-        console.error("Error parsing authorization token:", err);
+        console.error("Error processing authorization:", err);
       }
-    } else {
-      // Fallback to query params or body for development
+    }
+    
+    // Fallback to query params or body for development if userId is not set
+    if (!userId) {
       userId = parseInt(req.query.userId as string || req.body.userId);
+      console.log("Using fallback userId from query/body:", userId);
     }
     
     if (isNaN(userId as number)) {
@@ -94,23 +109,38 @@ async function verifyConceptOwnership(req: Request, res: Response, next: NextFun
     // Get the authenticated user ID from the request
     // Extract from the Authorization header (Bearer token)
     let userId: number | undefined;
+    let authId: string | undefined;
 
-    // Extract from session or the fallback to query/body
+    // Extract from the Authorization header (Bearer token from Supabase)
     if (req.headers.authorization) {
-      // Real implementation would verify the Supabase JWT token
-      // For now, we're using a simple parsing approach
       try {
-        // Note: In a real app, we would verify the JWT and extract the user ID
-        // This is a simplified version for demonstration
+        // Get the Supabase token from Authorization header
         const token = req.headers.authorization.replace('Bearer ', '');
-        // In a real implementation, you would verify and decode the JWT
-        userId = parseInt(req.query.userId as string || req.body.userId);
+        
+        // Extract authId from the token (in a real app, we would verify the JWT properly)
+        // For now, take auth ID from a custom header for testing purposes
+        if (req.headers['x-auth-id']) {
+          authId = req.headers['x-auth-id'] as string;
+          console.log("Auth ID from header:", authId);
+          
+          // Look up the user by authId
+          if (authId) {
+            const user = await storage.getUserByAuthId(authId);
+            if (user) {
+              userId = user.id;
+              console.log("Found user by authId:", userId);
+            }
+          }
+        }
       } catch (err) {
-        console.error("Error parsing authorization token:", err);
+        console.error("Error processing authorization:", err);
       }
-    } else {
-      // Fallback to query params or body for development
+    }
+    
+    // Fallback to query params or body for development if userId is not set
+    if (!userId) {
       userId = parseInt(req.query.userId as string || req.body.userId);
+      console.log("Using fallback userId from query/body:", userId);
     }
     
     if (isNaN(userId as number)) {
@@ -200,23 +230,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Project routes
   app.get("/api/projects", async (req: Request, res: Response) => {
     try {
-      // Extract authenticated user ID using the same technique as in middleware
+      // Extract authenticated user ID using auth_id first, then fallback to query params
       let userId: number | undefined;
+      let authId: string | undefined;
 
-      // Extract from Auth header or the fallback to query/body
       if (req.headers.authorization) {
         try {
-          // Note: In a real app, we would verify the JWT and extract the user ID
-          // This is a simplified version for demonstration
+          // Get the token from the Authorization header
           const token = req.headers.authorization.replace('Bearer ', '');
-          // In a real implementation, you would verify and decode the JWT
-          userId = parseInt(req.query.userId as string || req.body.userId);
+          
+          // Get the auth ID from a custom header if available (for testing)
+          if (req.headers['x-auth-id']) {
+            authId = req.headers['x-auth-id'] as string;
+            console.log("Auth ID from header:", authId);
+            
+            // Look up the user by authId
+            if (authId) {
+              const user = await storage.getUserByAuthId(authId);
+              if (user) {
+                userId = user.id;
+                console.log("Found user by authId:", userId);
+              }
+            }
+          }
         } catch (err) {
-          console.error("Error parsing authorization token:", err);
+          console.error("Error processing authorization:", err);
         }
-      } else {
-        // Fallback to query params for development
+      }
+      
+      // Fallback to query params for development if userId is not set
+      if (!userId) {
         userId = req.query.userId ? parseInt(req.query.userId as string) : undefined;
+        console.log("Using fallback userId from query:", userId);
       }
       
       if (isNaN(userId as number)) {
@@ -244,23 +289,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/projects", async (req: Request, res: Response) => {
     try {
-      // Extract authenticated user ID using the same technique as in middleware
+      // Extract authenticated user ID using auth_id first, then fallback to query params
       let userId: number | undefined;
+      let authId: string | undefined;
 
-      // Extract from Auth header or the fallback to query/body
       if (req.headers.authorization) {
         try {
-          // Note: In a real app, we would verify the JWT and extract the user ID
-          // This is a simplified version for demonstration
+          // Get the token from the Authorization header
           const token = req.headers.authorization.replace('Bearer ', '');
-          // In a real implementation, you would verify and decode the JWT
-          userId = req.body.userId ? parseInt(req.body.userId) : undefined;
+          
+          // Get the auth ID from a custom header if available (for testing)
+          if (req.headers['x-auth-id']) {
+            authId = req.headers['x-auth-id'] as string;
+            console.log("Auth ID from header:", authId);
+            
+            // Look up the user by authId
+            if (authId) {
+              const user = await storage.getUserByAuthId(authId);
+              if (user) {
+                userId = user.id;
+                console.log("Found user by authId for project creation:", userId);
+              }
+            }
+          }
         } catch (err) {
-          console.error("Error parsing authorization token:", err);
+          console.error("Error processing authorization:", err);
         }
-      } else {
-        // Fallback to request body for development
+      }
+      
+      // Fallback to request body for development if userId is not set
+      if (!userId) {
         userId = req.body.userId ? parseInt(req.body.userId) : undefined;
+        console.log("Using fallback userId from body:", userId);
       }
       
       if (isNaN(userId as number)) {
