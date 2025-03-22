@@ -384,7 +384,7 @@ export class SupabaseStorage implements IStorage {
       }
       
       return data;
-    } catch (error) {
+    } catch (error: any) {
       logSupabaseError('updateBrandConcept', error);
       return undefined;
     }
@@ -405,7 +405,7 @@ export class SupabaseStorage implements IStorage {
       }
       
       return true;
-    } catch (error) {
+    } catch (error: any) {
       logSupabaseError('deleteBrandConcept', error);
       return false;
     }
@@ -438,7 +438,7 @@ export class SupabaseStorage implements IStorage {
       }
       
       return true;
-    } catch (error) {
+    } catch (error: any) {
       logSupabaseError('setActiveBrandConcept', error);
       return false;
     }

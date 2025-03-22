@@ -299,6 +299,235 @@ export class MemStorage implements IStorage {
 
 // Import PostgreSQL storage implementation
 import { postgresStorage, db } from './db';
+import { eq, desc } from "drizzle-orm";
+
+// Add the DatabaseStorage implementation
+export class DatabaseStorage implements IStorage {
+  async getUser(id: number): Promise<User | undefined> {
+    if (!db) {
+      console.warn('Database not initialized. Cannot get user.');
+      return undefined;
+    }
+    
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user || undefined;
+  }
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    if (!db) {
+      console.warn('Database not initialized. Cannot get user by username.');
+      return undefined;
+    }
+    
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user || undefined;
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    if (!db) {
+      console.warn('Database not initialized. Cannot create user.');
+      throw new Error('Database not initialized');
+    }
+    
+    const [user] = await db
+      .insert(users)
+      .values(insertUser)
+      .returning();
+    return user;
+  }
+  
+  // Project operations
+  async getProjects(userId: number): Promise<Project[]> {
+    if (!db) {
+      console.warn('Database not initialized. Cannot get projects.');
+      return [];
+    }
+    
+    const projectsData = await db
+      .select()
+      .from(projects)
+      .where(eq(projects.userId, userId))
+      .orderBy(desc(projects.createdAt));
+    return projectsData;
+  }
+  
+  async getProject(id: number): Promise<Project | undefined> {
+    if (!db) {
+      console.warn('Database not initialized. Cannot get project.');
+      return undefined;
+    }
+    
+    const [project] = await db
+      .select()
+      .from(projects)
+      .where(eq(projects.id, id));
+    return project || undefined;
+  }
+  
+  async createProject(project: InsertProject): Promise<Project> {
+    if (!db) {
+      console.warn('Database not initialized. Cannot create project.');
+      throw new Error('Database not initialized');
+    }
+    
+    const [newProject] = await db
+      .insert(projects)
+      .values(project)
+      .returning();
+    return newProject;
+  }
+  
+  async updateProject(id: number, project: Partial<Project>): Promise<Project | undefined> {
+    if (!db) {
+      console.warn('Database not initialized. Cannot update project.');
+      return undefined;
+    }
+    
+    // Exclude id from update
+    const { id: _, ...updateValues } = project;
+    
+    if (Object.keys(updateValues).length === 0) {
+      return this.getProject(id);
+    }
+    
+    const [updatedProject] = await db
+      .update(projects)
+      .set(updateValues)
+      .where(eq(projects.id, id))
+      .returning();
+    return updatedProject || undefined;
+  }
+  
+  async deleteProject(id: number): Promise<boolean> {
+    if (!db) {
+      console.warn('Database not initialized. Cannot delete project.');
+      return false;
+    }
+    
+    const result = await db
+      .delete(projects)
+      .where(eq(projects.id, id))
+      .returning();
+    return result.length > 0;
+  }
+  
+  // Brand concept operations
+  async getBrandConcepts(projectId: number): Promise<BrandConcept[]> {
+    if (!db) {
+      console.warn('Database not initialized. Cannot get brand concepts.');
+      return [];
+    }
+    
+    const concepts = await db
+      .select()
+      .from(brandConcepts)
+      .where(eq(brandConcepts.projectId, projectId));
+    return concepts;
+  }
+  
+  async getBrandConcept(id: number): Promise<BrandConcept | undefined> {
+    if (!db) {
+      console.warn('Database not initialized. Cannot get brand concept.');
+      return undefined;
+    }
+    
+    const [concept] = await db
+      .select()
+      .from(brandConcepts)
+      .where(eq(brandConcepts.id, id));
+    return concept || undefined;
+  }
+  
+  async createBrandConcept(concept: InsertBrandConcept): Promise<BrandConcept> {
+    if (!db) {
+      console.warn('Database not initialized. Cannot create brand concept.');
+      throw new Error('Database not initialized');
+    }
+    
+    const [newConcept] = await db
+      .insert(brandConcepts)
+      .values(concept)
+      .returning();
+    
+    // If this concept is active, deactivate others for this project
+    if (concept.isActive) {
+      await this.setActiveBrandConcept(newConcept.id, concept.projectId);
+    }
+    
+    return newConcept;
+  }
+  
+  async updateBrandConcept(id: number, concept: Partial<BrandConcept>): Promise<BrandConcept | undefined> {
+    if (!db) {
+      console.warn('Database not initialized. Cannot update brand concept.');
+      return undefined;
+    }
+    
+    // Store if isActive is true so we can update other concepts if needed
+    const isBeingSetActive = concept.isActive === true;
+    const projectId = concept.projectId;
+    
+    // Exclude id from update
+    const { id: _, ...updateValues } = concept;
+    
+    if (Object.keys(updateValues).length === 0) {
+      return this.getBrandConcept(id);
+    }
+    
+    const [updatedConcept] = await db
+      .update(brandConcepts)
+      .set(updateValues)
+      .where(eq(brandConcepts.id, id))
+      .returning();
+    
+    // If this concept is being set as active, deactivate others
+    if (isBeingSetActive && projectId) {
+      await this.setActiveBrandConcept(id, projectId);
+    }
+    
+    return updatedConcept || undefined;
+  }
+  
+  async deleteBrandConcept(id: number): Promise<boolean> {
+    if (!db) {
+      console.warn('Database not initialized. Cannot delete brand concept.');
+      return false;
+    }
+    
+    const result = await db
+      .delete(brandConcepts)
+      .where(eq(brandConcepts.id, id))
+      .returning();
+    return result.length > 0;
+  }
+  
+  async setActiveBrandConcept(id: number, projectId: number): Promise<boolean> {
+    if (!db) {
+      console.warn('Database not initialized. Cannot set active brand concept.');
+      return false;
+    }
+    
+    try {
+      // First, deactivate all concepts for this project
+      await db
+        .update(brandConcepts)
+        .set({ isActive: false })
+        .where(eq(brandConcepts.projectId, projectId));
+      
+      // Then, activate the specified concept
+      const result = await db
+        .update(brandConcepts)
+        .set({ isActive: true })
+        .where(eq(brandConcepts.id, id))
+        .returning();
+      
+      return result.length > 0;
+    } catch (error: any) {
+      console.error('Error setting active brand concept:', error);
+      return false;
+    }
+  }
+}
 
 // Determine which storage implementation to use
 // Set up the storage implementation with fallback logic
@@ -307,7 +536,7 @@ let storageImplementation: IStorage;
 // Use PostgreSQL database if available
 if (process.env.DATABASE_URL && db) {
   console.log('Using PostgreSQL database backend');
-  storageImplementation = postgresStorage;
+  storageImplementation = new DatabaseStorage(); // Use our new implementation
 } else {
   console.log('Using in-memory storage backend - No database connection available');
   storageImplementation = new MemStorage();
