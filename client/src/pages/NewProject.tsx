@@ -15,9 +15,8 @@ const NewProject = () => {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { user } = useAuth();
-  // For now, always use ID 1 for the demo account since we're using Supabase Auth
-  // but our database has numeric IDs
-  const userId = 1;
+  // Extract database user ID from Supabase Auth ID
+  const userId = user?.id ? parseInt(user.id) : undefined;
   
   const [projectData, setProjectData] = useState({
     name: "",

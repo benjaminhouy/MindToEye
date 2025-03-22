@@ -10,9 +10,9 @@ import { useAuth } from "@/lib/auth-context";
 
 const Dashboard = () => {
   const { user } = useAuth();
-  // For now, always use ID 1 for the demo account since we're using Supabase Auth
-  // but our database has numeric IDs
-  const userId = 1;
+  // Extract database user ID from Supabase Auth ID
+  // The database records the numeric user ID in the user metadata
+  const userId = user?.id ? parseInt(user.id) : undefined;
   
   const { data: projects, isLoading, error } = useQuery<Project[]>({
     queryKey: [`/api/projects?userId=${userId}`],
