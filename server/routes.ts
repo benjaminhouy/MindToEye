@@ -31,30 +31,40 @@ async function verifyProjectOwnership(req: Request, res: Response, next: NextFun
     }
     
     // Get the authenticated user ID from the request
-    // Extract from the Authorization header (Bearer token)
     let userId: number | undefined;
     let authId: string | undefined;
 
-    // Extract from the Authorization header (Bearer token from Supabase)
-    if (req.headers.authorization) {
+    // ALWAYS check for x-auth-id header first (most reliable method)
+    if (req.headers['x-auth-id']) {
+      authId = req.headers['x-auth-id'] as string;
+      console.log("Auth ID from header in verifyProjectOwnership:", authId);
+      
+      // Look up the user by authId
+      if (authId) {
+        try {
+          const user = await storage.getUserByAuthId(authId);
+          if (user) {
+            userId = user.id;
+            console.log("Found user by authId in verifyProjectOwnership:", userId);
+          } else {
+            console.log("User not found for authId:", authId);
+          }
+        } catch (err) {
+          console.error("Error looking up user by authId:", err);
+        }
+      }
+    }
+    // Extract from the Authorization header (Bearer token from Supabase) AS FALLBACK
+    else if (req.headers.authorization) {
       try {
         // Get the Supabase token from Authorization header
         const token = req.headers.authorization.replace('Bearer ', '');
+        console.log("Using authorization header as fallback in verifyProjectOwnership");
         
-        // Extract authId from the token (in a real app, we would verify the JWT properly)
-        // For now, take auth ID from a custom header for testing purposes
-        if (req.headers['x-auth-id']) {
-          authId = req.headers['x-auth-id'] as string;
-          console.log("Auth ID from header:", authId);
-          
-          // Look up the user by authId
-          if (authId) {
-            const user = await storage.getUserByAuthId(authId);
-            if (user) {
-              userId = user.id;
-              console.log("Found user by authId:", userId);
-            }
-          }
+        // For debugging purposes, check if there's also an auth-id header with different capitalization
+        const headers = Object.keys(req.headers).filter(h => h.toLowerCase().includes('auth'));
+        if (headers.length > 0) {
+          console.log("Available auth headers:", headers);
         }
       } catch (err) {
         console.error("Error processing authorization:", err);
@@ -107,30 +117,40 @@ async function verifyConceptOwnership(req: Request, res: Response, next: NextFun
     }
     
     // Get the authenticated user ID from the request
-    // Extract from the Authorization header (Bearer token)
     let userId: number | undefined;
     let authId: string | undefined;
 
-    // Extract from the Authorization header (Bearer token from Supabase)
-    if (req.headers.authorization) {
+    // ALWAYS check for x-auth-id header first (most reliable method)
+    if (req.headers['x-auth-id']) {
+      authId = req.headers['x-auth-id'] as string;
+      console.log("Auth ID from header in verifyConceptOwnership:", authId);
+      
+      // Look up the user by authId
+      if (authId) {
+        try {
+          const user = await storage.getUserByAuthId(authId);
+          if (user) {
+            userId = user.id;
+            console.log("Found user by authId in verifyConceptOwnership:", userId);
+          } else {
+            console.log("User not found for authId:", authId);
+          }
+        } catch (err) {
+          console.error("Error looking up user by authId:", err);
+        }
+      }
+    }
+    // Extract from the Authorization header (Bearer token from Supabase) AS FALLBACK
+    else if (req.headers.authorization) {
       try {
         // Get the Supabase token from Authorization header
         const token = req.headers.authorization.replace('Bearer ', '');
+        console.log("Using authorization header as fallback in verifyConceptOwnership");
         
-        // Extract authId from the token (in a real app, we would verify the JWT properly)
-        // For now, take auth ID from a custom header for testing purposes
-        if (req.headers['x-auth-id']) {
-          authId = req.headers['x-auth-id'] as string;
-          console.log("Auth ID from header:", authId);
-          
-          // Look up the user by authId
-          if (authId) {
-            const user = await storage.getUserByAuthId(authId);
-            if (user) {
-              userId = user.id;
-              console.log("Found user by authId:", userId);
-            }
-          }
+        // For debugging purposes, check if there's also an auth-id header with different capitalization
+        const headers = Object.keys(req.headers).filter(h => h.toLowerCase().includes('auth'));
+        if (headers.length > 0) {
+          console.log("Available auth headers:", headers);
         }
       } catch (err) {
         console.error("Error processing authorization:", err);
@@ -234,24 +254,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let userId: number | undefined;
       let authId: string | undefined;
 
-      if (req.headers.authorization) {
+      // ALWAYS check for x-auth-id header first (most reliable method)
+      if (req.headers['x-auth-id']) {
+        authId = req.headers['x-auth-id'] as string;
+        console.log("Auth ID from header in GET projects:", authId);
+        
+        // Look up the user by authId
+        if (authId) {
+          try {
+            const user = await storage.getUserByAuthId(authId);
+            if (user) {
+              userId = user.id;
+              console.log("Found user by authId in GET projects:", userId);
+            } else {
+              console.log("User not found for authId:", authId);
+            }
+          } catch (err) {
+            console.error("Error looking up user by authId:", err);
+          }
+        }
+      }
+      // Extract from the Authorization header (Bearer token from Supabase) AS FALLBACK
+      else if (req.headers.authorization) {
         try {
           // Get the token from the Authorization header
           const token = req.headers.authorization.replace('Bearer ', '');
           
-          // Get the auth ID from a custom header if available (for testing)
-          if (req.headers['x-auth-id']) {
-            authId = req.headers['x-auth-id'] as string;
-            console.log("Auth ID from header:", authId);
-            
-            // Look up the user by authId
-            if (authId) {
-              const user = await storage.getUserByAuthId(authId);
-              if (user) {
-                userId = user.id;
-                console.log("Found user by authId:", userId);
-              }
-            }
+          console.log("Using authorization header as fallback in GET projects");
+          
+          // For debugging purposes, check if there's also an auth-id header with different capitalization
+          const headers = Object.keys(req.headers).filter(h => h.toLowerCase().includes('auth'));
+          if (headers.length > 0) {
+            console.log("Available auth headers:", headers);
           }
         } catch (err) {
           console.error("Error processing authorization:", err);
