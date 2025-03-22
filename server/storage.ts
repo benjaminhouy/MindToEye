@@ -54,6 +54,16 @@ export interface IStorage {
     const [user] = await db.select().from(users).where(eq(users.username, username));
     return user || undefined;
   }
+  
+  async getUserByAuthId(authId: string): Promise<User | undefined> {
+    if (!db) {
+      console.warn('Database not initialized. Cannot get user by auth ID.');
+      return undefined;
+    }
+    
+    const [user] = await db.select().from(users).where(eq(users.authId, authId));
+    return user || undefined;
+  }
 
   async createUser(insertUser: InsertUser): Promise<User> {
     if (!db) {

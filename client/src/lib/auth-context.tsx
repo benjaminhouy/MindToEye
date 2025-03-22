@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from './supabase';
+import { apiRequest } from './queryClient';
 
 // Define the shape of our auth context
 type AuthContextType = {
@@ -32,20 +33,72 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Register user with our API after Supabase auth
+  const registerUserWithApi = async (authUser: User) => {
+    try {
+      console.log("Registering user with API:", authUser.email);
+      
+      const response = await fetch('/api/register', {
+        method: 'POST',
+        body: JSON.stringify({
+          email: authUser.email,
+          authId: authUser.id,
+        }),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      const data = await response.json();
+      console.log("API registration response:", data);
+      return data;
+    } catch (error) {
+      console.error("Error registering user with API:", error);
+      throw error;
+    }
+  };
+
   // Handle authentication state changes
   useEffect(() => {
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       setSession(session);
-      setUser(session?.user ?? null);
+      if (session?.user) {
+        setUser(session.user);
+        
+        // Register with our API
+        try {
+          await registerUserWithApi(session.user);
+        } catch (err) {
+          console.error("Failed to register user with API during initial session:", err);
+          // Continue anyway - don't block the user experience
+        }
+      } else {
+        setUser(null);
+      }
+      
       setLoading(false);
     });
 
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, session) => {
+      async (_event, session) => {
         setSession(session);
-        setUser(session?.user ?? null);
+        
+        if (session?.user) {
+          setUser(session.user);
+          
+          // Register with our API on sign in or sign up
+          try {
+            await registerUserWithApi(session.user);
+          } catch (err) {
+            console.error("Failed to register user with API on auth change:", err);
+            // Continue anyway
+          }
+        } else {
+          setUser(null);
+        }
+        
         setLoading(false);
       }
     );

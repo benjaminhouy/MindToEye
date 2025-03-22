@@ -15,8 +15,8 @@ const NewProject = () => {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const { user } = useAuth();
-  // Extract database user ID from Supabase Auth ID
-  const userId = user?.id ? parseInt(user.id) : undefined;
+  // Pass the Supabase Auth ID directly (our API will handle the mapping)
+  const authId = user?.id;
   
   const [projectData, setProjectData] = useState({
     name: "",
@@ -29,14 +29,20 @@ const NewProject = () => {
       const projectWithUserId = { 
         name: data.name,
         clientName: data.clientName, 
-        userId 
+        userId: 1  // Use the demo user ID temporarily until we implement auth ID lookup
       };
       console.log("Sending project data:", JSON.stringify(projectWithUserId));
-      const response = await apiRequest("POST", "/api/projects", projectWithUserId);
+      const response = await fetch("/api/projects", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(projectWithUserId)
+      });
       return response.json();
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: [`/api/projects?userId=${userId}`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
       toast({
         title: "Project created",
         description: "Your new project has been created successfully.",
