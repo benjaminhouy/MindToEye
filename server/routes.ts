@@ -228,6 +228,99 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Debug endpoint for directly testing Supabase storage
+  app.get("/api/debug-supabase-storage", async (req: Request, res: Response) => {
+    try {
+      // Import the supabase client
+      const { supabase } = await import('./storage-utils');
+      
+      if (!supabase) {
+        return res.status(500).json({ 
+          success: false, 
+          message: "Supabase client not initialized. Check environment variables." 
+        });
+      }
+      
+      // First, list all buckets to see what's available
+      const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
+      
+      if (bucketsError) {
+        return res.status(500).json({ 
+          success: false, 
+          message: "Failed to list buckets", 
+          error: bucketsError.message 
+        });
+      }
+      
+      // Check if the assets bucket exists
+      const assetsBucket = buckets.find(bucket => bucket.name === 'assets');
+      
+      let listResult = null;
+      let testUploadResult = null;
+      
+      // If assets bucket exists, try to list files
+      if (assetsBucket) {
+        const { data: files, error: listError } = await supabase
+          .storage
+          .from('assets')
+          .list();
+          
+        listResult = {
+          success: !listError,
+          files: files || [],
+          error: listError ? listError.message : null
+        };
+        
+        // Try a test upload if listing succeeded
+        if (!listError) {
+          // Create a small test file
+          const testSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="50" height="50"><circle cx="25" cy="25" r="20" fill="#10B981"/></svg>`;
+          const testData = Buffer.from(testSvg);
+          const testPath = `test-upload-${Date.now()}.svg`;
+          
+          const { data: uploadData, error: uploadError } = await supabase
+            .storage
+            .from('assets')
+            .upload(testPath, testData, {
+              contentType: 'image/svg+xml',
+              upsert: true
+            });
+          
+          testUploadResult = {
+            success: !uploadError,
+            path: uploadData?.path || null,
+            error: uploadError ? uploadError.message : null
+          };
+        }
+      }
+      
+      // Return comprehensive debug information
+      res.json({
+        success: true,
+        supabaseInitialized: !!supabase,
+        bucketsCount: buckets.length,
+        bucketsFound: buckets.map(b => b.name),
+        assetsBucketExists: !!assetsBucket,
+        assetsBucketInfo: assetsBucket || null,
+        listResult,
+        testUploadResult,
+        supabaseUrl: process.env.SUPABASE_URL ? `${process.env.SUPABASE_URL.substring(0, 20)}...` : null,
+        environmentVariablesSet: {
+          SUPABASE_URL: !!process.env.SUPABASE_URL,
+          SUPABASE_ANON_KEY: !!process.env.SUPABASE_ANON_KEY,
+          SUPABASE_DB_URL: !!process.env.SUPABASE_DB_URL,
+        }
+      });
+    } catch (error) {
+      console.error("Error debugging Supabase storage:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Unexpected error during storage debug", 
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
   app.get("/api/storage-setup-guide", async (_req: Request, res: Response) => {
     try {
       const { generateStorageSetupInstructions } = await import('./storage-fix-guide');
