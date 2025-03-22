@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import Replicate from "replicate";
 import OpenAI from "openai";
 import { BrandInput } from "@shared/schema";
+import { uploadImageFromUrl, initializeStorageBucket } from './storage-utils';
 
 // Initialize OpenAI client
 export const openai = new OpenAI({
@@ -23,6 +24,15 @@ export const anthropic = new Anthropic({
 // Initialize Replicate with API key from environment for Black Forest Flux
 export const replicate = new Replicate({
   auth: process.env.REPLICATE_API_TOKEN,
+});
+
+// Initialize Supabase storage bucket on startup
+initializeStorageBucket().then(success => {
+  if (success) {
+    console.log('Supabase storage bucket initialized successfully');
+  } else {
+    console.warn('Failed to initialize Supabase storage bucket');
+  }
 });
 
 // Generate landing page hero visualization content with Claude
@@ -326,19 +336,40 @@ Make it simple, memorable, and unique.
       
       // Replicate typically returns an array of image URLs
       // Let's grab the first one (or the output if it's a string)
-      const imageUrl = Array.isArray(output) ? output[0] : String(output);
+      const replicateImageUrl = Array.isArray(output) ? output[0] : String(output);
       
       // For our purposes, we'll return an SVG wrapper that embeds the generated image
       // This allows us to maintain compatibility with our existing code
-      if (imageUrl) {
-        const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 200 200">
-          <image href="${imageUrl}" width="100%" height="100%" preserveAspectRatio="xMidYMid meet"/>
-        </svg>`;
-        
-        return {
-          svg,
-          prompt: fluxPrompt // Return the prompt so users can edit it
-        };
+      if (replicateImageUrl) {
+        try {
+          // Upload the image to Supabase storage
+          console.log("Uploading image to Supabase storage from Replicate URL...");
+          const uploadedImageUrl = await uploadImageFromUrl(replicateImageUrl);
+          
+          // Use the uploaded image URL if available, otherwise fall back to the Replicate URL
+          const imageUrl = uploadedImageUrl || replicateImageUrl;
+          console.log(`Using image URL: ${uploadedImageUrl ? 'Supabase storage' : 'Replicate (fallback)'}`);
+          
+          const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 200 200">
+            <image href="${imageUrl}" width="100%" height="100%" preserveAspectRatio="xMidYMid meet"/>
+          </svg>`;
+          
+          return {
+            svg,
+            prompt: fluxPrompt // Return the prompt so users can edit it
+          };
+        } catch (uploadError) {
+          console.error("Failed to upload image to Supabase storage:", uploadError);
+          // If upload fails, still use the Replicate URL
+          const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 200 200">
+            <image href="${replicateImageUrl}" width="100%" height="100%" preserveAspectRatio="xMidYMid meet"/>
+          </svg>`;
+          
+          return {
+            svg,
+            prompt: fluxPrompt // Return the prompt so users can edit it
+          };
+        }
       }
     } catch (error) {
       console.error("Replicate Flux Schnell model failed:", error);
