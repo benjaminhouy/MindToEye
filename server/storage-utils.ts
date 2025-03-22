@@ -35,8 +35,15 @@ if (supabase) {
   console.warn('Supabase client could not be initialized - check SUPABASE_URL and SUPABASE_ANON_KEY');
 }
 
-// Bucket name for storing images (using lowercase as Supabase recommended practice)
-const STORAGE_BUCKET = 'logos';
+// Bucket name for storing assets (using lowercase as Supabase recommended practice)
+const STORAGE_BUCKET = 'assets';
+
+// For demo purposes, we'll use a consistent user ID (this would normally come from auth)
+// In a real app, this would be the authenticated user's ID
+const DEMO_USER_ID = 'demo-user';
+
+// Public folder for assets that should be accessible by all users
+const PUBLIC_FOLDER = 'public';
 
 /**
  * Initialize the storage bucket if it doesn't exist
@@ -236,17 +243,24 @@ export async function uploadImageFromUrl(imageUrl: string): Promise<string | nul
     
     // Generate a unique file name with timestamp to avoid conflicts
     const timestamp = new Date().getTime();
-    const fileName = `logo-${timestamp}-${uuidv4().substring(0, 8)}.png`;
+    const randomId = uuidv4().substring(0, 8);
+    
+    // Create a path that includes the user ID for isolation
+    // This matches the structure expected by the RLS policies
+    // For public files, use the public folder instead
+    const usePublicFolder = false; // Set to true for files that should be public to all users
+    const folderPath = usePublicFolder ? PUBLIC_FOLDER : DEMO_USER_ID;
+    const filePath = `${folderPath}/logo-${timestamp}-${randomId}.png`;
     
     // Upload the image to Supabase storage
-    console.log(`Attempting to upload image to Supabase storage bucket '${STORAGE_BUCKET}' as '${fileName}'...`);
+    console.log(`Attempting to upload image to Supabase storage bucket '${STORAGE_BUCKET}' as '${filePath}'...`);
     let uploadResult;
     try {
       // First try direct upload
       uploadResult = await supabase
         .storage
         .from(STORAGE_BUCKET)
-        .upload(fileName, imageData, {
+        .upload(filePath, imageData, {
           contentType: 'image/png',
           cacheControl: '3600',
           upsert: true // Use true to overwrite if needed
@@ -324,7 +338,7 @@ export async function uploadImageFromUrl(imageUrl: string): Promise<string | nul
       const { data: publicUrlData } = supabase
         .storage
         .from(STORAGE_BUCKET)
-        .getPublicUrl(fileName);
+        .getPublicUrl(filePath);
       
       if (publicUrlData && publicUrlData.publicUrl) {
         console.log(`Image successfully stored in Supabase: ${publicUrlData.publicUrl}`);
