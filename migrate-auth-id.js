@@ -1,6 +1,13 @@
 // Migration script to add auth_id column to users table
-const { Pool } = require('pg');
-require('dotenv').config();
+import pg from 'pg';
+import dotenv from 'dotenv';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+// Initialize environment variables
+dotenv.config();
+
+const { Pool } = pg;
 
 // Make sure DATABASE_URL is set
 const connectionString = process.env.DATABASE_URL;
@@ -12,6 +19,9 @@ if (!connectionString) {
 async function runMigration() {
   const pool = new Pool({
     connectionString,
+    ssl: {
+      rejectUnauthorized: false
+    }
   });
 
   try {
