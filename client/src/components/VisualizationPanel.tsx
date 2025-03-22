@@ -12,6 +12,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient } from "@/lib/queryClient";
 import LoadingOverlay from "./LoadingOverlay";
+import { supabase } from "@/lib/supabase";
 
 interface VisualizationPanelProps {
   concept?: BrandConcept;
@@ -23,7 +24,25 @@ const VisualizationPanel = ({ concept: initialConcept, projectId }: Visualizatio
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [progress, setProgress] = useState(0);
   const [concept, setConcept] = useState(initialConcept);
+  const [authId, setAuthId] = useState<string | null>(null);
   const { toast } = useToast();
+  
+  // Get auth ID for API requests
+  useEffect(() => {
+    const getAuthUser = async () => {
+      try {
+        const { data } = await supabase.auth.getUser();
+        if (data?.user?.id) {
+          setAuthId(data.user.id);
+          console.log("VisualizationPanel: Auth ID retrieved:", data.user.id);
+        }
+      } catch (error) {
+        console.error("Error fetching auth user in VisualizationPanel:", error);
+      }
+    };
+    
+    getAuthUser();
+  }, []);
   
   // Keep the local concept state in sync with the prop
   useEffect(() => {
@@ -48,12 +67,25 @@ const VisualizationPanel = ({ concept: initialConcept, projectId }: Visualizatio
   // Mutation to update a brand concept
   const updateConceptMutation = useMutation({
     mutationFn: async (data: { conceptId: number; updates: any }) => {
+      console.log(`Updating concept ID ${data.conceptId} with:`, data.updates);
+      
+      // Include auth headers
+      const headers: Record<string, string> = {};
+      if (authId) {
+        headers['x-auth-id'] = authId;
+        console.log("Including auth ID in update concept request:", authId);
+      }
+      
       const response = await apiRequest(
         "PATCH", 
         `/api/concepts/${data.conceptId}/update`, 
-        data.updates
+        data.updates,
+        headers
       );
-      return response.json();
+      
+      const result = await response.json();
+      console.log(`Concept update result:`, result);
+      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/concepts`] });
@@ -85,10 +117,21 @@ const VisualizationPanel = ({ concept: initialConcept, projectId }: Visualizatio
       setIsRegenerating(true);
       setProgress(10); // Start progress
 
+      // Log regeneration request
+      console.log(`Regenerating element: ${data.elementType} for concept ID ${data.conceptId}`);
+      
+      // Include auth headers
+      const headers: Record<string, string> = {};
+      if (authId) {
+        headers['x-auth-id'] = authId;
+        console.log("Including auth ID in regenerate element request:", authId);
+      }
+      
       const response = await apiRequest(
         "POST", 
         `/api/regenerate-element`, 
-        data
+        data,
+        headers
       );
       
       // Show incremental progress
@@ -97,6 +140,7 @@ const VisualizationPanel = ({ concept: initialConcept, projectId }: Visualizatio
       setTimeout(() => setProgress(70), 2000);
       
       const result = await response.json();
+      console.log(`Regeneration result for ${data.elementType}:`, result);
       setProgress(100); // Complete progress
       return result;
     },
