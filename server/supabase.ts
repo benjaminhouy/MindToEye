@@ -80,7 +80,7 @@ export class SupabaseStorage implements IStorage {
       }
       
       return data;
-    } catch (error) {
+    } catch (error: any) {
       logSupabaseError('getUser', error);
       return undefined;
     }
@@ -104,7 +104,7 @@ export class SupabaseStorage implements IStorage {
       }
       
       return data;
-    } catch (error) {
+    } catch (error: any) {
       logSupabaseError('getUserByUsername', error);
       return undefined;
     }
@@ -151,7 +151,7 @@ export class SupabaseStorage implements IStorage {
       }
       
       return data || [];
-    } catch (error) {
+    } catch (error: any) {
       logSupabaseError('getProjects', error);
       return [];
     }
@@ -205,7 +205,7 @@ export class SupabaseStorage implements IStorage {
       } else {
         console.log('Demo user already exists.');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error inserting sample data:', error);
     }
   }
@@ -226,7 +226,7 @@ export class SupabaseStorage implements IStorage {
       }
       
       return data;
-    } catch (error) {
+    } catch (error: any) {
       logSupabaseError('getProject', error);
       return undefined;
     }
@@ -271,7 +271,7 @@ export class SupabaseStorage implements IStorage {
       }
       
       return data;
-    } catch (error) {
+    } catch (error: any) {
       logSupabaseError('updateProject', error);
       return undefined;
     }
@@ -292,7 +292,7 @@ export class SupabaseStorage implements IStorage {
       }
       
       return true;
-    } catch (error) {
+    } catch (error: any) {
       logSupabaseError('deleteProject', error);
       return false;
     }
@@ -317,7 +317,7 @@ export class SupabaseStorage implements IStorage {
       }
       
       return data || [];
-    } catch (error) {
+    } catch (error: any) {
       logSupabaseError('getBrandConcepts', error);
       return [];
     }
@@ -339,7 +339,7 @@ export class SupabaseStorage implements IStorage {
       }
       
       return data;
-    } catch (error) {
+    } catch (error: any) {
       logSupabaseError('getBrandConcept', error);
       return undefined;
     }
@@ -361,9 +361,9 @@ export class SupabaseStorage implements IStorage {
       }
       
       return data;
-    } catch (error) {
+    } catch (error: any) {
       logSupabaseError('createBrandConcept', error);
-      throw new Error(`Failed to create brand concept: ${error.message}`);
+      throw new Error(`Failed to create brand concept: ${error.message || 'Unknown error'}`);
     }
   }
   
