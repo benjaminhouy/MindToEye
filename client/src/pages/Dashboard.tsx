@@ -6,10 +6,15 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { PlusIcon, FolderIcon, CalendarIcon, InfoIcon } from "lucide-react";
 import { Project } from "@shared/schema";
 import { format } from "date-fns";
+import { useAuth } from "@/lib/auth-context";
 
 const Dashboard = () => {
+  const { user } = useAuth();
+  const userId = user?.id || 1; // Fallback to ID 1 if no user is found
+  
   const { data: projects, isLoading, error } = useQuery<Project[]>({
-    queryKey: ["/api/projects"],
+    queryKey: [`/api/projects?userId=${userId}`],
+    enabled: !!userId, // Only run query when we have a userId
   });
 
   return (

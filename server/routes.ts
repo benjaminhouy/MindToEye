@@ -26,8 +26,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Project routes
   app.get("/api/projects", async (req: Request, res: Response) => {
     try {
-      // For demo purposes, always use user ID 1
-      const userId = 1;
+      // Get the user ID from the request
+      const userId = req.query.userId ? parseInt(req.query.userId as string) : 1;
+      
+      if (isNaN(userId)) {
+        return res.status(400).json({ error: "Invalid user ID" });
+      }
+      
       const projects = await storage.getProjects(userId);
       res.json(projects);
     } catch (error) {
@@ -57,13 +62,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/projects", async (req: Request, res: Response) => {
     try {
-      // For demo purposes, always use user ID 1
-      const userId = 1;
+      // Get the user ID from the request body or use a default
+      const userId = req.body.userId ? parseInt(req.body.userId) : 1;
+      
+      if (isNaN(userId)) {
+        return res.status(400).json({ error: "Invalid user ID" });
+      }
       
       const projectData = {
         ...req.body,
         userId
       };
+      
+      // Delete the userId from req.body to prevent duplication
+      delete projectData.userId;
+      
+      // Add it back in the correct format
+      projectData.userId = userId;
       
       const validatedData = insertProjectSchema.parse(projectData);
       const project = await storage.createProject(validatedData);
