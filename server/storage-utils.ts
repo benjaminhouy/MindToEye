@@ -249,8 +249,10 @@ export async function uploadImageFromUrl(imageUrl: string): Promise<string | nul
     // This matches the structure expected by the RLS policies
     // For public files, use the public folder instead
     const usePublicFolder = false; // Set to true for files that should be public to all users
-    const folderPath = usePublicFolder ? PUBLIC_FOLDER : DEMO_USER_ID;
-    const filePath = `${folderPath}/logo-${timestamp}-${randomId}.png`;
+    const userId = usePublicFolder ? PUBLIC_FOLDER : DEMO_USER_ID;
+    
+    // Use the same hierarchical structure as in uploadLogoFromUrl
+    const filePath = `${userId}/images/logo-${timestamp}-${randomId}.png`;
     
     // Upload the image to Supabase storage
     console.log(`Attempting to upload image to Supabase storage bucket '${STORAGE_BUCKET}' as '${filePath}'...`);
@@ -413,8 +415,13 @@ export async function uploadLogoFromUrl(
     const timestamp = new Date().getTime();
     const randomId = uuidv4().substring(0, 8);
     
-    // Path structure following the policy rule: (bucket_id = 'assets' AND (storage.foldername(name))[1] = 'logos')
-    const filePath = `logos/${projectId}/${conceptId}/logo-${timestamp}-${randomId}.${fileType}`;
+    // Get the user ID from request context or use demo user for testing
+    // In production, this should always come from authentication context
+    const userId = DEMO_USER_ID; // This would be properly derived from auth in production
+    
+    // Improved path structure: userId/projectId/conceptId/logos/logo-timestamp-randomId.fileType
+    // This structure provides better isolation, security, and organization
+    const filePath = `${userId}/${projectId}/${conceptId}/logos/logo-${timestamp}-${randomId}.${fileType}`;
     
     // Set the appropriate content type based on file type
     let contentType: string;
@@ -449,7 +456,8 @@ export async function uploadLogoFromUrl(
       // If we get a policy violation, try with a simpler path
       if (uploadError.message.includes('policy') || uploadError.message.includes('permission')) {
         console.log('Attempting upload with simplified path structure...');
-        const simplePath = `logos/logo-${projectId}-${conceptId}-${timestamp}.${fileType}`;
+        // For the fallback path, use a flatter structure that's more likely to work with default Supabase policies
+        const simplePath = `${userId}/logos/logo-${projectId}-${conceptId}-${timestamp}.${fileType}`;
         
         const { error: retryError } = await supabase
           .storage
