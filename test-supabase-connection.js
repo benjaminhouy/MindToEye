@@ -1,11 +1,16 @@
 // Script to test connectivity to Supabase PostgreSQL database
 import pg from 'pg';
 import dotenv from 'dotenv';
+import https from 'https';
+
+const { Pool } = pg;
 
 // Load environment variables
 dotenv.config();
 
-const { Pool } = pg;
+// Set NODE_TLS_REJECT_UNAUTHORIZED=0 to bypass SSL verification
+// This is ONLY for testing purposes, not recommended for production
+process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
 async function testConnection() {
   // Check if SUPABASE_DB_URL is available
@@ -16,11 +21,12 @@ async function testConnection() {
 
   console.log('SUPABASE_DB_URL is defined. Attempting to connect to Supabase PostgreSQL...');
   
-  // Create a connection pool to Supabase
+  // Create a connection pool to Supabase with SSL options
   const pool = new Pool({
     connectionString: process.env.SUPABASE_DB_URL,
     ssl: {
       require: true,
+      rejectUnauthorized: false // Allow self-signed certificates
     }
   });
 

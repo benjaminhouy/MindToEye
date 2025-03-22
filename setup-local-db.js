@@ -21,6 +21,7 @@ async function createTables() {
     connectionString: process.env.SUPABASE_DB_URL,
     ssl: {
       require: true,
+      rejectUnauthorized: false // Allow self-signed certificates
     }
   });
 

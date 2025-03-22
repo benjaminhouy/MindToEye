@@ -24,7 +24,9 @@ type SSLMode = 'prefer' | 'require' | 'allow' | 'verify-full';
 // Create PostgreSQL client with pooled connection
 console.log('Initializing database with Supabase connection string...');
 const queryClient = databaseUrl ? postgres(databaseUrl, { 
-  ssl: sslMode as SSLMode,
+  ssl: {
+    rejectUnauthorized: false // Allow self-signed certificates
+  },
   prepare: true,  // Use prepared statements
   max: 10,        // Connection pool size
   debug: true     // Log queries
@@ -32,7 +34,9 @@ const queryClient = databaseUrl ? postgres(databaseUrl, {
 
 // For migrations - disable prepared statements and use a single connection
 const migrationClient = databaseUrl ? postgres(databaseUrl, { 
-  ssl: sslMode as SSLMode,
+  ssl: {
+    rejectUnauthorized: false // Allow self-signed certificates
+  },
   prepare: false, // Disable prepared statements for migrations
   max: 1          // Single connection for migrations
 }) : null;
