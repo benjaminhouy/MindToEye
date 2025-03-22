@@ -433,6 +433,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "FLUX logo generation failed", details: errorMessage });
     }
   });
+  
+  // Test endpoint for Supabase storage functionality
+  app.post("/api/test-storage", async (req: Request, res: Response) => {
+    try {
+      // Import the storage utility directly
+      const { uploadImageFromUrl } = await import('./storage-utils');
+      
+      // Get image URL from request body or use a default test image
+      const { imageUrl } = req.body;
+      const testImageUrl = imageUrl || 'https://picsum.photos/200'; // Use Lorem Picsum as a test image source
+      
+      log(`Testing Supabase storage with image URL: ${testImageUrl}`);
+      
+      // Attempt to upload the image
+      const storedImageUrl = await uploadImageFromUrl(testImageUrl);
+      
+      if (storedImageUrl) {
+        log(`Successfully stored image in Supabase: ${storedImageUrl}`);
+        res.json({ 
+          success: true, 
+          message: 'Image successfully uploaded to Supabase storage',
+          originalUrl: testImageUrl,
+          storedUrl: storedImageUrl 
+        });
+      } else {
+        log('Failed to store image in Supabase - using original URL as fallback');
+        res.json({ 
+          success: false, 
+          message: 'Image could not be uploaded to Supabase storage, using original URL as fallback',
+          originalUrl: testImageUrl,
+          storedUrl: null
+        });
+      }
+    } catch (error) {
+      console.error('Error in test-storage endpoint:', error);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Error testing Supabase storage',
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
 
   // Logo generation route - handles both logos and billboard generation
   app.post("/api/generate-logo", async (req: Request, res: Response) => {

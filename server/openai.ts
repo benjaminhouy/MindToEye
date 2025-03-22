@@ -26,14 +26,9 @@ export const replicate = new Replicate({
   auth: process.env.REPLICATE_API_TOKEN,
 });
 
-// Initialize Supabase storage bucket on startup
-initializeStorageBucket().then(success => {
-  if (success) {
-    console.log('Supabase storage bucket initialized successfully');
-  } else {
-    console.warn('Failed to initialize Supabase storage bucket');
-  }
-});
+// We won't try to automatically initialize the bucket on startup
+// Instead, we'll handle storage permissions when actually needed
+console.log('Supabase storage will be initialized when needed');
 
 // Generate landing page hero visualization content with Claude
 export const generateLandingPageHero = async (params: {
