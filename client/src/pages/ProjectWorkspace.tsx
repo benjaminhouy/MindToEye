@@ -25,13 +25,33 @@ const ProjectWorkspace = ({ id }: ProjectWorkspaceProps) => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
   const [activeConceptId, setActiveConceptId] = useState<number | null>(null);
+  const [authId, setAuthId] = useState<string | null>(null);
+
+  // Retrieve the auth ID for API requests
+  useEffect(() => {
+    const getAuthUser = async () => {
+      try {
+        const { data } = await supabase.auth.getUser();
+        if (data?.user?.id) {
+          setAuthId(data.user.id);
+        }
+      } catch (error) {
+        console.error("Error fetching auth user:", error);
+      }
+    };
+    
+    getAuthUser();
+  }, []);
+
+  // Create a reusable auth header object
+  const authHeaders = authId ? { 'x-auth-id': authId } : {};
 
   const { data: project, isLoading: projectLoading } = useQuery<Project>({
     queryKey: [`/api/projects/${projectId}`],
     enabled: !!projectId,
   });
 
-  const { data: concepts, isLoading: conceptsLoading } = useQuery<BrandConcept[]>({
+  const { data: concepts, isLoading: conceptsLoading, refetch: refetchConcepts } = useQuery<BrandConcept[]>({
     queryKey: [`/api/projects/${projectId}/concepts`],
     enabled: !!projectId,
   });

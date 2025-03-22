@@ -24,14 +24,23 @@ export const generateLogo = async (params: {
 };
 
 // Generate brand concept with AI - handles long-running process with streaming response
-export const generateBrandConcept = async (brandInput: BrandInput, onProgress?: (progress: number) => void) => {
+export const generateBrandConcept = async (
+  brandInput: BrandInput, 
+  onProgress?: (progress: number) => void,
+  authHeaders?: Record<string, string>
+) => {
   try {
     // Start the brand concept generation process
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...authHeaders // Include any auth headers passed in
+    };
+    
+    console.log("Generating brand concept with auth headers:", authHeaders);
+    
     const response = await fetch('/api/generate-concept', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers,
       body: JSON.stringify(brandInput),
     });
     

@@ -15,6 +15,13 @@ import { ZapIcon, XIcon } from "lucide-react";
 import { nanoid } from "nanoid";
 import SavedConcepts from "./SavedConcepts";
 import { generateBrandConcept } from "@/lib/openai";
+// Type definition matching updated function signature
+type GenerateBrandConceptType = (
+  brandInput: BrandInput, 
+  onProgress?: (progress: number) => void,
+  authHeaders?: Record<string, string>
+) => Promise<any>;
+import { supabase } from "@/lib/supabase";
 
 interface BrandInputPanelProps {
   onGenerate: () => void;
@@ -41,6 +48,24 @@ const BrandInputPanel = ({ onGenerate, savedConcepts, activeConcept, onConceptSe
   });
   
   const [newValue, setNewValue] = useState("");
+  const [authId, setAuthId] = useState<string | null>(null);
+  
+  // Get auth ID for API requests
+  useEffect(() => {
+    const getAuthUser = async () => {
+      try {
+        const { data } = await supabase.auth.getUser();
+        if (data?.user?.id) {
+          setAuthId(data.user.id);
+          console.log("BrandInputPanel: Auth ID retrieved:", data.user.id);
+        }
+      } catch (error) {
+        console.error("Error fetching auth user in BrandInputPanel:", error);
+      }
+    };
+    
+    getAuthUser();
+  }, []);
   
   // Update brandName when projectName changes
   useEffect(() => {
@@ -154,14 +179,25 @@ const BrandInputPanel = ({ onGenerate, savedConcepts, activeConcept, onConceptSe
     onGenerate();
     
     try {
-      // Use the direct API with progress tracking
-      const brandOutput = await generateBrandConcept(uniqueBrandInput, (progress) => {
-        // Report progress to parent if callback exists
-        if (onProgressUpdate) {
-          onProgressUpdate(progress);
-        }
-        console.log(`Generation progress: ${progress}%`);
-      });
+      // Prepare auth headers for API requests
+      const headers: Record<string, string> = {};
+      if (authId) {
+        headers['x-auth-id'] = authId;
+        console.log("Including auth ID in concept generation:", authId);
+      }
+      
+      // Use the direct API with progress tracking and auth headers
+      const brandOutput = await generateBrandConcept(
+        uniqueBrandInput, 
+        (progress) => {
+          // Report progress to parent if callback exists
+          if (onProgressUpdate) {
+            onProgressUpdate(progress);
+          }
+          console.log(`Generation progress: ${progress}%`);
+        },
+        headers // Pass auth headers to the API call
+      );
       
       // If successful, save the concept
       saveBrandConcept({
