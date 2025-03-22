@@ -1,8 +1,11 @@
-import { 
-  users, type User, type InsertUser,
-  projects, type Project, type InsertProject,
-  brandConcepts, type BrandConcept, type InsertBrandConcept,
-  type BrandInput, type BrandOutput
+import type { 
+  User, InsertUser, Project, InsertProject,
+  BrandConcept, InsertBrandConcept,
+  BrandInput, BrandOutput
+} from "@shared/schema";
+
+import {
+  users, projects, brandConcepts
 } from "@shared/schema";
 
 export interface IStorage {
@@ -343,11 +346,12 @@ export class DatabaseStorage implements IStorage {
       return [];
     }
     
+    const projectsTable = projects;
     const projectsData = await db
       .select()
-      .from(projects)
-      .where(eq(projects.userId, userId))
-      .orderBy(desc(projects.createdAt));
+      .from(projectsTable)
+      .where(eq(projectsTable.userId, userId))
+      .orderBy(desc(projectsTable.createdAt));
     return projectsData;
   }
   
@@ -357,10 +361,11 @@ export class DatabaseStorage implements IStorage {
       return undefined;
     }
     
+    const projectsTable = projects;
     const [project] = await db
       .select()
-      .from(projects)
-      .where(eq(projects.id, id));
+      .from(projectsTable)
+      .where(eq(projectsTable.id, id));
     return project || undefined;
   }
   
@@ -370,8 +375,9 @@ export class DatabaseStorage implements IStorage {
       throw new Error('Database not initialized');
     }
     
+    const projectsTable = projects;
     const [newProject] = await db
-      .insert(projects)
+      .insert(projectsTable)
       .values(project)
       .returning();
     return newProject;
@@ -390,10 +396,11 @@ export class DatabaseStorage implements IStorage {
       return this.getProject(id);
     }
     
+    const projectsTable = projects;
     const [updatedProject] = await db
-      .update(projects)
+      .update(projectsTable)
       .set(updateValues)
-      .where(eq(projects.id, id))
+      .where(eq(projectsTable.id, id))
       .returning();
     return updatedProject || undefined;
   }
@@ -404,9 +411,10 @@ export class DatabaseStorage implements IStorage {
       return false;
     }
     
+    const projectsTable = projects;
     const result = await db
-      .delete(projects)
-      .where(eq(projects.id, id))
+      .delete(projectsTable)
+      .where(eq(projectsTable.id, id))
       .returning();
     return result.length > 0;
   }
@@ -418,10 +426,12 @@ export class DatabaseStorage implements IStorage {
       return [];
     }
     
+    const conceptsTable = brandConcepts;
     const concepts = await db
       .select()
-      .from(brandConcepts)
-      .where(eq(brandConcepts.projectId, projectId));
+      .from(conceptsTable)
+      .where(eq(conceptsTable.projectId, projectId))
+      .orderBy(desc(conceptsTable.createdAt));
     return concepts;
   }
   
@@ -431,10 +441,11 @@ export class DatabaseStorage implements IStorage {
       return undefined;
     }
     
+    const conceptsTable = brandConcepts;
     const [concept] = await db
       .select()
-      .from(brandConcepts)
-      .where(eq(brandConcepts.id, id));
+      .from(conceptsTable)
+      .where(eq(conceptsTable.id, id));
     return concept || undefined;
   }
   
@@ -444,8 +455,9 @@ export class DatabaseStorage implements IStorage {
       throw new Error('Database not initialized');
     }
     
+    const conceptsTable = brandConcepts;
     const [newConcept] = await db
-      .insert(brandConcepts)
+      .insert(conceptsTable)
       .values(concept)
       .returning();
     
@@ -474,10 +486,11 @@ export class DatabaseStorage implements IStorage {
       return this.getBrandConcept(id);
     }
     
+    const conceptsTable = brandConcepts;
     const [updatedConcept] = await db
-      .update(brandConcepts)
+      .update(conceptsTable)
       .set(updateValues)
-      .where(eq(brandConcepts.id, id))
+      .where(eq(conceptsTable.id, id))
       .returning();
     
     // If this concept is being set as active, deactivate others
@@ -494,9 +507,10 @@ export class DatabaseStorage implements IStorage {
       return false;
     }
     
+    const conceptsTable = brandConcepts;
     const result = await db
-      .delete(brandConcepts)
-      .where(eq(brandConcepts.id, id))
+      .delete(conceptsTable)
+      .where(eq(conceptsTable.id, id))
       .returning();
     return result.length > 0;
   }
@@ -508,17 +522,18 @@ export class DatabaseStorage implements IStorage {
     }
     
     try {
+      const conceptsTable = brandConcepts;
       // First, deactivate all concepts for this project
       await db
-        .update(brandConcepts)
+        .update(conceptsTable)
         .set({ isActive: false })
-        .where(eq(brandConcepts.projectId, projectId));
+        .where(eq(conceptsTable.projectId, projectId));
       
       // Then, activate the specified concept
       const result = await db
-        .update(brandConcepts)
+        .update(conceptsTable)
         .set({ isActive: true })
-        .where(eq(brandConcepts.id, id))
+        .where(eq(conceptsTable.id, id))
         .returning();
       
       return result.length > 0;
