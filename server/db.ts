@@ -8,23 +8,21 @@ import {
 } from '@shared/schema';
 import type { IStorage } from './storage';
 
-// Initialize PostgreSQL client for Drizzle ORM
-// Use SUPABASE_DB_URL for direct database access
-const supabaseDbUrl = process.env.SUPABASE_DB_URL;
-// Fallback to DATABASE_URL that's set up by default
-const databaseUrl = supabaseDbUrl || process.env.DATABASE_URL;
+// Initialize PostgreSQL client for Drizzle ORM with Supabase
+// Always use SUPABASE_DB_URL for database access
+const databaseUrl = process.env.SUPABASE_DB_URL;
 
 if (!databaseUrl) {
-  console.warn('Database URL environment variable is not set. Using in-memory storage instead.');
+  console.error('SUPABASE_DB_URL environment variable is not set. The application requires a valid Supabase database connection.');
 }
 
 // Configuration for pooled connections to Supabase PostgreSQL
-// For Supabase connections, either 'prefer' or 'require' is needed for SSL
+// For Supabase connections, 'require' is needed for SSL
 const sslMode = 'require';
 type SSLMode = 'prefer' | 'require' | 'allow' | 'verify-full';
 
 // Create PostgreSQL client with pooled connection
-console.log('Initializing database with connection string...');
+console.log('Initializing database with Supabase connection string...');
 const queryClient = databaseUrl ? postgres(databaseUrl, { 
   ssl: sslMode as SSLMode,
   prepare: true,  // Use prepared statements

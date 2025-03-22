@@ -9,30 +9,29 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Initialize PostgreSQL database with direct connection
+// Initialize Supabase PostgreSQL database with direct connection
 async function initializeDatabase() {
-  console.log('Initializing database with direct connection...');
+  console.log('Initializing Supabase database connection...');
   
-  // Check for database URL
-  const dbUrl = process.env.SUPABASE_DB_URL || process.env.DATABASE_URL;
+  // Check for Supabase database URL
+  const dbUrl = process.env.SUPABASE_DB_URL;
   
   if (dbUrl) {
-    console.log('Database URL detected. Creating tables if needed...');
+    console.log('Supabase connection URL detected. Creating tables if needed...');
     try {
       // Create tables if they don't exist using direct SQL
       await createTablesIfNotExist();
-      console.log('Database initialization complete.');
+      console.log('Supabase database initialization complete.');
     } catch (err) {
-      console.error('Failed to initialize database:', err);
-      console.error('The application requires a valid database connection.');
+      console.error('Failed to initialize Supabase database:', err);
+      console.error('The application requires a valid Supabase database connection.');
     }
   } else {
-    // No fallback - application requires database
-    console.error('ERROR: Database connection URL is missing.');
-    console.error('The application requires one of the following environment variables:');
-    console.error('- SUPABASE_DB_URL (preferred)');
-    console.error('- DATABASE_URL (fallback)');
-    console.warn('Development mode: Using in-memory storage, but this is not recommended for production.');
+    // No fallback - application requires Supabase database
+    console.error('ERROR: Supabase database connection URL is missing.');
+    console.error('The application requires the following environment variable:');
+    console.error('- SUPABASE_DB_URL');
+    console.error('Please ensure SUPABASE_DB_URL is set correctly to a valid connection string.');
   }
 }
 

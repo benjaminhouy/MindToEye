@@ -11,7 +11,7 @@ import {
 import { postgresStorage, db } from './db';
 import { eq, desc } from "drizzle-orm";
 
-// Using direct PostgreSQL connection via pooled connection string
+// Using direct Supabase PostgreSQL connection via pooled connection string
 
 export interface IStorage {
   // User operations
@@ -272,9 +272,9 @@ export interface IStorage {
   }
 }
 
-// Use PostgreSQL direct connection via pooled connection string
+// Use Supabase PostgreSQL direct connection via pooled connection string
 // Direct connection to Supabase database bypassing the REST API
-console.log('Using direct database connection via pooled connection string');
+console.log('Using Supabase database connection via pooled connection string');
 
 // Export PostgreSQL storage implementation
 export const storage = postgresStorage;
