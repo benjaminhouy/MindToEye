@@ -859,6 +859,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Brand name is required" });
       }
       
+      // Extract authId from request headers
+      const authId = req.headers['x-auth-id'] as string;
+      console.log(`Testing FLUX logo generation with auth ID: ${authId || 'none'}`);
+      
       log("Testing FLUX logo generation with correct parameters...");
       
       // Import the logo generation function
@@ -873,7 +877,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         values: Array.isArray(values) ? values : ["Innovation", "Quality", "Trust"],
         style: style || "Modern",
         colors: Array.isArray(colors) ? colors : ["#3366CC", "#FF9900"],
-        promptOverride: req.body.prompt // Optional prompt override
+        promptOverride: req.body.prompt, // Optional prompt override
+        authId // Pass the authId for storage permissions
       });
       
       log("Logo generation successful with Flux Schnell model");
@@ -1036,7 +1041,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         description: description || "", // Handle undefined description
         values: Array.isArray(values) ? values : [],  // Handle undefined values
         style: style || "modern",       // Default style
-        colors: Array.isArray(colors) ? colors : []   // Handle undefined colors
+        colors: Array.isArray(colors) ? colors : [],  // Handle undefined colors
+        authId: authId // Pass the authId for proper storage permissions
       });
       
       // Temporary project and concept IDs for standalone logo generation
