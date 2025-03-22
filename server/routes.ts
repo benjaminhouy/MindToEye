@@ -13,6 +13,11 @@ import { log } from "./vite";
 import { ZodError } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Serve the landing page
+  app.get("/landing", (_req: Request, res: Response) => {
+    res.sendFile("landing-page.html", { root: "./client" });
+  });
+
   // API health check
   app.get("/api/health", (_req: Request, res: Response) => {
     res.json({ status: "ok" });
