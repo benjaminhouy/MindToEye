@@ -8,8 +8,7 @@ import {
   users, projects, brandConcepts
 } from "@shared/schema";
 
-// Import Supabase items at the top to avoid circular dependencies
-import { supabase, supabaseStorage } from './supabase';
+// Using direct PostgreSQL connection via pooled connection string
 
 export interface IStorage {
   // User operations
@@ -547,22 +546,11 @@ export class DatabaseStorage implements IStorage {
   }
 }
 
-// Supabase imports are at the top of the file
+// Use PostgreSQL direct connection via pooled connection string
+// Direct connection to Supabase database bypassing the REST API
+console.log('Using direct database connection via pooled connection string');
 
-// Use only Supabase for storage
-// No fallbacks to other storage implementations
-let storageImplementation: IStorage;
+// We're importing postgresStorage from db.ts at the top of the file
 
-// Use Supabase exclusively
-if (process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY && supabase) {
-  console.log('Using Supabase backend exclusively');
-  storageImplementation = supabaseStorage;
-} else {
-  // If Supabase isn't available, throw an error - we don't want fallbacks
-  console.error('ERROR: Supabase credentials not available. The application requires Supabase.');
-  // Still provide a fallback for development purposes, but log a critical error
-  console.log('CRITICAL: Falling back to in-memory storage for development only.');
-  storageImplementation = new MemStorage();
-}
-
-export const storage = storageImplementation;
+// Export PostgreSQL storage implementation
+export const storage = postgresStorage;
