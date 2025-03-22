@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from './supabase';
-import { apiRequest } from './queryClient';
+import { apiRequest, queryClient } from './queryClient';
 
 // Define the shape of our auth context
 type AuthContextType = {
@@ -97,6 +97,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         } else {
           setUser(null);
+          console.log("No authenticated user detected, clearing query cache");
+          // Clear the query cache when no user is authenticated
+          queryClient.clear();
         }
         
         setLoading(false);
@@ -184,6 +187,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log("Auth context: Starting sign out process");
       setLoading(true);
       setError(null);
+      
+      // Reset query cache to ensure projects from previous user are not displayed
+      queryClient.clear();
       
       const { error } = await supabase.auth.signOut();
       

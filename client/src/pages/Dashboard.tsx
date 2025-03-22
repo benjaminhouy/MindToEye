@@ -14,9 +14,11 @@ const Dashboard = () => {
   const authId = user?.id;
   
   const { data: projects, isLoading, error } = useQuery<Project[]>({
-    queryKey: ['/api/projects'],
+    // Include authId in queryKey to prevent cross-user caching
+    queryKey: ['/api/projects', authId],
     enabled: !!authId, // Only run query when we have an authId
     queryFn: async () => {
+      console.log("Fetching projects for user with authId:", authId);
       const response = await fetch('/api/projects', {
         headers: {
           'Authorization': 'Bearer token',  // The token itself doesn't matter for our simplified auth
