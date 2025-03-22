@@ -54,7 +54,18 @@ function logSupabaseError(operation: string, error: any) {
 
 // Initialize Supabase client
 export const supabase: SupabaseClient<Database> | null = supabaseUrl && supabaseKey
-  ? createClient<Database>(supabaseUrl, supabaseKey)
+  ? createClient<Database>(supabaseUrl, supabaseKey, {
+      // Configure Supabase client to use the correct schema
+      db: {
+        schema: 'public',
+      },
+      // Add extra logging for debugging
+      global: {
+        headers: {
+          'X-Client-Info': 'mindtoeye-app',
+        },
+      },
+    })
   : null;
 
 /**

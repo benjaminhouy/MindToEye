@@ -10,15 +10,15 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Initialize databases (Supabase or local PostgreSQL)
+// Initialize Supabase database exclusively
 async function initializeDatabase() {
-  console.log('Initializing database...');
+  console.log('Initializing Supabase database...');
   
-  // Check for Supabase
+  // Check for Supabase credentials
   if (process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY && supabase) {
-    console.log('Supabase database detected. Creating tables...');
+    console.log('Supabase database detected. Creating tables if needed...');
     try {
-      // Create tables in Supabase
+      // Create tables in Supabase if they don't exist
       await supabaseStorage.createTablesIfNotExist();
       
       // Add demo user for testing
@@ -26,19 +26,15 @@ async function initializeDatabase() {
       console.log('Supabase database initialization complete.');
     } catch (err) {
       console.error('Failed to initialize Supabase database:', err);
-    }
-  } 
-  // Fall back to local PostgreSQL
-  else if (process.env.DATABASE_URL) {
-    console.log('Local PostgreSQL database detected. Tables will be created if they don\'t exist.');
-    try {
-      await createTablesIfNotExist();
-      console.log('PostgreSQL database initialization complete.');
-    } catch (err) {
-      console.error('Failed to create database tables:', err);
+      console.error('The application requires a valid Supabase connection.');
     }
   } else {
-    console.warn('No database configuration found. Using in-memory storage.');
+    // No fallback - application requires Supabase
+    console.error('ERROR: Supabase credentials are missing or invalid.');
+    console.error('The application requires the following environment variables:');
+    console.error('- SUPABASE_URL');
+    console.error('- SUPABASE_ANON_KEY');
+    console.warn('Development mode: Using in-memory storage, but this is not recommended for production.');
   }
 }
 
