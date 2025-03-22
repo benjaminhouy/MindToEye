@@ -1,4 +1,4 @@
-// Script to test connectivity to Supabase PostgreSQL database via pooled connection
+// Script to test connectivity to PostgreSQL database via pooled connection
 import pg from 'pg';
 import dotenv from 'dotenv';
 import https from 'https';
@@ -12,22 +12,21 @@ dotenv.config();
 // This is ONLY for testing purposes, not recommended for production
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
-console.log('🔍 Testing Supabase PostgreSQL connection');
+console.log('🔍 Testing PostgreSQL connection');
 
 async function testConnection() {
-  // Check if SUPABASE_DB_URL is available
-  if (!process.env.SUPABASE_DB_URL) {
-    console.error('❌ Error: SUPABASE_DB_URL environment variable is not set');
+  // Check if DATABASE_URL is available
+  if (!process.env.DATABASE_URL) {
+    console.error('❌ Error: DATABASE_URL environment variable is not set');
     process.exit(1);
   }
 
-  console.log('✓ SUPABASE_DB_URL is defined');
-  console.log('🔌 Attempting to connect to Supabase PostgreSQL via pooled connection...');
+  console.log('✓ DATABASE_URL is defined');
+  console.log('🔌 Attempting to connect to PostgreSQL via pooled connection...');
   
-  // Use the pooled connection string from Supabase
-  // Note: Supabase handles connection pooling at their level
+  // Use the pooled connection string
   const pool = new Pool({
-    connectionString: process.env.SUPABASE_DB_URL,
+    connectionString: process.env.DATABASE_URL,
     ssl: {
       require: true,
       rejectUnauthorized: false // Allow self-signed certificates
@@ -37,7 +36,7 @@ async function testConnection() {
   try {
     // Test connection
     const client = await pool.connect();
-    console.log('✅ Successfully connected to the Supabase PostgreSQL database');
+    console.log('✅ Successfully connected to the PostgreSQL database');
     
     // Check for the existence of tables
     const tableQuery = `
@@ -87,12 +86,12 @@ async function testConnection() {
     
     client.release();
   } catch (error) {
-    console.error('❌ Error connecting to Supabase database:', error.message);
+    console.error('❌ Error connecting to database:', error.message);
     
     if (error.message.includes('password authentication failed')) {
       console.log('\nTroubleshooting tips:');
-      console.log('1. Ensure the SUPABASE_DB_URL contains the correct username and password');
-      console.log('2. Check if your IP address is allowed in Supabase network configuration');
+      console.log('1. Ensure the DATABASE_URL contains the correct username and password');
+      console.log('2. Check if your IP address is allowed in database network configuration');
     }
   } finally {
     await pool.end();

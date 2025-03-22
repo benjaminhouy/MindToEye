@@ -5,7 +5,7 @@ import pg from 'pg';
 const { Pool } = pg;
 
 // Get database connection from environment variables
-const dbUrl = process.env.SUPABASE_DB_URL || process.env.DATABASE_URL;
+const dbUrl = process.env.DATABASE_URL;
 
 async function setupDatabase() {
   if (!dbUrl) {

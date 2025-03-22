@@ -9,16 +9,16 @@ dotenv.config();
 const { Pool } = pg;
 
 async function createTables() {
-  if (!process.env.SUPABASE_DB_URL) {
-    console.error('Error: SUPABASE_DB_URL environment variable is not set');
+  if (!process.env.DATABASE_URL) {
+    console.error('Error: DATABASE_URL environment variable is not set');
     process.exit(1);
   }
 
-  console.log('SUPABASE_DB_URL is defined. Attempting to connect to Supabase PostgreSQL...');
+  console.log('DATABASE_URL is defined. Attempting to connect to PostgreSQL...');
   
-  // Create a connection pool to Supabase
+  // Create a connection pool to the database
   const pool = new Pool({
-    connectionString: process.env.SUPABASE_DB_URL,
+    connectionString: process.env.DATABASE_URL,
     ssl: {
       require: true,
       rejectUnauthorized: false // Allow self-signed certificates
@@ -28,7 +28,7 @@ async function createTables() {
   try {
     // Test connection
     const client = await pool.connect();
-    console.log('Successfully connected to the Supabase PostgreSQL database');
+    console.log('Successfully connected to the PostgreSQL database');
     
     // Create tables directly
     console.log('Creating tables...');
