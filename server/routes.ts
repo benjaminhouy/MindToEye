@@ -986,10 +986,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
+      // Check authentication
+      let userId: number | undefined;
+      let authId: string | undefined;
+      
+      // ALWAYS check for x-auth-id header first (most reliable method)
+      if (req.headers['x-auth-id']) {
+        authId = req.headers['x-auth-id'] as string;
+        console.log("Auth ID from header in regenerate-element:", authId);
+        
+        // Look up the user by authId
+        if (authId) {
+          try {
+            const user = await storage.getUserByAuthId(authId);
+            if (user) {
+              userId = user.id;
+              console.log("Found user by authId in regenerate-element:", userId);
+            } else {
+              console.log("User not found for authId:", authId);
+            }
+          } catch (err) {
+            console.error("Error looking up user by authId:", err);
+          }
+        }
+      }
+      
       // Get the existing concept
       const existingConcept = await storage.getBrandConcept(conceptId);
       if (!existingConcept) {
         return res.status(404).json({ success: false, message: "Brand concept not found" });
+      }
+      
+      // Verify ownership if we have authentication information
+      if (userId && existingConcept) {
+        // Get the project
+        const project = await storage.getProject(existingConcept.projectId);
+        if (project && project.userId !== userId) {
+          console.log(`Unauthorized access: user ${userId} tried to modify concept ${conceptId} which belongs to user ${project.userId}`);
+          return res.status(403).json({ 
+            success: false, 
+            message: "You don't have permission to modify this concept" 
+          });
+        }
       }
       
       // Clone the current brand output

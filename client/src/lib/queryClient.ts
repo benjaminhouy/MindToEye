@@ -11,16 +11,19 @@ export async function apiRequest(
   method: string,
   url: string,
   data?: unknown | undefined,
+  customHeaders?: Record<string, string>
 ): Promise<Response> {
   // Get the auth ID from Supabase if available
   const supabase = (window as any).supabase;
   let authHeaders: Record<string, string> = {};
   
   try {
-    // Use Supabase auth session if available
-    const { data: { user } } = await supabase?.auth.getUser() || { data: { user: null } };
-    if (user?.id) {
-      authHeaders['x-auth-id'] = user.id;
+    // Use Supabase auth session if available 
+    if (!customHeaders || !customHeaders['x-auth-id']) {
+      const { data: { user } } = await supabase?.auth.getUser() || { data: { user: null } };
+      if (user?.id) {
+        authHeaders['x-auth-id'] = user.id;
+      }
     }
   } catch (err) {
     console.error("Error getting auth user for API request:", err);
@@ -30,7 +33,8 @@ export async function apiRequest(
     method,
     headers: {
       ...(data ? { "Content-Type": "application/json" } : {}),
-      ...authHeaders
+      ...authHeaders,
+      ...(customHeaders || {}) // Add custom headers if provided
     },
     body: data ? JSON.stringify(data) : undefined,
     credentials: "include",
