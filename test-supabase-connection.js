@@ -1,4 +1,4 @@
-// Script to test connectivity to Supabase PostgreSQL database
+// Script to test connectivity to Supabase PostgreSQL database via pooled connection
 import pg from 'pg';
 import dotenv from 'dotenv';
 import https from 'https';
@@ -12,16 +12,20 @@ dotenv.config();
 // This is ONLY for testing purposes, not recommended for production
 process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0';
 
+console.log('🔍 Testing Supabase PostgreSQL connection');
+
 async function testConnection() {
   // Check if SUPABASE_DB_URL is available
   if (!process.env.SUPABASE_DB_URL) {
-    console.error('Error: SUPABASE_DB_URL environment variable is not set');
+    console.error('❌ Error: SUPABASE_DB_URL environment variable is not set');
     process.exit(1);
   }
 
-  console.log('SUPABASE_DB_URL is defined. Attempting to connect to Supabase PostgreSQL...');
+  console.log('✓ SUPABASE_DB_URL is defined');
+  console.log('🔌 Attempting to connect to Supabase PostgreSQL via pooled connection...');
   
-  // Create a connection pool to Supabase with SSL options
+  // Use the pooled connection string from Supabase
+  // Note: Supabase handles connection pooling at their level
   const pool = new Pool({
     connectionString: process.env.SUPABASE_DB_URL,
     ssl: {

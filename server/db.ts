@@ -21,14 +21,15 @@ if (!databaseUrl) {
 const sslMode = 'require';
 type SSLMode = 'prefer' | 'require' | 'allow' | 'verify-full';
 
-// Create PostgreSQL client with pooled connection
-console.log('Initializing database with Supabase connection string...');
+// Create PostgreSQL client with Supabase's pooled connection
+// Note: SUPABASE_DB_URL is already a pooled connection string managed by Supabase
+console.log('Initializing database with Supabase pooled connection string...');
 const queryClient = databaseUrl ? postgres(databaseUrl, { 
   ssl: {
     rejectUnauthorized: false // Allow self-signed certificates
   },
   prepare: true,  // Use prepared statements
-  max: 10,        // Connection pool size
+  max: 10,        // Local connection pool size (Supabase also manages pooling on their end)
   debug: true     // Log queries
 }) : null;
 

@@ -9,26 +9,51 @@ const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Initialize Supabase PostgreSQL database with direct connection
+// Initialize Supabase PostgreSQL database with pooled connection
 async function initializeDatabase() {
-  console.log('Initializing Supabase database connection...');
+  console.log('🔌 Initializing Supabase database connection...');
   
   // Check for Supabase database URL
   const dbUrl = process.env.SUPABASE_DB_URL;
   
   if (dbUrl) {
-    console.log('Supabase connection URL detected. Creating tables if needed...');
+    console.log('✓ Supabase pooled connection URL detected.');
+    
     try {
+      // Verify database connection
+      console.log('🔍 Verifying Supabase database connectivity...');
+      
+      // Import db for direct query
+      const { db } = await import('./db');
+      
+      if (db) {
+        try {
+          // Simple health check query to verify connectivity
+          const { sql } = await import('drizzle-orm');
+          await db.execute(sql`SELECT 1 as connected`);
+          console.log('✅ Successfully connected to Supabase database');
+        } catch (connErr) {
+          console.error('❌ Database connection test failed:', connErr);
+          console.error('The application requires a working Supabase database connection.');
+          console.error('If SSL errors occur, check environment configuration for NODE_TLS_REJECT_UNAUTHORIZED.');
+          return;
+        }
+      } else {
+        console.warn('⚠️ Database client not initialized. Check your database configuration.');
+        return;
+      }
+      
       // Create tables if they don't exist using direct SQL
+      console.log('📝 Creating database tables if needed...');
       await createTablesIfNotExist();
-      console.log('Supabase database initialization complete.');
+      console.log('✅ Supabase database initialization complete.');
     } catch (err) {
-      console.error('Failed to initialize Supabase database:', err);
+      console.error('❌ Failed to initialize Supabase database:', err);
       console.error('The application requires a valid Supabase database connection.');
     }
   } else {
     // No fallback - application requires Supabase database
-    console.error('ERROR: Supabase database connection URL is missing.');
+    console.error('❌ ERROR: Supabase database connection URL is missing.');
     console.error('The application requires the following environment variable:');
     console.error('- SUPABASE_DB_URL');
     console.error('Please ensure SUPABASE_DB_URL is set correctly to a valid connection string.');
