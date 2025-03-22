@@ -7,19 +7,59 @@ import Dashboard from "@/pages/Dashboard";
 import ProjectWorkspace from "@/pages/ProjectWorkspace";
 import NewProject from "@/pages/NewProject";
 import Header from "@/components/Header";
+import AuthPage from "@/pages/Auth";
+import { AuthProvider } from "@/lib/auth-context";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 
 function Router() {
   return (
     <div className="min-h-screen flex flex-col">
-      <Header />
-      <div className="flex-grow">
-        <Switch>
-          <Route path="/" component={Dashboard} />
-          <Route path="/projects/new" component={NewProject} />
-          <Route path="/projects/:id" component={ProjectWorkspace} />
-          <Route component={NotFound} />
-        </Switch>
-      </div>
+      <Switch>
+        <Route path="/auth" component={AuthPage} />
+        <Route path="/">
+          <ProtectedRoute>
+            <div className="min-h-screen flex flex-col">
+              <Header />
+              <div className="flex-grow">
+                <Dashboard />
+              </div>
+            </div>
+          </ProtectedRoute>
+        </Route>
+        <Route path="/dashboard">
+          <ProtectedRoute>
+            <div className="min-h-screen flex flex-col">
+              <Header />
+              <div className="flex-grow">
+                <Dashboard />
+              </div>
+            </div>
+          </ProtectedRoute>
+        </Route>
+        <Route path="/projects/new">
+          <ProtectedRoute>
+            <div className="min-h-screen flex flex-col">
+              <Header />
+              <div className="flex-grow">
+                <NewProject />
+              </div>
+            </div>
+          </ProtectedRoute>
+        </Route>
+        <Route path="/projects/:id">
+          {(params) => (
+            <ProtectedRoute>
+              <div className="min-h-screen flex flex-col">
+                <Header />
+                <div className="flex-grow">
+                  <ProjectWorkspace id={params.id} />
+                </div>
+              </div>
+            </ProtectedRoute>
+          )}
+        </Route>
+        <Route component={NotFound} />
+      </Switch>
       <Toaster />
     </div>
   );
@@ -28,7 +68,9 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <Router />
+      <AuthProvider>
+        <Router />
+      </AuthProvider>
     </QueryClientProvider>
   );
 }

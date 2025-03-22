@@ -10,21 +10,28 @@ import BrandInputPanel from "@/components/BrandInputPanel";
 import VisualizationPanel from "@/components/VisualizationPanel";
 import LoadingOverlay from "@/components/LoadingOverlay";
 
-const ProjectWorkspace = () => {
+interface ProjectWorkspaceProps {
+  id?: string;
+}
+
+const ProjectWorkspace = ({ id }: ProjectWorkspaceProps) => {
   const [match, params] = useRoute<{ id: string }>("/projects/:id");
+  
+  // Use the prop id if provided, otherwise use the route param
+  const projectId = id || params?.id;
   const [activeTab, setActiveTab] = useState("brand-concept");
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
   const [activeConceptId, setActiveConceptId] = useState<number | null>(null);
 
   const { data: project, isLoading: projectLoading } = useQuery<Project>({
-    queryKey: [`/api/projects/${params?.id}`],
-    enabled: !!params?.id,
+    queryKey: [`/api/projects/${projectId}`],
+    enabled: !!projectId,
   });
 
   const { data: concepts, isLoading: conceptsLoading } = useQuery<BrandConcept[]>({
-    queryKey: [`/api/projects/${params?.id}/concepts`],
-    enabled: !!params?.id,
+    queryKey: [`/api/projects/${projectId}/concepts`],
+    enabled: !!projectId,
   });
 
   const activeConcept = concepts?.find(concept => concept.id === activeConceptId) || 
@@ -137,7 +144,7 @@ const ProjectWorkspace = () => {
                   savedConcepts={concepts || []}
                   activeConcept={activeConcept}
                   onConceptSelect={setActiveConceptId}
-                  projectId={Number(params?.id)}
+                  projectId={Number(projectId)}
                   projectName={project?.name}
                   onProgressUpdate={updateProgress}
                 />
@@ -145,7 +152,7 @@ const ProjectWorkspace = () => {
               <div className="lg:col-span-9 space-y-6">
                 <VisualizationPanel 
                   concept={activeConcept}
-                  projectId={Number(params?.id)}
+                  projectId={Number(projectId)}
                 />
               </div>
             </div>
