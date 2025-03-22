@@ -53,24 +53,26 @@ const ProjectWorkspace = ({ id }: ProjectWorkspaceProps) => {
   const { data: project, isLoading: projectLoading, error: projectError } = useQuery<Project>({
     queryKey: [`/api/projects/${projectId}`],
     enabled: !!projectId,
-    onError: (error: any) => {
-      console.error("Project fetch error:", error);
+    retry: false
+  });
+  
+  // Check for project error explicitly
+  useEffect(() => {
+    if (projectError) {
+      console.log("Project error detected, showing access error UI");
       
-      // Check if this is a 403 Forbidden error
-      if (error.message.includes("403")) {
+      if (projectError instanceof Error && projectError.message.includes("403")) {
         setAccessError("You do not have permission to access this project.");
       } else {
         setAccessError("An error occurred while loading this project.");
       }
     }
-  });
+  }, [projectError]);
 
   const { data: concepts, isLoading: conceptsLoading, refetch: refetchConcepts, error: conceptsError } = useQuery<BrandConcept[]>({
     queryKey: [`/api/projects/${projectId}/concepts`],
     enabled: !!projectId && !accessError,
-    onError: (error: any) => {
-      console.error("Concepts fetch error:", error);
-    }
+    retry: false
   });
 
   const activeConcept = concepts?.find(concept => concept.id === activeConceptId) || 
@@ -121,8 +123,8 @@ const ProjectWorkspace = ({ id }: ProjectWorkspaceProps) => {
     );
   }
   
-  // Show loading state while fetching data
-  if (projectLoading) {
+  // Show loading state while fetching data, but only if there's no error
+  if (projectLoading && !projectError) {
     return (
       <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
         <div className="animate-pulse">
