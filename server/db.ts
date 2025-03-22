@@ -58,7 +58,8 @@ export async function createTablesIfNotExist() {
       CREATE TABLE IF NOT EXISTS "users" (
         "id" SERIAL PRIMARY KEY,
         "username" TEXT NOT NULL UNIQUE,
-        "password" TEXT NOT NULL
+        "password" TEXT NOT NULL,
+        "auth_id" TEXT UNIQUE
       )
     `;
     
@@ -152,6 +153,24 @@ export class PostgresStorage implements IStorage {
       return result[0];
     } catch (error) {
       console.error('Error getting user by username:', error);
+      return undefined;
+    }
+  }
+  
+  async getUserByAuthId(authId: string): Promise<User | undefined> {
+    if (!db) {
+      console.warn('PostgreSQL client not initialized. Cannot get user by auth ID.');
+      return undefined;
+    }
+    
+    try {
+      const result = await db.select().from(users).where(eq(users.authId, authId));
+      
+      if (result.length === 0) return undefined;
+      
+      return result[0];
+    } catch (error) {
+      console.error('Error getting user by auth ID:', error);
       return undefined;
     }
   }

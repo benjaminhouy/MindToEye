@@ -161,6 +161,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/health", (_req: Request, res: Response) => {
     res.json({ status: "ok" });
   });
+  
+  // User registration route for Supabase Auth
+  app.post("/api/register", async (req: Request, res: Response) => {
+    try {
+      const { email, authId } = req.body;
+      
+      if (!email) {
+        return res.status(400).json({ error: "Email is required" });
+      }
+      
+      // Check if user already exists
+      const existingUser = await storage.getUserByUsername(email);
+      if (existingUser) {
+        // If user exists, just return the user
+        console.log(`User already exists in database: ID=${existingUser.id}, Email=${email}`);
+        return res.status(200).json(existingUser);
+      }
+      
+      // Create user in our database
+      const userData = {
+        username: email,
+        password: "auth-via-supabase", // Placeholder since auth is handled by Supabase
+        authId: authId || null,
+      };
+      
+      const user = await storage.createUser(userData);
+      
+      console.log(`User created in database: ID=${user.id}, Email=${email}, AuthID=${authId || 'none'}`);
+      
+      res.status(201).json(user);
+    } catch (error) {
+      console.error("Error registering user:", error);
+      res.status(500).json({ error: "Failed to register user" });
+    }
+  });
 
   // Project routes
   app.get("/api/projects", async (req: Request, res: Response) => {

@@ -7,11 +7,13 @@ export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
+  authId: text("auth_id").unique(),  // Add authId field to store Supabase Auth UUID
 });
 
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
+  authId: true,
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
