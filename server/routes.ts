@@ -212,6 +212,100 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ status: "ok" });
   });
   
+  // Test endpoint for Supabase storage
+  app.get("/api/storage-setup-guide", async (_req: Request, res: Response) => {
+    try {
+      const { generateStorageSetupInstructions } = await import('./storage-fix-guide');
+      const instructions = await generateStorageSetupInstructions();
+      res.json({ 
+        success: true, 
+        setupGuide: instructions
+      });
+    } catch (error) {
+      console.error('Error generating storage setup guide:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: 'Failed to generate storage setup guide'
+      });
+    }
+  });
+  
+  app.get("/api/test-storage", async (req: Request, res: Response) => {
+    try {
+      const { initializeStorageBucket } = await import('./storage-utils');
+      
+      console.log('Testing Supabase storage connection from API endpoint...');
+      const success = await initializeStorageBucket();
+      
+      // Get auth ID from headers for more detailed testing
+      const authId = req.headers['x-auth-id'] as string;
+      console.log(`Test storage auth ID from headers: ${authId || 'not provided'}`);
+      
+      // Create a quick test file to verify write access
+      if (success && authId) {
+        const { supabase } = await import('./storage-utils');
+        if (supabase) {
+          const testContent = Buffer.from('Test file content');
+          const testPath = `${authId}/test-files/test-${Date.now()}.txt`;
+          
+          console.log(`Attempting to upload test file to ${testPath}...`);
+          
+          const { error: uploadError } = await supabase
+            .storage
+            .from('assets') // Use the same bucket name as in storage-utils.ts
+            .upload(testPath, testContent, {
+              contentType: 'text/plain',
+              upsert: true
+            });
+            
+          if (uploadError) {
+            console.error('Error uploading test file:', uploadError.message);
+            return res.json({ 
+              status: "storage-error", 
+              bucketInitialized: success,
+              uploadSuccess: false,
+              error: uploadError.message,
+              authIdProvided: !!authId
+            });
+          }
+          
+          console.log('Test file upload successful!');
+          
+          // Try to list the contents of the user's folder
+          const { data: filesList, error: listError } = await supabase
+            .storage
+            .from('assets')
+            .list(`${authId}`);
+            
+          const fileCount = filesList?.length || 0;
+          console.log(`Found ${fileCount} files in user folder.`);
+          
+          return res.json({ 
+            status: "ok", 
+            bucketInitialized: success,
+            uploadSuccess: true,
+            fileCount: fileCount,
+            filesInRoot: filesList || [],
+            authIdProvided: !!authId
+          });
+        }
+      }
+      
+      res.json({ 
+        status: success ? "ok" : "error", 
+        bucketInitialized: success,
+        authIdProvided: !!authId
+      });
+    } catch (error) {
+      console.error('Error testing Supabase storage:', error);
+      res.status(500).json({ 
+        status: "error", 
+        message: "Failed to test Supabase storage",
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+  
   // User registration route for Supabase Auth
   app.post("/api/register", async (req: Request, res: Response) => {
     try {

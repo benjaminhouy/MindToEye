@@ -4,6 +4,7 @@ import { setupVite, serveStatic, log } from "./vite";
 
 // Import necessary modules for direct PostgreSQL connection
 import { createTablesIfNotExist, postgresStorage } from './db';
+import { initializeStorageBucket } from './storage-utils';
 
 const app = express();
 app.use(express.json());
@@ -46,6 +47,12 @@ async function initializeDatabase() {
       // Create tables if they don't exist using direct SQL
       console.log('📝 Creating database tables if needed...');
       await createTablesIfNotExist();
+      
+      // Initialize storage bucket for assets
+      console.log('📦 Initializing Supabase storage bucket...');
+      const storageInitialized = await initializeStorageBucket();
+      console.log(`${storageInitialized ? '✅' : '⚠️'} Storage bucket initialization ${storageInitialized ? 'successful' : 'failed'}`);
+      
       console.log('✅ Database initialization complete.');
     } catch (err) {
       console.error('❌ Failed to initialize database:', err);
