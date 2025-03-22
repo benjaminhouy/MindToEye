@@ -341,6 +341,7 @@ Make it simple, memorable, and unique.
         try {
           // Upload the image to Supabase storage
           console.log("Uploading image to Supabase storage from Replicate URL...");
+          console.log("AUTH ID IN GENERATE LOGO:", authId); // Log the authId to verify it's passed correctly
           // Pass authId to uploadImageFromUrl to use the correct user path in storage
           const uploadedImageUrl = await uploadImageFromUrl(replicateImageUrl, authId);
           
