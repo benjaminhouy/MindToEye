@@ -188,9 +188,10 @@ export const generateLogo = async (params: {
   values: string[],
   style: string,
   colors: string[],
-  promptOverride?: string // Optional parameter to allow users to edit the prompt directly
+  promptOverride?: string, // Optional parameter to allow users to edit the prompt directly
+  authId?: string // Optional authenticated user ID for storage permissions
 }): Promise<{svg: string, prompt: string}> => {
-  const { brandName, industry, description, values, style, colors, promptOverride } = params;
+  const { brandName, industry, description, values, style, colors, promptOverride, authId } = params;
   
   // Generate a unique timestamp seed to make each request different
   const uniqueSeed = Date.now() % 1000;
@@ -339,7 +340,8 @@ Make it simple, memorable, and unique.
         try {
           // Upload the image to Supabase storage
           console.log("Uploading image to Supabase storage from Replicate URL...");
-          const uploadedImageUrl = await uploadImageFromUrl(replicateImageUrl);
+          // Pass authId to uploadImageFromUrl to use the correct user path in storage
+          const uploadedImageUrl = await uploadImageFromUrl(replicateImageUrl, authId);
           
           // Use the uploaded image URL if available, otherwise fall back to the Replicate URL
           const imageUrl = uploadedImageUrl || replicateImageUrl;
@@ -459,7 +461,7 @@ export function generateReverseLogo(logoSvg: string): string {
 }
 
 // Generate brand concept with Claude
-export const generateBrandConcept = async (brandInput: BrandInput) => {
+export const generateBrandConcept = async (brandInput: BrandInput, authId?: string) => {
   console.log("Starting brand concept generation with input:", JSON.stringify(brandInput));
   // Generate a unique timestamp seed to ensure different results each time
   const uniqueSeed = Date.now() % 1000;

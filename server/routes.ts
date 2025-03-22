@@ -605,8 +605,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
             });
           }, 15000);
           
+          // Extract authId from headers if available
+          const authId = req.headers['x-auth-id'] as string;
+          if (authId) {
+            log(`Using authId from header: ${authId} for concept generation`);
+          }
+          
           log("Calling AI service to generate brand concept");
-          const brandOutput = await generateBrandConcept(brandInput);
+          // Pass the authId to the generateBrandConcept function
+          const brandOutput = await generateBrandConcept(brandInput, authId);
           log("AI service returned brand concept successfully");
           
           // Send a progress update at 90% before final response
