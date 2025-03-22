@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRoute, Link } from "wouter";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, QueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { DownloadIcon, PresentationIcon, CalendarIcon, InfoIcon } from "lucide-react";
@@ -9,6 +9,8 @@ import { format } from "date-fns";
 import BrandInputPanel from "@/components/BrandInputPanel";
 import VisualizationPanel from "@/components/VisualizationPanel";
 import LoadingOverlay from "@/components/LoadingOverlay";
+import { supabase } from "@/lib/supabase";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 interface ProjectWorkspaceProps {
   id?: string;

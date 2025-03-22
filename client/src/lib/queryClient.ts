@@ -12,9 +12,26 @@ export async function apiRequest(
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
+  // Get the auth ID from Supabase if available
+  const supabase = (window as any).supabase;
+  let authHeaders: Record<string, string> = {};
+  
+  try {
+    // Use Supabase auth session if available
+    const { data: { user } } = await supabase?.auth.getUser() || { data: { user: null } };
+    if (user?.id) {
+      authHeaders['x-auth-id'] = user.id;
+    }
+  } catch (err) {
+    console.error("Error getting auth user for API request:", err);
+  }
+  
   const res = await fetch(url, {
     method,
-    headers: data ? { "Content-Type": "application/json" } : {},
+    headers: {
+      ...(data ? { "Content-Type": "application/json" } : {}),
+      ...authHeaders
+    },
     body: data ? JSON.stringify(data) : undefined,
     credentials: "include",
   });
@@ -29,8 +46,27 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
+    // Get the auth ID from Supabase if available
+    const supabase = (window as any).supabase;
+    let authHeaders: Record<string, string> = {};
+    
+    try {
+      // Import Supabase directly from lib if global instance not available
+      const supabaseLib = supabase || ((await import('./supabase')).supabase);
+      
+      // Use Supabase auth session if available
+      const { data: { user } } = await supabaseLib?.auth.getUser() || { data: { user: null } };
+      if (user?.id) {
+        authHeaders['x-auth-id'] = user.id;
+        console.log("Including auth ID in fetch request:", user.id);
+      }
+    } catch (err) {
+      console.error("Error getting auth user for fetch request:", err);
+    }
+    
     const res = await fetch(queryKey[0] as string, {
       credentials: "include",
+      headers: authHeaders
     });
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {

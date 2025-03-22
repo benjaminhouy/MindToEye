@@ -48,6 +48,11 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey);
 
+// Make Supabase instance available globally for API auth
+if (typeof window !== 'undefined') {
+  (window as any).supabase = supabase;
+}
+
 // Authentication helper functions
 export const auth = {
   /**
