@@ -117,7 +117,7 @@ export async function printStorageFixGuide() {
   return guide;
 }
 
-// If this script is run directly via Node
-if (require.main === module) {
-  printStorageFixGuide().catch(console.error);
+// This function can be called directly from the command line
+export async function runAsScript() {
+  await printStorageFixGuide().catch(console.error);
 }

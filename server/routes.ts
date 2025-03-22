@@ -213,6 +213,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Test endpoint for Supabase storage
+  app.get("/api/check-storage-policies", async (_req: Request, res: Response) => {
+    try {
+      const { checkStoragePolicies } = await import('./check-storage-policy');
+      const result = await checkStoragePolicies();
+      res.json(result);
+    } catch (error) {
+      console.error('Error checking storage policies:', error);
+      res.status(500).json({ 
+        success: false, 
+        error: 'Failed to check storage policies',
+        message: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
   app.get("/api/storage-setup-guide", async (_req: Request, res: Response) => {
     try {
       const { generateStorageSetupInstructions } = await import('./storage-fix-guide');
@@ -781,6 +796,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Test route for FLUX logo generation 
+  app.post("/api/test-storage-upload", async (req: Request, res: Response) => {
+    try {
+      const authId = req.headers['x-auth-id'] as string || 'demo-user';
+      console.log(`Testing storage upload with auth ID: ${authId}`);
+      
+      // Create a test SVG image
+      const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100">
+        <circle cx="50" cy="50" r="40" stroke="black" stroke-width="3" fill="red" />
+        <text x="50" y="55" font-family="Arial" font-size="12" text-anchor="middle" fill="white">Test</text>
+      </svg>`;
+      
+      const { uploadLogoFromUrl } = await import('./storage-utils');
+      
+      // Convert SVG to data URL
+      const dataUrl = `data:image/svg+xml;base64,${Buffer.from(svgContent).toString('base64')}`;
+      
+      console.log(`Attempting to upload test SVG to Supabase storage...`);
+      const result = await uploadLogoFromUrl(
+        dataUrl,
+        999, // Test project ID
+        999, // Test concept ID
+        'svg',
+        authId
+      );
+      
+      if (result) {
+        console.log(`Storage test successful! URL: ${result}`);
+        res.json({ 
+          success: true, 
+          message: "Successfully uploaded test image to Supabase storage",
+          url: result
+        });
+      } else {
+        console.log(`Storage test failed, no URL returned`);
+        res.json({ 
+          success: false, 
+          message: "Failed to upload test image to Supabase storage" 
+        });
+      }
+    } catch (error) {
+      console.error("Error in test-storage-upload:", error);
+      res.status(500).json({ 
+        success: false, 
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+  
   app.post("/api/test-flux-logo", async (req: Request, res: Response) => {
     try {
       const { brandName, industry, description, values, style, colors } = req.body;
