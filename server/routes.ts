@@ -188,7 +188,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ error: "Unauthorized: Valid user ID not provided" });
       }
       
-      const projects = await storage.getProjects(userId);
+      // Ensure userId is a number before passing to storage
+      const projects = await storage.getProjects(userId as number);
       res.json(projects);
     } catch (error) {
       console.error("Error fetching projects:", error);
@@ -233,14 +234,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const projectData = {
         ...req.body,
-        userId
+        userId: userId as number
       };
       
       // Delete the userId from req.body to prevent duplication
       delete projectData.userId;
       
       // Add it back in the correct format
-      projectData.userId = userId;
+      projectData.userId = userId as number;
       
       const validatedData = insertProjectSchema.parse(projectData);
       const project = await storage.createProject(validatedData);
