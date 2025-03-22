@@ -37,8 +37,9 @@ export const generateLandingPageHero = async (params: {
   description: string;
   colors: string[];
   typography: { headings: string; body: string };
+  authId?: string; // Optional authenticated user ID for storage permissions
 }) => {
-  const { brandName, industry, description, colors, typography } = params;
+  const { brandName, industry, description, colors, typography, authId } = params;
   
   try {
     // Create prompt for Claude to generate landing page hero content
@@ -621,7 +622,8 @@ export const generateBrandConcept = async (brandInput: BrandInput, authId?: stri
       description: sanitizedDescription, // Use the sanitized description
       values: brandInput.values.map(v => v.value),
       style: brandInput.designStyle,
-      colors: brandInput.colorPreferences || []
+      colors: brandInput.colorPreferences || [],
+      authId: authId // Pass the authId for proper storage permissions
     });
     
     // Generate monochrome and reverse versions of the logo from the SVG string
@@ -652,7 +654,8 @@ export const generateBrandConcept = async (brandInput: BrandInput, authId?: stri
         industry: brandInput.industry || 'Brand',
         description: sanitizedDescription,
         colors: parsed.colors?.map((c: any) => c.hex) || ['#10B981', '#0F766E', '#38BDF8'],
-        typography: parsed.typography || { headings: "Montserrat", body: "Open Sans" }
+        typography: parsed.typography || { headings: "Montserrat", body: "Open Sans" },
+        authId: authId // Pass the authId for proper storage permissions
       }),
       logoDescription: parsed.logoDescription || "Modern and minimalist logo design"
     };
