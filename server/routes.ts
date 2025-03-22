@@ -817,10 +817,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (isNaN(projectId)) {
         return res.status(400).json({ error: "Invalid project ID" });
       }
+      
+      // Extract authenticated user ID using auth_id first, then fallback to query params
+      let userId: number | undefined;
+      let authId: string | undefined;
 
+      // Always check for x-auth-id header first (most reliable method)
+      if (req.headers['x-auth-id']) {
+        authId = req.headers['x-auth-id'] as string;
+        console.log("Auth ID from header in concepts post:", authId);
+        
+        // Look up the user by authId
+        if (authId) {
+          try {
+            const user = await storage.getUserByAuthId(authId);
+            if (user) {
+              userId = user.id;
+              console.log("Found user by authId in concepts post:", userId);
+            } else {
+              console.log("User not found for authId:", authId);
+            }
+          } catch (err) {
+            console.error("Error looking up user by authId:", err);
+          }
+        }
+      }
+      
       const project = await storage.getProject(projectId);
       if (!project) {
         return res.status(404).json({ error: "Project not found" });
+      }
+      
+      // Verify the user owns this project
+      if (userId && project.userId !== userId) {
+        return res.status(403).json({ error: "Forbidden: You don't have access to this project" });
       }
 
       // Generate a more descriptive name for the concept
