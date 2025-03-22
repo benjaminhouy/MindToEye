@@ -806,6 +806,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { brandName, industry, description, values, style, colors, prompt } = req.body;
       
+      // Extract auth ID from header if present
+      const authId = req.headers['x-auth-id'] as string;
+      console.log("Auth ID from header in logo generation:", authId);
+      
       if (!brandName || !industry) {
         return res.status(400).json({ error: "Brand name and industry are required" });
       }
@@ -896,7 +900,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             originalLogoUrl, 
             temporaryProjectId,
             temporaryConceptId,
-            'svg' // Assuming SVG format for logos
+            'svg', // Assuming SVG format for logos
+            authId // Pass the authenticated user ID for proper storage path
           );
           
           // If we got back a permanent URL, update the SVG
