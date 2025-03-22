@@ -1398,7 +1398,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 originalLogoUrl,
                 projectId,
                 conceptId,
-                'svg' // Assuming SVG format for logos
+                'svg', // Assuming SVG format for logos
+                authId // Pass the authenticated user ID for proper storage path
               );
               
               // If we got back a permanent URL, update the SVG
