@@ -1,4 +1,4 @@
-import type { Express, Request, Response } from "express";
+import type { Express, Request as ExpressRequest, Response, NextFunction } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import Replicate from "replicate";
@@ -6,11 +6,114 @@ import Anthropic from "@anthropic-ai/sdk";
 import { 
   brandInputSchema, 
   insertBrandConceptSchema,
-  insertProjectSchema
+  insertProjectSchema,
+  User, Project, BrandConcept
 } from "@shared/schema";
 import { generateBrandConcept, generateLogo } from "./openai";
 import { log } from "./vite";
 import { ZodError } from "zod";
+
+// Extend the Express Request type to include our custom properties
+interface Request extends ExpressRequest {
+  authenticatedUserId?: number;
+  project?: Project;
+  concept?: BrandConcept;
+}
+
+// Middleware to verify if the user owns the project
+async function verifyProjectOwnership(req: Request, res: Response, next: NextFunction) {
+  try {
+    // Get the project ID from the request parameters
+    const projectId = parseInt(req.params.id || req.params.projectId);
+    
+    if (isNaN(projectId)) {
+      return res.status(400).json({ error: "Invalid project ID" });
+    }
+    
+    // Get the authenticated user ID from the request
+    // For now we're using the query or body provided userId, but this should be
+    // replaced with the authenticated user ID from the session in production
+    const userId = parseInt(req.query.userId as string || req.body.userId);
+    
+    if (isNaN(userId)) {
+      return res.status(401).json({ error: "Unauthorized: User ID not provided" });
+    }
+    
+    // Get the project
+    const project = await storage.getProject(projectId);
+    
+    // If the project doesn't exist, return a 404
+    if (!project) {
+      return res.status(404).json({ error: "Project not found" });
+    }
+    
+    // Check if the user owns the project
+    if (project.userId !== userId) {
+      return res.status(403).json({ error: "Forbidden: You don't have access to this project" });
+    }
+    
+    // Store project and userId in request for later use
+    req.project = project;
+    req.authenticatedUserId = userId;
+    
+    // If everything is fine, proceed to the route handler
+    next();
+  } catch (error) {
+    console.error("Error in verifyProjectOwnership middleware:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+}
+
+// Middleware to verify if the user owns the concept (through project ownership)
+async function verifyConceptOwnership(req: Request, res: Response, next: NextFunction) {
+  try {
+    // Get the concept ID from the request parameters
+    const conceptId = parseInt(req.params.id);
+    
+    if (isNaN(conceptId)) {
+      return res.status(400).json({ error: "Invalid concept ID" });
+    }
+    
+    // Get the authenticated user ID from the request
+    const userId = parseInt(req.query.userId as string || req.body.userId);
+    
+    if (isNaN(userId)) {
+      return res.status(401).json({ error: "Unauthorized: User ID not provided" });
+    }
+    
+    // Get the concept
+    const concept = await storage.getBrandConcept(conceptId);
+    
+    // If the concept doesn't exist, return a 404
+    if (!concept) {
+      return res.status(404).json({ error: "Brand concept not found" });
+    }
+    
+    // Get the project that the concept belongs to
+    const project = await storage.getProject(concept.projectId);
+    
+    // If the project doesn't exist, return a 404
+    if (!project) {
+      return res.status(404).json({ error: "Project not found" });
+    }
+    
+    // Check if the user owns the project
+    if (project.userId !== userId) {
+      return res.status(403).json({ error: "Forbidden: You don't have access to this concept" });
+    }
+    
+    // Store concept, project and userId in request for later use
+    req.concept = concept;
+    req.project = project;
+    req.authenticatedUserId = userId;
+    
+    // If everything is fine, proceed to the route handler
+    next();
+  } catch (error) {
+    console.error("Error in verifyConceptOwnership middleware:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+}
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Serve the landing page
@@ -41,19 +144,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/projects/:id", async (req: Request, res: Response) => {
+  app.get("/api/projects/:id", verifyProjectOwnership, async (req: Request, res: Response) => {
     try {
-      const projectId = parseInt(req.params.id);
-      if (isNaN(projectId)) {
-        return res.status(400).json({ error: "Invalid project ID" });
-      }
-
-      const project = await storage.getProject(projectId);
-      if (!project) {
-        return res.status(404).json({ error: "Project not found" });
-      }
-
-      res.json(project);
+      // We already have the project from the middleware
+      res.json(req.project);
     } catch (error) {
       console.error("Error fetching project:", error);
       res.status(500).json({ error: "Failed to fetch project" });
@@ -94,18 +188,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.delete("/api/projects/:id", async (req: Request, res: Response) => {
+  app.delete("/api/projects/:id", verifyProjectOwnership, async (req: Request, res: Response) => {
     try {
+      // We already have the project from the middleware and ownership is verified
       const projectId = parseInt(req.params.id);
-      if (isNaN(projectId)) {
-        return res.status(400).json({ error: "Invalid project ID" });
-      }
-
-      const project = await storage.getProject(projectId);
-      if (!project) {
-        return res.status(404).json({ error: "Project not found" });
-      }
-
+      
       const success = await storage.deleteProject(projectId);
       if (success) {
         res.status(204).send();
@@ -119,18 +206,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Brand concept routes
-  app.get("/api/projects/:projectId/concepts", async (req: Request, res: Response) => {
+  app.get("/api/projects/:projectId/concepts", verifyProjectOwnership, async (req: Request, res: Response) => {
     try {
+      // We already have the project from the middleware and ownership is verified
       const projectId = parseInt(req.params.projectId);
-      if (isNaN(projectId)) {
-        return res.status(400).json({ error: "Invalid project ID" });
-      }
-
-      const project = await storage.getProject(projectId);
-      if (!project) {
-        return res.status(404).json({ error: "Project not found" });
-      }
-
+      
       const concepts = await storage.getBrandConcepts(projectId);
       res.json(concepts);
     } catch (error) {
@@ -139,19 +219,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.get("/api/concepts/:id", async (req: Request, res: Response) => {
+  app.get("/api/concepts/:id", verifyConceptOwnership, async (req: Request, res: Response) => {
     try {
-      const conceptId = parseInt(req.params.id);
-      if (isNaN(conceptId)) {
-        return res.status(400).json({ error: "Invalid concept ID" });
-      }
-
-      const concept = await storage.getBrandConcept(conceptId);
-      if (!concept) {
-        return res.status(404).json({ error: "Brand concept not found" });
-      }
-
-      res.json(concept);
+      // We already have the concept from the middleware and ownership is verified
+      res.json(req.concept);
     } catch (error) {
       console.error("Error fetching brand concept:", error);
       res.status(500).json({ error: "Failed to fetch brand concept" });
