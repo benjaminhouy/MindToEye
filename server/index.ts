@@ -2,38 +2,36 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 
-// Import necessary modules
-import { createTablesIfNotExist } from './db';
-import { supabase, supabaseStorage } from './supabase';
+// Import necessary modules for direct PostgreSQL connection
+import { createTablesIfNotExist, postgresStorage } from './db';
 
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Initialize Supabase database exclusively
+// Initialize PostgreSQL database with direct connection
 async function initializeDatabase() {
-  console.log('Initializing Supabase database...');
+  console.log('Initializing database with direct connection...');
   
-  // Check for Supabase credentials
-  if (process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY && supabase) {
-    console.log('Supabase database detected. Creating tables if needed...');
+  // Check for database URL
+  const dbUrl = process.env.SUPABASE_DB_URL || process.env.DATABASE_URL;
+  
+  if (dbUrl) {
+    console.log('Database URL detected. Creating tables if needed...');
     try {
-      // Create tables in Supabase if they don't exist
-      await supabaseStorage.createTablesIfNotExist();
-      
-      // Add demo user for testing
-      await supabaseStorage.insertSampleData();
-      console.log('Supabase database initialization complete.');
+      // Create tables if they don't exist using direct SQL
+      await createTablesIfNotExist();
+      console.log('Database initialization complete.');
     } catch (err) {
-      console.error('Failed to initialize Supabase database:', err);
-      console.error('The application requires a valid Supabase connection.');
+      console.error('Failed to initialize database:', err);
+      console.error('The application requires a valid database connection.');
     }
   } else {
-    // No fallback - application requires Supabase
-    console.error('ERROR: Supabase credentials are missing or invalid.');
-    console.error('The application requires the following environment variables:');
-    console.error('- SUPABASE_URL');
-    console.error('- SUPABASE_ANON_KEY');
+    // No fallback - application requires database
+    console.error('ERROR: Database connection URL is missing.');
+    console.error('The application requires one of the following environment variables:');
+    console.error('- SUPABASE_DB_URL (preferred)');
+    console.error('- DATABASE_URL (fallback)');
     console.warn('Development mode: Using in-memory storage, but this is not recommended for production.');
   }
 }

@@ -9,30 +9,34 @@ import {
 import type { IStorage } from './storage';
 
 // Initialize PostgreSQL client for Drizzle ORM
-// Just use the DATABASE_URL that's set up by default
-const databaseUrl = process.env.DATABASE_URL;
+// Use SUPABASE_DB_URL for direct database access
+const supabaseDbUrl = process.env.SUPABASE_DB_URL;
+// Fallback to DATABASE_URL that's set up by default
+const databaseUrl = supabaseDbUrl || process.env.DATABASE_URL;
 
 if (!databaseUrl) {
-  console.warn('DATABASE_URL environment variable is not set. Using in-memory storage instead.');
+  console.warn('Database URL environment variable is not set. Using in-memory storage instead.');
 }
 
-// Create PostgreSQL client with Drizzle ORM only if DATABASE_URL is provided
-// For querying - use prepared statements by default
+// Configuration for pooled connections to Supabase PostgreSQL
+// For Supabase connections, either 'prefer' or 'require' is needed for SSL
+const sslMode = 'require';
+type SSLMode = 'prefer' | 'require' | 'allow' | 'verify-full';
+
+// Create PostgreSQL client with pooled connection
+console.log('Initializing database with connection string...');
 const queryClient = databaseUrl ? postgres(databaseUrl, { 
-  // When connecting to PostgreSQL in Replit, we need to set ssl to 'prefer'
-  // This allows both SSL and non-SSL connections
-  ssl: 'prefer',
-  prepare: true,
-  debug: true,
-  max: 10
+  ssl: sslMode as SSLMode,
+  prepare: true,  // Use prepared statements
+  max: 10,        // Connection pool size
+  debug: true     // Log queries
 }) : null;
 
-// For migrations - disable prepared statements
+// For migrations - disable prepared statements and use a single connection
 const migrationClient = databaseUrl ? postgres(databaseUrl, { 
-  // When connecting to PostgreSQL in Replit, we need to set ssl to 'prefer'
-  // This allows both SSL and non-SSL connections
-  ssl: 'prefer',
-  max: 1
+  ssl: sslMode as SSLMode,
+  prepare: false, // Disable prepared statements for migrations
+  max: 1          // Single connection for migrations
 }) : null;
 
 // Initialize Drizzle ORM
