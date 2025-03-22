@@ -547,23 +547,24 @@ export class DatabaseStorage implements IStorage {
   }
 }
 
-// Import supabase and supabaseStorage
-import { supabase, supabaseStorage } from './supabase';
+// Supabase imports are at the top of the file
 
 // Determine which storage implementation to use
 // Set up the storage implementation with fallback logic
 let storageImplementation: IStorage;
 
-// First priority: Use Supabase if available
-if (process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY && supabase) {
-  console.log('Using Supabase backend');
-  storageImplementation = supabaseStorage;
-} 
-// Second priority: Use PostgreSQL database if available
-else if (process.env.DATABASE_URL && db) {
+// First priority: Use PostgreSQL database if available
+// This is more reliable and has direct access to the schema
+if (process.env.DATABASE_URL && db) {
   console.log('Using PostgreSQL database backend');
   storageImplementation = new DatabaseStorage(); 
-} 
+}
+// Second priority: Use Supabase if available 
+// (commented out due to schema access issues with the Supabase client)
+// else if (process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY && supabase) {
+//   console.log('Using Supabase backend');
+//   storageImplementation = supabaseStorage;
+// } 
 // Last resort: Use in-memory storage
 else {
   console.log('Using in-memory storage backend - No database connection available');

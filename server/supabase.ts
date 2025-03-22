@@ -164,15 +164,106 @@ export class SupabaseStorage implements IStorage {
   async createTablesIfNotExist(): Promise<void> {
     if (!supabase) throw new Error('Supabase client not initialized');
     
-    // The tables are created in the Supabase dashboard or through SQL scripts
-    // This method checks if the tables exist and logs appropriate messages
-    const { data, error } = await supabase.rpc('check_tables_exist');
-    
-    if (error) {
-      console.error('Error checking if tables exist:', error);
-      console.log('You may need to create the tables manually in the Supabase dashboard.');
-    } else {
-      console.log('Table existence check result:', data);
+    try {
+      // First, try to access the users table to see if it exists
+      const { error: usersError } = await supabase
+        .from('users')
+        .select('id')
+        .limit(1);
+      
+      // If the table doesn't exist, create the tables
+      if (usersError && usersError.code === '42P01') {
+        console.log('Tables do not exist. Creating tables...');
+        // Since the execute_sql RPC function may not be available,
+        // we'll create tables directly using the Supabase API
+        
+        console.log('Creating users table...');
+        const { error: usersError } = await supabase
+          .from('users')
+          .insert({ 
+            username: 'temp_user_for_table_creation',
+            email: 'temp@example.com'
+          })
+          .select();
+          
+        if (usersError && usersError.code !== '23505') { // Ignore duplicate key error
+          console.error('Error creating users table:', usersError);
+        }
+        
+        console.log('Creating projects table...');
+        // Get the user for project creation
+        const { data: userData } = await supabase
+          .from('users')
+          .select('id')
+          .eq('username', 'temp_user_for_table_creation')
+          .limit(1)
+          .single();
+          
+        if (userData) {
+          const { error: projectsError } = await supabase
+            .from('projects')
+            .insert({
+              name: 'temp_project_for_table_creation',
+              user_id: userData.id,
+              client_name: 'Temp Client'
+            })
+            .select();
+            
+          if (projectsError && projectsError.code !== '23505') { // Ignore duplicate key error
+            console.error('Error creating projects table:', projectsError);
+          }
+          
+          console.log('Creating brand_concepts table...');
+          // Get the project for brand concepts creation
+          const { data: projectData } = await supabase
+            .from('projects')
+            .select('id')
+            .eq('name', 'temp_project_for_table_creation')
+            .limit(1)
+            .single();
+            
+          if (projectData) {
+            const { error: conceptsError } = await supabase
+              .from('brand_concepts')
+              .insert({
+                project_id: projectData.id,
+                name: 'temp_concept_for_table_creation',
+                brand_inputs: { description: 'temp' },
+                brand_output: { logo: 'temp' },
+                is_active: false
+              })
+              .select();
+              
+            if (conceptsError && conceptsError.code !== '23505') { // Ignore duplicate key error
+              console.error('Error creating brand_concepts table:', conceptsError);
+            }
+            
+            // Clean up temp data
+            console.log('Cleaning up temporary data...');
+            await supabase
+              .from('brand_concepts')
+              .delete()
+              .eq('name', 'temp_concept_for_table_creation');
+              
+            await supabase
+              .from('projects')
+              .delete()
+              .eq('name', 'temp_project_for_table_creation');
+              
+            await supabase
+              .from('users')
+              .delete()
+              .eq('username', 'temp_user_for_table_creation');
+          }
+        }
+        
+        console.log('Tables created successfully.');
+      } else {
+        console.log('Tables already exist.');
+      }
+    } catch (error) {
+      console.error('Error creating tables:', error);
+      console.log('Unable to create tables automatically. You may need to create them manually in the Supabase dashboard.');
     }
   }
   

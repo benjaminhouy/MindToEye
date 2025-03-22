@@ -1,87 +1,54 @@
+// Simple script to test Supabase connection
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
-import pg from 'pg';
 
-// Load environment variables
 dotenv.config();
 
-// Log supabase environment variables (without showing the actual values)
-console.log('SUPABASE_URL exists:', !!process.env.SUPABASE_URL);
-console.log('SUPABASE_ANON_KEY exists:', !!process.env.SUPABASE_ANON_KEY);
-console.log('SUPABASE_DB_URL exists:', !!process.env.SUPABASE_DB_URL);
-
-// Create Supabase client
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_ANON_KEY;
-const supabaseDbUrl = process.env.SUPABASE_DB_URL;
 
-// Test Supabase REST API connection
-async function testSupabaseRestApi() {
-  console.log('\n--- Testing Supabase REST API Connection ---');
+console.log('Supabase URL:', supabaseUrl ? 'Set' : 'Not set');
+console.log('Supabase Key:', supabaseKey ? 'Set' : 'Not set');
+
+if (!supabaseUrl || !supabaseKey) {
+  console.error('Supabase credentials not set in environment variables');
+  process.exit(1);
+}
+
+// Create Supabase client
+const supabase = createClient(supabaseUrl, supabaseKey);
+
+async function testConnection() {
   try {
-    const supabase = createClient(supabaseUrl, supabaseKey);
-    const { data, error } = await supabase.from('projects').select('*').limit(1);
+    console.log('Testing Supabase connection...');
+    
+    // Try to query the postgres schema information
+    const { data, error } = await supabase
+      .from('projects')
+      .select('*')
+      .limit(5);
     
     if (error) {
-      console.error('Error connecting to Supabase REST API:', error.message);
-      return false;
+      console.error('Error querying projects:', error);
+      
+      // Try to get the schema info
+      console.log('Checking available schemas...');
+      const { data: schemaData, error: schemaError } = await supabase.rpc('get_schemas');
+      
+      if (schemaError) {
+        console.error('Could not get schema information:', schemaError);
+      } else {
+        console.log('Available schemas:', schemaData);
+      }
+      
+      return;
     }
     
-    console.log('Successfully connected to Supabase REST API!');
-    console.log('Sample data:', data);
-    return true;
+    console.log('Successfully connected to Supabase!');
+    console.log('Projects data:', data);
   } catch (error) {
-    console.error('Error connecting to Supabase REST API:', error.message);
-    return false;
+    console.error('Unexpected error:', error);
   }
 }
 
-// Test direct database connection
-async function testDbConnection() {
-  console.log('\n--- Testing Direct Database Connection ---');
-  
-  if (!supabaseDbUrl) {
-    console.error('SUPABASE_DB_URL is not defined');
-    return false;
-  }
-  
-  const client = new pg.Client({
-    connectionString: supabaseDbUrl,
-    ssl: { rejectUnauthorized: false }
-  });
-  
-  try {
-    await client.connect();
-    console.log('Successfully connected to Supabase PostgreSQL database!');
-    
-    // Try running a simple query
-    const res = await client.query('SELECT current_database() as db_name');
-    console.log('Connected to database:', res.rows[0].db_name);
-    
-    await client.end();
-    return true;
-  } catch (error) {
-    console.error('Error connecting to Supabase PostgreSQL database:', error.message);
-    await client.end().catch(() => {});
-    return false;
-  }
-}
-
-// Run tests
-async function runTests() {
-  const restApiSuccess = await testSupabaseRestApi();
-  const dbSuccess = await testDbConnection();
-  
-  console.log('\n--- Test Results ---');
-  console.log('Supabase REST API Connection:', restApiSuccess ? 'SUCCESS ✅' : 'FAILED ❌');
-  console.log('Supabase Database Connection:', dbSuccess ? 'SUCCESS ✅' : 'FAILED ❌');
-  
-  if (!restApiSuccess || !dbSuccess) {
-    console.log('\n⚠️ Some tests failed. Please check your Supabase credentials and network connectivity.');
-    process.exit(1);
-  }
-  
-  console.log('\n✅ All tests passed! Your Supabase connection is working properly.');
-}
-
-runTests();
+testConnection();

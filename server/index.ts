@@ -4,21 +4,46 @@ import { setupVite, serveStatic, log } from "./vite";
 
 // Import necessary modules
 import { createTablesIfNotExist } from './db';
+import { supabase, supabaseStorage } from './supabase';
 
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Initialize the local PostgreSQL database
-console.log('Initializing local PostgreSQL database...');
-if (process.env.DATABASE_URL) {
-  console.log('Local PostgreSQL database detected. Tables will be created if they don\'t exist.');
-  createTablesIfNotExist().catch(err => {
-    console.error('Failed to create database tables:', err);
-  });
-} else {
-  console.warn('No DATABASE_URL found. Make sure PostgreSQL database is properly configured.');
+// Initialize databases (Supabase or local PostgreSQL)
+async function initializeDatabase() {
+  console.log('Initializing database...');
+  
+  // Check for Supabase
+  if (process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY && supabase) {
+    console.log('Supabase database detected. Creating tables...');
+    try {
+      // Create tables in Supabase
+      await supabaseStorage.createTablesIfNotExist();
+      
+      // Add demo user for testing
+      await supabaseStorage.insertSampleData();
+      console.log('Supabase database initialization complete.');
+    } catch (err) {
+      console.error('Failed to initialize Supabase database:', err);
+    }
+  } 
+  // Fall back to local PostgreSQL
+  else if (process.env.DATABASE_URL) {
+    console.log('Local PostgreSQL database detected. Tables will be created if they don\'t exist.');
+    try {
+      await createTablesIfNotExist();
+      console.log('PostgreSQL database initialization complete.');
+    } catch (err) {
+      console.error('Failed to create database tables:', err);
+    }
+  } else {
+    console.warn('No database configuration found. Using in-memory storage.');
+  }
 }
+
+// Run database initialization
+initializeDatabase();
 
 app.use((req, res, next) => {
   const start = Date.now();
