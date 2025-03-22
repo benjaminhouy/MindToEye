@@ -9,10 +9,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { ArrowLeftIcon } from "lucide-react";
+import { useAuth } from "@/lib/auth-context";
 
 const NewProject = () => {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const { user } = useAuth();
+  const userId = user?.id || 1; // Fallback to ID 1 if no user is found
+  
   const [projectData, setProjectData] = useState({
     name: "",
     clientName: "",
@@ -20,11 +24,12 @@ const NewProject = () => {
 
   const createProjectMutation = useMutation({
     mutationFn: async (data: typeof projectData) => {
-      const response = await apiRequest("POST", "/api/projects", data);
+      const projectWithUserId = { ...data, userId };
+      const response = await apiRequest("POST", "/api/projects", projectWithUserId);
       return response.json();
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+      queryClient.invalidateQueries({ queryKey: [`/api/projects?userId=${userId}`] });
       toast({
         title: "Project created",
         description: "Your new project has been created successfully.",
