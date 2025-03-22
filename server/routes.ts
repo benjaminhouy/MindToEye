@@ -834,10 +834,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
         colors: Array.isArray(colors) ? colors : []   // Handle undefined colors
       });
       
+      // Temporary project and concept IDs for standalone logo generation
+      // Use actual project/concept IDs if available from the request
+      const temporaryProjectId = req.body.projectId || 999999;
+      const temporaryConceptId = req.body.conceptId || 999999;
+      
+      // Extract logo URL from SVG if present
+      let originalLogoUrl = '';
+      try {
+        const urlMatch = logoResult.svg.match(/href="([^"]+)"/);
+        if (urlMatch && urlMatch[1]) {
+          originalLogoUrl = urlMatch[1];
+        }
+      } catch (parseError) {
+        console.log("Could not extract URL from SVG:", parseError);
+      }
+      
+      let permanentLogoUrl = '';
+      let permanentLogoSvg = logoResult.svg;
+      
+      // Import the upload function
+      if (originalLogoUrl) {
+        try {
+          // Import the logo upload utility
+          const { uploadLogoFromUrl } = await import('./storage-utils');
+          
+          // Store the logo in Supabase storage
+          const storedLogoUrl = await uploadLogoFromUrl(
+            originalLogoUrl, 
+            temporaryProjectId,
+            temporaryConceptId,
+            'svg' // Assuming SVG format for logos
+          );
+          
+          // If we got back a permanent URL, update the SVG
+          if (storedLogoUrl && storedLogoUrl !== originalLogoUrl) {
+            permanentLogoUrl = storedLogoUrl;
+            // Update the SVG with the permanent URL
+            permanentLogoSvg = logoResult.svg.replace(originalLogoUrl, storedLogoUrl);
+            console.log(`Logo URL successfully migrated to permanent storage: ${storedLogoUrl}`);
+          }
+        } catch (storageError) {
+          console.error("Error storing logo in permanent storage:", storageError);
+          // Continue with the original URL as fallback
+        }
+      }
+      
       res.json({ 
         success: true,
-        logoSvg: logoResult.svg,
-        prompt: logoResult.prompt
+        logoSvg: permanentLogoSvg,
+        prompt: logoResult.prompt,
+        permanentUrl: permanentLogoUrl || originalLogoUrl
       });
     } catch (error) {
       console.error("Error generating logo or custom image:", error);
@@ -1257,8 +1304,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else if (elementType === 'logo') {
         // For logo regeneration, we need to call the FLUX API
         try {
-          // Import the generateLogo function
+          // Import the generateLogo function and storage utilities
           const { generateLogo, generateMonochromeLogo, generateReverseLogo } = await import('./openai');
+          const { uploadLogoFromUrl } = await import('./storage-utils');
           
           // Check if we have a custom description or prompt override
           let customDescription = '';
@@ -1289,13 +1337,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
             promptOverride: promptOverride // Use the prompt override if provided
           });
           
-          // Generate monochrome and reverse versions
-          const monochromeLogo = generateMonochromeLogo(logoSvg);
-          const reverseLogo = generateReverseLogo(logoSvg);
+          // Extract logo URL from SVG if present
+          let originalLogoUrl = '';
+          try {
+            const urlMatch = logoSvg.match(/href="([^"]+)"/);
+            if (urlMatch && urlMatch[1]) {
+              originalLogoUrl = urlMatch[1];
+            }
+          } catch (parseError) {
+            console.log("Could not extract URL from SVG:", parseError);
+          }
+          
+          // Final versions of the logo
+          let primaryLogoSvg = logoSvg;
+          
+          // Store the logo in permanent storage if we extracted a URL
+          if (originalLogoUrl) {
+            try {
+              console.log(`Storing logo for concept ${conceptId} in permanent storage...`);
+              
+              // Store the logo in Supabase storage with proper project/concept hierarchy
+              const storedLogoUrl = await uploadLogoFromUrl(
+                originalLogoUrl,
+                projectId,
+                conceptId,
+                'svg' // Assuming SVG format for logos
+              );
+              
+              // If we got back a permanent URL, update the SVG
+              if (storedLogoUrl && storedLogoUrl !== originalLogoUrl) {
+                // Update the SVG with the permanent URL
+                primaryLogoSvg = logoSvg.replace(originalLogoUrl, storedLogoUrl);
+                console.log(`Logo URL successfully migrated to permanent storage: ${storedLogoUrl}`);
+              }
+            } catch (storageError) {
+              console.error("Error storing logo in permanent storage:", storageError);
+              // Continue with the original URL as fallback
+              console.log("Using original Replicate URL as fallback");
+            }
+          }
+          
+          // Generate monochrome and reverse versions based on the updated SVG
+          const monochromeLogo = generateMonochromeLogo(primaryLogoSvg);
+          const reverseLogo = generateReverseLogo(primaryLogoSvg);
           
           // Update the logo in the brand output
           brandOutput.logo = {
-            primary: logoSvg,
+            primary: primaryLogoSvg,
             monochrome: monochromeLogo,
             reverse: reverseLogo,
             prompt: logoPrompt // Store the prompt for future edits
