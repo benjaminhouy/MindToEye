@@ -365,13 +365,15 @@ export async function uploadImageFromUrl(imageUrl: string): Promise<string | nul
  * @param projectId The project ID to associate with this logo
  * @param conceptId The concept ID to associate with this logo
  * @param fileType The file type/extension of the logo (default: svg)
+ * @param authId The authenticated user's ID from Supabase (optional, falls back to demo user)
  * @returns The URL of the uploaded logo in Supabase storage or null if upload fails
  */
 export async function uploadLogoFromUrl(
   imageUrl: string,
   projectId: number,
   conceptId: number,
-  fileType: string = 'svg'
+  fileType: string = 'svg',
+  authId?: string
 ): Promise<string | null> {
   if (!supabase) {
     console.log('Supabase client not initialized. Using Replicate URL directly.');
@@ -415,9 +417,10 @@ export async function uploadLogoFromUrl(
     const timestamp = new Date().getTime();
     const randomId = uuidv4().substring(0, 8);
     
-    // Get the user ID from request context or use demo user for testing
-    // In production, this should always come from authentication context
-    const userId = DEMO_USER_ID; // This would be properly derived from auth in production
+    // Use the provided authId if available, or fall back to demo user
+    // The authId is the Supabase user's UUID that will match our storage policy
+    const userId = authId || DEMO_USER_ID;
+    console.log(`Using user ID for storage path: ${userId}`)
     
     // Improved path structure: userId/projectId/conceptId/logos/logo-timestamp-randomId.fileType
     // This structure provides better isolation, security, and organization
