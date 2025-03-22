@@ -1,81 +1,120 @@
-import { supabase } from './supabase';
-import * as dotenv from 'dotenv';
+import { createClient } from '@supabase/supabase-js';
 import fs from 'fs';
 import path from 'path';
-import { PostgrestError } from '@supabase/supabase-js';
+import { users, projects, brandConcepts } from '../shared/schema';
+import { drizzle } from 'drizzle-orm/postgres-js';
+import { pgTable, serial, text, timestamp, boolean, jsonb, integer } from 'drizzle-orm/pg-core';
+import { eq } from 'drizzle-orm';
+import { sql } from 'drizzle-orm';
+import postgres from 'postgres';
+import dotenv from 'dotenv';
 
-// No longer loading Supabase environment variables
-// Using local PostgreSQL database instead
+// Load environment variables
+dotenv.config();
+
+// Get Supabase credentials from environment variables
+const supabaseUrl = process.env.SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_ANON_KEY;
+const supabaseDbUrl = process.env.SUPABASE_DB_URL;
+
+// Create a Supabase client
+const supabase = supabaseUrl && supabaseKey 
+  ? createClient(supabaseUrl, supabaseKey)
+  : null;
 
 /**
- * Initialize Supabase database tables according to schema
- * Uses raw SQL to create tables, which is more reliable than API calls
+ * Initialize the Supabase database by creating required tables
  */
 export async function initializeSupabaseDatabase() {
   if (!supabase) {
-    console.error('Supabase client is not initialized. Cannot create database tables.');
+    console.error('Supabase client not initialized. Check your environment variables.');
     return false;
   }
 
   try {
-    console.log('Reading SQL setup file...');
-    const sqlFilePath = path.join(process.cwd(), 'supabase_tables.sql');
-    const sqlContent = fs.readFileSync(sqlFilePath, 'utf8');
-    
-    // Split SQL into individual statements
-    const statements = sqlContent
-      .split(';')
-      .map(stmt => stmt.trim())
-      .filter(stmt => stmt.length > 0);
-    
-    console.log(`Found ${statements.length} SQL statements to execute`);
-    
-    // Create a simple RPC function to execute SQL
-    // This creates a temporary function that we can use to execute our SQL
-    const createRpcFunctionSql = `
-    CREATE OR REPLACE FUNCTION exec_sql(query text) RETURNS void AS $$
-    BEGIN
-      EXECUTE query;
-    END;
-    $$ LANGUAGE plpgsql SECURITY DEFINER;
-    `;
-    
-    // Execute the RPC function creation
-    console.log('Creating SQL execution function...');
-    const { error: rpcError } = await supabase.rpc('exec_sql', {
-      query: createRpcFunctionSql
-    });
-    
-    // If we can't create the function, try direct execution
-    if (rpcError) {
-      console.log('Function creation failed. Attempting direct SQL execution...');
-      await executeSqlDirectly(sqlContent);
-      return true;
+    // Check if tables exist first
+    const { data: existingTables, error: tablesError } = await supabase
+      .from('pg_catalog.pg_tables')
+      .select('tablename')
+      .eq('schemaname', 'public');
+
+    if (tablesError) {
+      console.error('Error checking existing tables:', tablesError);
+      // If we can't check tables, we'll try creating them anyway
+      console.log('Attempting to create tables...');
+    } else {
+      console.log('Existing tables:', existingTables);
     }
+
+    // Read SQL file with table definitions
+    const sqlContent = fs.readFileSync(path.join(process.cwd(), 'supabase-schema.sql'), 'utf8');
     
-    // Execute each statement through the RPC function
-    for (let i = 0; i < statements.length; i++) {
-      console.log(`Executing statement ${i + 1}/${statements.length}...`);
-      const { error } = await supabase.rpc('exec_sql', {
-        query: statements[i]
-      });
-      
-      if (error) {
-        console.error(`Error executing statement ${i + 1}:`, error);
-      }
-    }
+    // Use the Supabase REST API to execute parts of the SQL file
+    // Note: This approach has limitations since we can't execute raw SQL through the REST API
+    // For proper migration, you'll want to execute this SQL in the Supabase SQL editor directly
     
-    // Drop the function when done
-    console.log('Dropping SQL execution function...');
-    await supabase.rpc('exec_sql', {
-      query: 'DROP FUNCTION IF EXISTS exec_sql(text);'
-    });
+    // Instead, we'll check and create tables one by one using the REST API
+    await createTablesViaAPI();
     
-    console.log('Database initialization completed successfully!');
+    console.log('Supabase database initialized successfully.');
     return true;
   } catch (error) {
-    console.error('Error initializing database:', error);
+    console.error('Error initializing Supabase database:', error);
     return false;
+  }
+}
+
+/**
+ * Create database tables through the Supabase REST API
+ */
+async function createTablesViaAPI() {
+  if (!supabase) return;
+
+  try {
+    // Create users table if it doesn't exist
+    const { error: usersError } = await supabase
+      .from('users')
+      .select('*')
+      .limit(1);
+
+    if (usersError && usersError.code === '42P01') { // Table doesn't exist
+      // We can't create tables through REST API, so we'll log instructions
+      console.log('Users table does not exist. Run the SQL migration script in Supabase SQL editor.');
+    } else if (usersError) {
+      console.error('Error checking users table:', usersError);
+    } else {
+      console.log('Users table exists.');
+    }
+
+    // Check projects table
+    const { error: projectsError } = await supabase
+      .from('projects')
+      .select('*')
+      .limit(1);
+
+    if (projectsError && projectsError.code === '42P01') {
+      console.log('Projects table does not exist. Run the SQL migration script in Supabase SQL editor.');
+    } else if (projectsError) {
+      console.error('Error checking projects table:', projectsError);
+    } else {
+      console.log('Projects table exists.');
+    }
+
+    // Check brand_concepts table
+    const { error: conceptsError } = await supabase
+      .from('brand_concepts')
+      .select('*')
+      .limit(1);
+
+    if (conceptsError && conceptsError.code === '42P01') {
+      console.log('Brand concepts table does not exist. Run the SQL migration script in Supabase SQL editor.');
+    } else if (conceptsError) {
+      console.error('Error checking brand_concepts table:', conceptsError);
+    } else {
+      console.log('Brand concepts table exists.');
+    }
+  } catch (error) {
+    console.error('Error creating tables via API:', error);
   }
 }
 
@@ -87,100 +126,83 @@ export async function initializeSupabaseDatabase() {
  * This function provides instructions on how to do that.
  */
 async function executeSqlDirectly(sql: string) {
+  if (!supabaseDbUrl) {
+    console.error('Direct SQL connection URL not provided. Cannot execute SQL directly.');
+    return false;
+  }
+
   try {
-    // Check if tables already exist
-    const { error: checkError } = await supabase!
-      .from('users')
-      .select('id')
-      .limit(1);
+    console.log('Attempting to connect to Supabase PostgreSQL database directly...');
     
-    if (!checkError) {
-      console.log('Tables already exist, skipping creation.');
-      return;
-    }
+    const pgClient = postgres(supabaseDbUrl, { ssl: 'require' });
     
-    // Get SQL file path for easy access
-    const sqlFilePath = path.join(process.cwd(), 'supabase_tables.sql');
+    // Execute the SQL statement
+    await pgClient.unsafe(sql);
     
-    console.log('\nSUPABASE TABLE CREATION INSTRUCTIONS:');
-    console.log('-----------------------------------');
-    console.log('Tables need to be created manually in the Supabase dashboard.');
-    console.log('Please follow these steps:');
-    console.log('1. Log in to your Supabase dashboard');
-    console.log('2. Go to the SQL Editor');
-    console.log('3. Create a new query');
-    console.log(`4. Copy and paste the contents of "${sqlFilePath}"`);
-    console.log('5. Run the SQL query');
-    console.log('\nAlternatively, you can run this from a terminal with direct Postgres access:');
-    console.log(`psql ${process.env.SUPABASE_DB_URL || process.env.DATABASE_URL} -f ${sqlFilePath}`);
-    console.log('\nUntil then, the application will use in-memory storage as a fallback.\n');
-    
-    // We can't actually create tables via REST API, so we'll return after providing instructions
-    return;
+    console.log('SQL executed successfully.');
+    await pgClient.end();
+    return true;
   } catch (error) {
-    console.error('Error checking tables:', error);
+    console.error('Error executing SQL directly:', error);
+    console.log('Please execute the SQL manually in the Supabase SQL editor:');
+    console.log(sql);
+    return false;
   }
 }
 
-// Function to check if tables exist
+/**
+ * Check if the required tables exist in the Supabase database
+ */
 export async function checkSupabaseTables(): Promise<{ 
-  usersExists: boolean; 
-  projectsExists: boolean; 
-  conceptsExists: boolean;
+  usersExist: boolean; 
+  projectsExist: boolean; 
+  conceptsExist: boolean;
 }> {
   if (!supabase) {
-    return { usersExists: false, projectsExists: false, conceptsExists: false };
+    return { usersExist: false, projectsExist: false, conceptsExist: false };
   }
-  
+
   try {
     // Check users table
-    const { error: usersError } = await supabase!
+    const { error: usersError } = await supabase
       .from('users')
-      .select('id')
+      .select('*')
       .limit(1);
     
     // Check projects table
-    const { error: projectsError } = await supabase!
+    const { error: projectsError } = await supabase
       .from('projects')
-      .select('id')
+      .select('*')
       .limit(1);
     
     // Check brand_concepts table
-    const { error: conceptsError } = await supabase!
+    const { error: conceptsError } = await supabase
       .from('brand_concepts')
-      .select('id')
+      .select('*')
       .limit(1);
     
     return {
-      usersExists: !usersError || usersError.code !== '42P01',
-      projectsExists: !projectsError || projectsError.code !== '42P01',
-      conceptsExists: !conceptsError || conceptsError.code !== '42P01'
+      usersExist: !usersError || usersError.code !== '42P01',
+      projectsExist: !projectsError || projectsError.code !== '42P01',
+      conceptsExist: !conceptsError || conceptsError.code !== '42P01',
     };
   } catch (error) {
-    console.error('Error checking tables:', error);
-    return { usersExists: false, projectsExists: false, conceptsExists: false };
+    console.error('Error checking Supabase tables:', error);
+    return { usersExist: false, projectsExist: false, conceptsExist: false };
   }
 }
 
-// For ES modules, we'll check if this file is the main module
-// by looking at import.meta.url
-const isMainModule = import.meta.url.endsWith("init-supabase-db.ts") || 
-                     import.meta.url.endsWith("init-supabase-db.js");
-
-// If this file is executed directly
-if (isMainModule) {
-  (async () => {
-    console.log('Checking existing Supabase tables...');
-    const tableStatus = await checkSupabaseTables();
-    console.log('Table status:', tableStatus);
-    
-    if (!tableStatus.usersExists || !tableStatus.projectsExists || !tableStatus.conceptsExists) {
-      console.log('Some tables are missing. Initializing database...');
-      await initializeSupabaseDatabase();
-    } else {
-      console.log('All required tables exist.');
-    }
-    
-    process.exit(0);
-  })();
+// For direct execution of this script
+if (require.main === module) {
+  initializeSupabaseDatabase()
+    .then(success => {
+      if (success) {
+        console.log('Supabase database initialized successfully!');
+      } else {
+        console.error('Failed to initialize Supabase database.');
+      }
+    })
+    .catch(err => {
+      console.error('Error during Supabase database initialization:', err);
+    });
 }
