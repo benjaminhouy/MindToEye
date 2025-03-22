@@ -24,7 +24,13 @@ const NewProject = () => {
 
   const createProjectMutation = useMutation({
     mutationFn: async (data: typeof projectData) => {
-      const projectWithUserId = { ...data, userId };
+      // Ensure data matches the server-side schema (key names must match exactly)
+      const projectWithUserId = { 
+        name: data.name,
+        clientName: data.clientName, 
+        userId 
+      };
+      console.log("Sending project data:", JSON.stringify(projectWithUserId));
       const response = await apiRequest("POST", "/api/projects", projectWithUserId);
       return response.json();
     },
