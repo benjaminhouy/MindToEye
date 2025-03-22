@@ -11,15 +11,23 @@ interface ProtectedRouteProps {
  * If the user is not authenticated, they are redirected to the login page
  */
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const { user, loading } = useAuth();
-  const [, navigate] = useLocation();
+  const { user, session, loading } = useAuth();
+  const [currentLocation, navigate] = useLocation();
 
   useEffect(() => {
+    console.log("ProtectedRoute status:", { 
+      loading, 
+      authenticated: !!user, 
+      sessionExists: !!session,
+      currentLocation 
+    });
+
     // Only redirect after we've checked if the user is logged in
     if (!loading && !user) {
+      console.log("No authenticated user detected, redirecting to login page");
       navigate('/auth');
     }
-  }, [user, loading, navigate]);
+  }, [user, session, loading, navigate, currentLocation]);
 
   // Show a loading spinner while checking authentication
   if (loading) {
@@ -33,6 +41,12 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     );
   }
 
-  // Only render children if user is authenticated
-  return user ? <>{children}</> : null;
+  // If not logged in and not already at the auth page, show nothing (redirection will happen)
+  if (!user && currentLocation !== '/auth') {
+    console.log("Not authenticated and not on auth page - waiting for redirect");
+    return null;
+  }
+
+  // Only render children if user is authenticated or we're on the auth page
+  return <>{children}</>;
 }

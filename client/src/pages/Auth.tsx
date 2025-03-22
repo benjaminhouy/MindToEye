@@ -23,15 +23,27 @@ export default function AuthPage() {
   // Handle form submissions
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
-    await signIn(email, password);
-    // The redirection will happen automatically via the ProtectedRoute component
-    // once the user is authenticated
+    console.log("Sign in attempt with:", email);
+    try {
+      await signIn(email, password);
+      console.log("Sign in completed, redirecting user...");
+      // Manual redirection after successful login
+      navigate("/");
+    } catch (error) {
+      console.error("Error during sign in:", error);
+    }
   };
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
-    await signUp(email, password);
-    // Stay on the auth page after signup to show verification message
+    console.log("Sign up attempt with:", email);
+    try {
+      await signUp(email, password);
+      console.log("Sign up completed successfully");
+      // Stay on the auth page after signup to show verification message
+    } catch (error) {
+      console.error("Error during sign up:", error);
+    }
   };
 
   return (

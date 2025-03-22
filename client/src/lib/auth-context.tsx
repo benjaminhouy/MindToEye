@@ -57,6 +57,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Sign in with email and password
   const signIn = async (email: string, password: string) => {
     try {
+      console.log("Auth context: Starting sign in process");
       setLoading(true);
       setError(null);
       
@@ -65,16 +66,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         password,
       });
       
+      console.log("Auth response:", { data, error });
+      
       if (error) {
+        console.error("Auth error:", error.message);
         setError(error.message);
+        return Promise.reject(error);
       } else if (data?.user && data?.session) {
+        console.log("Sign in successful, updating user context");
         // Immediately update user and session on successful login
         setSession(data.session);
         setUser(data.user);
+        return Promise.resolve();
+      } else {
+        console.error("No user or session in response");
+        setError('Failed to sign in: No user data received');
+        return Promise.reject(new Error('No user data received'));
       }
     } catch (error) {
+      console.error('Unexpected sign in error:', error);
       setError('An unexpected error occurred');
-      console.error('Sign in error:', error);
+      return Promise.reject(error);
     } finally {
       setLoading(false);
     }
@@ -116,17 +128,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Sign out
   const signOut = async () => {
     try {
+      console.log("Auth context: Starting sign out process");
       setLoading(true);
       setError(null);
       
       const { error } = await supabase.auth.signOut();
       
       if (error) {
+        console.error("Sign out error:", error.message);
         setError(error.message);
+      } else {
+        console.log("Sign out successful, clearing user context");
+        // Explicitly clear the user and session state
+        setSession(null);
+        setUser(null);
       }
     } catch (error) {
+      console.error('Unexpected sign out error:', error);
       setError('An unexpected error occurred');
-      console.error('Sign out error:', error);
     } finally {
       setLoading(false);
     }
