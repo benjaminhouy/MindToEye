@@ -731,33 +731,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/test-storage", async (req: Request, res: Response) => {
     try {
       // Import the storage utility directly
-      const { uploadImageFromUrl } = await import('./storage-utils');
+      const { uploadImageFromUrl, uploadLogoFromUrl } = await import('./storage-utils');
       
       // Get image URL from request body or use a default test image
-      const { imageUrl } = req.body;
+      const { imageUrl, useLogoUpload, projectId, conceptId } = req.body;
       const testImageUrl = imageUrl || 'https://picsum.photos/200'; // Use Lorem Picsum as a test image source
       
-      log(`Testing Supabase storage with image URL: ${testImageUrl}`);
-      
-      // Attempt to upload the image
-      const storedImageUrl = await uploadImageFromUrl(testImageUrl);
-      
-      if (storedImageUrl) {
-        log(`Successfully stored image in Supabase: ${storedImageUrl}`);
-        res.json({ 
-          success: true, 
-          message: 'Image successfully uploaded to Supabase storage',
-          originalUrl: testImageUrl,
-          storedUrl: storedImageUrl 
-        });
+      // Check if using the specific logo upload function
+      if (useLogoUpload === true) {
+        log(`Testing Supabase logo storage with URL: ${testImageUrl}`);
+        
+        // Use the specialized logo upload function with project/concept hierarchy
+        const storedLogoUrl = await uploadLogoFromUrl(
+          testImageUrl,
+          projectId || 999999, // Default test project ID if not provided
+          conceptId || 999999, // Default test concept ID if not provided
+          'svg' // Default to SVG format for logos
+        );
+        
+        if (storedLogoUrl) {
+          log(`Successfully stored logo in Supabase: ${storedLogoUrl}`);
+          res.json({ 
+            success: true, 
+            message: 'Logo successfully uploaded to Supabase storage',
+            originalUrl: testImageUrl,
+            storedUrl: storedLogoUrl 
+          });
+        } else {
+          log('Failed to store logo in Supabase - using original URL as fallback');
+          res.json({ 
+            success: false,
+            message: 'Failed to store logo in Supabase - using original URL as fallback',
+            originalUrl: testImageUrl,
+            storedUrl: testImageUrl
+          });
+        }
       } else {
-        log('Failed to store image in Supabase - using original URL as fallback');
-        res.json({ 
-          success: false, 
-          message: 'Image could not be uploaded to Supabase storage, using original URL as fallback',
-          originalUrl: testImageUrl,
-          storedUrl: null
-        });
+        // Standard image upload test (general storage)
+        log(`Testing Supabase general storage with image URL: ${testImageUrl}`);
+        
+        // Attempt to upload the image
+        const storedImageUrl = await uploadImageFromUrl(testImageUrl);
+        
+        if (storedImageUrl) {
+          log(`Successfully stored image in Supabase: ${storedImageUrl}`);
+          res.json({ 
+            success: true, 
+            message: 'Image successfully uploaded to Supabase storage',
+            originalUrl: testImageUrl,
+            storedUrl: storedImageUrl 
+          });
+        } else {
+          log('Failed to store image in Supabase - using original URL as fallback');
+          res.json({ 
+            success: false, 
+            message: 'Image could not be uploaded to Supabase storage, using original URL as fallback',
+            originalUrl: testImageUrl,
+            storedUrl: null
+          });
+        }
       }
     } catch (error) {
       console.error('Error in test-storage endpoint:', error);
