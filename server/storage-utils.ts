@@ -9,6 +9,10 @@ dotenv.config();
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_ANON_KEY;
 
+// We need to use the existing 'assets' bucket rather than creating a new one
+// This is because RLS policies prevent anon/authenticated users from creating buckets
+const BUCKET_EXISTS = true; // Set this to true to skip bucket creation attempts
+
 // Initialize Supabase client with additional options for better reliability
 export const supabase = supabaseUrl && supabaseKey
   ? createClient(supabaseUrl, supabaseKey, {
@@ -57,139 +61,91 @@ export async function initializeStorageBucket() {
   try {
     console.log('Checking if Supabase storage is accessible...');
     
-    // First check if we can list storage buckets
-    try {
-      const { data: buckets, error: bucketsError } = await supabase
-        .storage
-        .listBuckets();
+    // Since we know the bucket is already created manually in the dashboard,
+    // skip the bucket creation step and assume it exists
+    if (BUCKET_EXISTS) {
+      console.log(`Assuming storage bucket '${STORAGE_BUCKET}' already exists (created in Supabase dashboard).`);
       
-      if (bucketsError) {
-        console.warn('Unable to list storage buckets:', bucketsError.message);
-      } else {
-        console.log(`Found ${buckets.length} storage buckets.`);
-        
-        // Check if our bucket already exists
-        const existingBucket = buckets.find(bucket => bucket.name === STORAGE_BUCKET);
-        if (existingBucket) {
-          console.log(`Storage bucket '${STORAGE_BUCKET}' already exists.`);
-          // Try to access the bucket to confirm we have permissions
-          const { data: files, error: listError } = await supabase
+      // Try to list files from the existing bucket
+      try {
+        const { data: files, error: listError } = await supabase
+          .storage
+          .from(STORAGE_BUCKET)
+          .list();
+          
+        if (listError) {
+          // If we can't list the bucket contents, try a direct upload test
+          console.log(`Error listing bucket contents: ${listError.message}`);
+          console.log(`Testing upload access instead...`);
+          
+          // Create a small test file (1x1 transparent pixel as a PNG)
+          const testPngData = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=', 'base64');
+          const testFileName = `test-${Date.now()}.png`;
+          
+          const { error: uploadError } = await supabase
             .storage
             .from(STORAGE_BUCKET)
-            .list();
-            
-          if (!listError) {
-            console.log(`Successfully accessed bucket '${STORAGE_BUCKET}'. Found ${files?.length || 0} files.`);
-            return true;
-          } else {
-            console.warn(`Bucket exists but can't list files. Error: ${listError.message}`);
-          }
-        }
-      }
-    } catch (listError) {
-      console.warn('Error listing storage buckets:', listError);
-    }
-    
-    // We need to create a new bucket
-    console.log(`Creating new storage bucket: '${STORAGE_BUCKET}'...`);
-    
-    try {
-      // Try to create the bucket - this is where we might hit RLS policy issues
-      const { error: createError } = await supabase
-        .storage
-        .createBucket(STORAGE_BUCKET, {
-          public: true, // Make it public
-          fileSizeLimit: 10485760, // 10MB limit for files
-        });
-      
-      if (createError) {
-        const errorMessage = createError.message || '';
-        
-        if (errorMessage.includes('already exists') || 
-            errorMessage.includes('duplicate key') ||
-            errorMessage.includes('violation of policy')) {
-          
-          console.log(`Policy violation when creating bucket '${STORAGE_BUCKET}'. This is usually due to RLS policies.`);
-          console.log(`Trying to access the bucket directly...`);
-          
-          // Try to access the bucket directly instead
-          try {
-            const { data: files, error: accessError } = await supabase
-              .storage
-              .from(STORAGE_BUCKET)
-              .list();
-            
-            if (accessError) {
-              // If we can't list files, try a dummy upload to see if we have write access
-              console.log(`Can't list files from bucket. Trying a test upload...`);
-              
-              // Create a small test file (1x1 transparent pixel as a PNG)
-              const testPngData = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=', 'base64');
-              const testFileName = `test-${Date.now()}.png`;
-              
-              const { error: uploadError } = await supabase
-                .storage
-                .from(STORAGE_BUCKET)
-                .upload(testFileName, testPngData, {
-                  contentType: 'image/png',
-                  upsert: true
-                });
-              
-              if (uploadError) {
-                console.warn(`Test upload failed: ${uploadError.message}`);
-                console.log('Will use Replicate URLs as fallback.');
-                return true;
-              } else {
-                console.log('Test upload succeeded - we have write access to the bucket!');
-                return true;
-              }
-            } else {
-              console.log(`Successfully listed files from bucket '${STORAGE_BUCKET}'. Found ${files?.length || 0} files.`);
-              return true;
-            }
-          } catch (accessAttemptError) {
-            console.warn(`Error accessing bucket directly:`, accessAttemptError);
-            console.log('Will use Replicate URLs as fallback.');
-          }
-        } else {
-          // Some other error occurred
-          console.error('Error creating bucket:', {
-            message: createError.message,
-            details: (createError as any).details,
-            hint: (createError as any).hint
-          });
-        }
-      } else {
-        // Successfully created the bucket
-        console.log(`Storage bucket '${STORAGE_BUCKET}' created successfully.`);
-        
-        // Set public access policy for the bucket
-        try {
-          // Update the bucket to be public
-          const { error: updateError } = await supabase
-            .storage
-            .updateBucket(STORAGE_BUCKET, {
-              public: true
+            .upload(testFileName, testPngData, {
+              contentType: 'image/png',
+              upsert: true
             });
           
-          if (updateError) {
-            console.warn(`Could not set bucket to public: ${updateError.message}`);
+          if (uploadError) {
+            console.warn(`Storage test upload failed: ${uploadError.message}`);
+            console.log('Will use Replicate URLs as fallback for storage.');
+            // We still return true to allow the application to continue
+            return true;
           } else {
-            console.log(`Set bucket '${STORAGE_BUCKET}' to public successfully.`);
+            console.log('Storage test upload succeeded - we have write access to the bucket!');
+            return true;
           }
-        } catch (updateError) {
-          console.warn('Error updating bucket visibility:', updateError);
+        } else {
+          console.log(`Successfully listed files from bucket '${STORAGE_BUCKET}'. Found ${files?.length || 0} files.`);
+          return true;
         }
-        
+      } catch (accessError) {
+        console.log(`Error accessing bucket: ${accessError}`);
+        console.log('Will use Replicate URLs as fallback.');
         return true;
       }
-    } catch (createError) {
-      console.error('Error creating bucket:', createError);
     }
     
-    // If we get here, we've hit issues but should still continue
-    console.log('Will use Replicate URLs as fallback due to storage permission issues.');
-    return true;
+    // First check if we can list storage buckets
+    const { data: buckets, error: bucketsError } = await supabase
+      .storage
+      .listBuckets();
+    
+    if (bucketsError) {
+      console.warn('Unable to list storage buckets:', bucketsError.message);
+      console.log('Will use Replicate URLs as fallback due to bucket listing issues.');
+      return true;
+    } else {
+      console.log(`Found ${buckets.length} storage buckets.`);
+      
+      // Check if our bucket already exists
+      const existingBucket = buckets.find(bucket => bucket.name === STORAGE_BUCKET);
+      if (existingBucket) {
+        console.log(`Storage bucket '${STORAGE_BUCKET}' found in API response.`);
+        // Try to access the bucket to confirm we have permissions
+        const { data: files, error: listError } = await supabase
+          .storage
+          .from(STORAGE_BUCKET)
+          .list();
+          
+        if (!listError) {
+          console.log(`Successfully accessed bucket '${STORAGE_BUCKET}'. Found ${files?.length || 0} files.`);
+          return true;
+        } else {
+          console.warn(`Bucket exists but can't list files. Error: ${listError.message}`);
+          console.log('Will use Replicate URLs as fallback.');
+          return true;
+        }
+      } else {
+        console.log(`Bucket '${STORAGE_BUCKET}' not found in API response but may exist in dashboard.`);
+        console.log('Will use Replicate URLs as fallback.');
+        return true;
+      }
+    }
   } catch (error) {
     // Log the full error for debugging
     console.error('Unexpected error initializing storage bucket:', error);

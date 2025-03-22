@@ -907,12 +907,84 @@ export async function registerRoutes(app: Express): Promise<Server> {
         <text x="50" y="55" font-family="Arial" font-size="12" text-anchor="middle" fill="white">Test</text>
       </svg>`;
       
-      const { uploadLogoFromUrl } = await import('./storage-utils');
+      const { uploadLogoFromUrl, supabase, initializeStorageBucket } = await import('./storage-utils');
+      const STORAGE_BUCKET = 'assets';
+      
+      // First test direct bucket access
+      let bucketAccessResults = null;
+      if (supabase) {
+        try {
+          // Initialize the bucket with our improved function
+          await initializeStorageBucket();
+          
+          // 1. Try to directly access the bucket
+          console.log(`Directly testing access to the '${STORAGE_BUCKET}' bucket...`);
+          const { data: filesList, error: listError } = await supabase
+            .storage
+            .from(STORAGE_BUCKET)
+            .list();
+            
+          if (listError) {
+            console.error(`Error listing files from bucket: ${listError.message}`);
+            bucketAccessResults = { 
+              listBucketSuccess: false, 
+              listFilesSuccess: false, 
+              error: listError.message 
+            };
+          } else {
+            console.log(`Successfully listed files from bucket. Found ${filesList?.length || 0} files.`);
+            
+            // 2. Try a test upload
+            const testSvg = svgContent;
+            const testData = Buffer.from(testSvg);
+            const testPath = `${authId}/test-upload-${Date.now()}.svg`;
+            
+            console.log(`Attempting test upload to '${STORAGE_BUCKET}/${testPath}'...`);
+            
+            const { data: uploadData, error: uploadError } = await supabase
+              .storage
+              .from(STORAGE_BUCKET)
+              .upload(testPath, testData, {
+                contentType: 'image/svg+xml',
+                upsert: true
+              });
+            
+            if (uploadError) {
+              console.error(`Test upload failed: ${uploadError.message}`);
+              bucketAccessResults = { 
+                listBucketSuccess: true, 
+                listFilesSuccess: true, 
+                uploadSuccess: false,
+                error: uploadError.message 
+              };
+            } else {
+              console.log(`Test upload succeeded! Path: ${uploadData?.path || 'unknown'}`);
+              
+              // Get public URL
+              const { data: publicUrlData } = supabase
+                .storage
+                .from(STORAGE_BUCKET)
+                .getPublicUrl(testPath);
+              
+              bucketAccessResults = { 
+                listBucketSuccess: true, 
+                listFilesSuccess: true, 
+                uploadSuccess: true,
+                uploadedPath: uploadData?.path,
+                publicUrl: publicUrlData?.publicUrl
+              };
+            }
+          }
+        } catch (error) {
+          console.error('Unexpected error during bucket test:', error);
+          bucketAccessResults = { error: String(error) };
+        }
+      }
       
       // Convert SVG to data URL
       const dataUrl = `data:image/svg+xml;base64,${Buffer.from(svgContent).toString('base64')}`;
       
-      console.log(`Attempting to upload test SVG to Supabase storage...`);
+      console.log(`Attempting to upload test SVG to Supabase storage via uploadLogoFromUrl...`);
       const result = await uploadLogoFromUrl(
         dataUrl,
         999, // Test project ID
