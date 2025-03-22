@@ -356,3 +356,147 @@ export async function uploadImageFromUrl(imageUrl: string): Promise<string | nul
     return null;
   }
 }
+
+/**
+ * Upload a logo image from a URL to Supabase storage in the logos folder
+ * @param imageUrl The URL of the logo image to upload
+ * @param projectId The project ID to associate with this logo
+ * @param conceptId The concept ID to associate with this logo
+ * @param fileType The file type/extension of the logo (default: svg)
+ * @returns The URL of the uploaded logo in Supabase storage or null if upload fails
+ */
+export async function uploadLogoFromUrl(
+  imageUrl: string,
+  projectId: number,
+  conceptId: number,
+  fileType: string = 'svg'
+): Promise<string | null> {
+  if (!supabase) {
+    console.log('Supabase client not initialized. Using Replicate URL directly.');
+    return imageUrl; // Return original URL as fallback
+  }
+
+  try {
+    // Initialize bucket if needed
+    const bucketInitialized = await initializeStorageBucket();
+    if (!bucketInitialized) {
+      console.log('Bucket initialization failed. Using Replicate URL directly.');
+      return imageUrl; // Return original URL as fallback
+    }
+    
+    // Fetch the image from the URL
+    console.log(`Fetching logo from URL: ${imageUrl}`);
+    const response = await fetch(imageUrl);
+    
+    if (!response.ok) {
+      console.log(`Failed to fetch logo image: ${response.statusText}. Using Replicate URL directly.`);
+      return imageUrl; // Return original URL as fallback
+    }
+    
+    // Get the image data as a buffer/arrayBuffer
+    let imageData: Buffer;
+    try {
+      // For Node.js environment
+      imageData = await response.buffer();
+    } catch (bufferError) {
+      try {
+        // For browser or other environments
+        const arrayBuffer = await response.arrayBuffer();
+        imageData = Buffer.from(arrayBuffer);
+      } catch (arrayBufferError) {
+        console.log('Error obtaining image data:', arrayBufferError);
+        return imageUrl; // Return original URL as fallback
+      }
+    }
+    
+    // Generate a unique filename with project and concept identifiers
+    const timestamp = new Date().getTime();
+    const randomId = uuidv4().substring(0, 8);
+    
+    // Path structure following the policy rule: (bucket_id = 'assets' AND (storage.foldername(name))[1] = 'logos')
+    const filePath = `logos/${projectId}/${conceptId}/logo-${timestamp}-${randomId}.${fileType}`;
+    
+    // Set the appropriate content type based on file type
+    let contentType: string;
+    switch (fileType.toLowerCase()) {
+      case 'svg':
+        contentType = 'image/svg+xml';
+        break;
+      case 'png':
+        contentType = 'image/png';
+        break;
+      case 'jpg':
+      case 'jpeg':
+        contentType = 'image/jpeg';
+        break;
+      default:
+        contentType = 'image/svg+xml'; // Default to SVG
+    }
+    
+    // Upload the logo to Supabase storage
+    console.log(`Uploading logo to Supabase storage path: ${filePath}`);
+    const { error: uploadError } = await supabase
+      .storage
+      .from(STORAGE_BUCKET)
+      .upload(filePath, imageData, {
+        contentType,
+        cacheControl: '31536000', // Cache for 1 year since logos rarely change
+        upsert: true // Overwrite if exists
+      });
+    
+    if (uploadError) {
+      console.error('Error uploading logo to Supabase storage:', uploadError.message);
+      // If we get a policy violation, try with a simpler path
+      if (uploadError.message.includes('policy') || uploadError.message.includes('permission')) {
+        console.log('Attempting upload with simplified path structure...');
+        const simplePath = `logos/logo-${projectId}-${conceptId}-${timestamp}.${fileType}`;
+        
+        const { error: retryError } = await supabase
+          .storage
+          .from(STORAGE_BUCKET)
+          .upload(simplePath, imageData, {
+            contentType,
+            cacheControl: '31536000',
+            upsert: true
+          });
+          
+        if (retryError) {
+          console.error('Retry upload also failed:', retryError.message);
+          return imageUrl; // Return original URL as fallback
+        }
+        
+        // Get URL for the simplified path upload
+        const { data: publicUrlData } = supabase
+          .storage
+          .from(STORAGE_BUCKET)
+          .getPublicUrl(simplePath);
+          
+        if (publicUrlData?.publicUrl) {
+          console.log(`Logo successfully stored in Supabase with simplified path: ${publicUrlData.publicUrl}`);
+          return publicUrlData.publicUrl;
+        }
+        
+        return imageUrl; // Return original URL as fallback if we couldn't get the public URL
+      }
+      
+      return imageUrl; // Return original URL as fallback
+    }
+    
+    // Get the public URL for the uploaded logo
+    const { data: publicUrlData } = supabase
+      .storage
+      .from(STORAGE_BUCKET)
+      .getPublicUrl(filePath);
+    
+    if (publicUrlData?.publicUrl) {
+      console.log(`Logo successfully stored in Supabase: ${publicUrlData.publicUrl}`);
+      return publicUrlData.publicUrl;
+    } else {
+      console.log('Could not generate public URL for uploaded logo. Using Replicate URL as fallback.');
+      return imageUrl; // Return original URL as fallback
+    }
+  } catch (error) {
+    console.error('Unexpected error in uploadLogoFromUrl:', error);
+    return imageUrl; // Return original URL as fallback
+  }
+}
