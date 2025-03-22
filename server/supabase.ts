@@ -177,112 +177,56 @@ export class SupabaseStorage implements IStorage {
   }
   
   /**
-   * Helper method to create tables if they don't exist
+   * Helper method to check if tables exist in Supabase
    * Used during initialization
    */
   async createTablesIfNotExist(): Promise<void> {
     if (!supabase) throw new Error('Supabase client not initialized');
     
     try {
-      // First, try to access the users table to see if it exists
+      // Try to access the users table to see if it exists
       const { error: usersError } = await supabase
         .from('users')
         .select('id')
         .limit(1);
       
-      // If the table doesn't exist, create the tables
+      // If the table doesn't exist, inform the user
       if (usersError && usersError.code === '42P01') {
-        console.log('Tables do not exist. Creating tables...');
-        // Since the execute_sql RPC function may not be available,
-        // we'll create tables directly using the Supabase API
-        
-        console.log('Creating users table...');
-        const { error: usersError } = await supabase
-          .from('users')
-          .insert({ 
-            username: 'temp_user_for_table_creation',
-            email: 'temp@example.com'
-          })
-          .select();
-          
-        if (usersError && usersError.code !== '23505') { // Ignore duplicate key error
-          console.error('Error creating users table:', usersError);
-        }
-        
-        console.log('Creating projects table...');
-        // Get the user for project creation
-        const { data: userData } = await supabase
-          .from('users')
-          .select('id')
-          .eq('username', 'temp_user_for_table_creation')
-          .limit(1)
-          .single();
-          
-        if (userData) {
-          const { error: projectsError } = await supabase
-            .from('projects')
-            .insert({
-              name: 'temp_project_for_table_creation',
-              user_id: userData.id,
-              client_name: 'Temp Client'
-            })
-            .select();
-            
-          if (projectsError && projectsError.code !== '23505') { // Ignore duplicate key error
-            console.error('Error creating projects table:', projectsError);
-          }
-          
-          console.log('Creating brand_concepts table...');
-          // Get the project for brand concepts creation
-          const { data: projectData } = await supabase
-            .from('projects')
-            .select('id')
-            .eq('name', 'temp_project_for_table_creation')
-            .limit(1)
-            .single();
-            
-          if (projectData) {
-            const { error: conceptsError } = await supabase
-              .from('brand_concepts')
-              .insert({
-                project_id: projectData.id,
-                name: 'temp_concept_for_table_creation',
-                brand_inputs: { description: 'temp' },
-                brand_output: { logo: 'temp' },
-                is_active: false
-              })
-              .select();
-              
-            if (conceptsError && conceptsError.code !== '23505') { // Ignore duplicate key error
-              console.error('Error creating brand_concepts table:', conceptsError);
-            }
-            
-            // Clean up temp data
-            console.log('Cleaning up temporary data...');
-            await supabase
-              .from('brand_concepts')
-              .delete()
-              .eq('name', 'temp_concept_for_table_creation');
-              
-            await supabase
-              .from('projects')
-              .delete()
-              .eq('name', 'temp_project_for_table_creation');
-              
-            await supabase
-              .from('users')
-              .delete()
-              .eq('username', 'temp_user_for_table_creation');
-          }
-        }
-        
-        console.log('Tables created successfully.');
+        console.error('IMPORTANT: Required tables do not exist in Supabase.');
+        console.error('Please create the necessary tables by executing the SQL in supabase-tables.sql');
+        console.error('You can do this through the Supabase SQL Editor in the dashboard.');
+        console.error('The application requires the following tables:');
+        console.error('- users (id, username, password)');
+        console.error('- projects (id, name, client_name, created_at, user_id)');
+        console.error('- brand_concepts (id, project_id, name, created_at, brand_inputs, brand_output, is_active)');
       } else {
-        console.log('Tables already exist.');
+        // Check the projects table
+        const { error: projectsError } = await supabase
+          .from('projects')
+          .select('id')
+          .limit(1);
+          
+        if (projectsError && projectsError.code === '42P01') {
+          console.error('IMPORTANT: The projects table does not exist in Supabase.');
+          console.error('Please create the necessary tables by executing the SQL in supabase-tables.sql');
+        } else {
+          // Check the brand_concepts table
+          const { error: conceptsError } = await supabase
+            .from('brand_concepts')
+            .select('id')
+            .limit(1);
+            
+          if (conceptsError && conceptsError.code === '42P01') {
+            console.error('IMPORTANT: The brand_concepts table does not exist in Supabase.');
+            console.error('Please create the necessary tables by executing the SQL in supabase-tables.sql');
+          } else {
+            console.log('All required tables exist in Supabase.');
+          }
+        }
       }
     } catch (error) {
-      console.error('Error creating tables:', error);
-      console.log('Unable to create tables automatically. You may need to create them manually in the Supabase dashboard.');
+      console.error('Error checking tables:', error);
+      console.error('Please create the necessary tables manually in the Supabase dashboard.');
     }
   }
   
@@ -294,17 +238,27 @@ export class SupabaseStorage implements IStorage {
     
     try {
       // Check if demo user exists
-      const { data: existingUser } = await supabase
+      const { data: existingUser, error: userCheckError } = await supabase
         .from('users')
         .select('*')
         .eq('username', 'demo')
         .single();
+
+      // Handle case where table doesn't exist
+      if (userCheckError && userCheckError.code === '42P01') {
+        console.error('IMPORTANT: The users table does not exist in Supabase.');
+        console.error('Please create the necessary tables by executing the SQL in supabase-tables.sql');
+        return;
+      }
       
       // Create demo user if it doesn't exist
       if (!existingUser) {
         const { error: userError } = await supabase
           .from('users')
-          .insert({ username: 'demo', email: 'demo@example.com' });
+          .insert({ 
+            username: 'demo', 
+            password: 'password123' // In production this should be hashed
+          });
         
         if (userError) {
           console.error('Error creating demo user:', userError);
@@ -314,6 +268,30 @@ export class SupabaseStorage implements IStorage {
         console.log('Demo user created successfully.');
       } else {
         console.log('Demo user already exists.');
+      }
+
+      // Create a sample project for the demo user
+      const { data: demoUser } = await supabase
+        .from('users')
+        .select('id')
+        .eq('username', 'demo')
+        .single();
+
+      if (demoUser) {
+        const { error: projectError } = await supabase
+          .from('projects')
+          .insert({
+            name: 'Sample Brand',
+            client_name: 'Sample Client',
+            user_id: demoUser.id
+          })
+          .select();
+
+        if (projectError && projectError.code !== '23505') { // Ignore if project already exists
+          console.error('Error creating sample project:', projectError);
+        } else {
+          console.log('Sample project created successfully.');
+        }
       }
     } catch (error: any) {
       console.error('Error inserting sample data:', error);
