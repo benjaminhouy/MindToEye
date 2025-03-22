@@ -730,6 +730,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Test endpoint for Supabase storage functionality
   app.post("/api/test-storage", async (req: Request, res: Response) => {
     try {
+      // Extract auth ID from header if present
+      const authId = req.headers['x-auth-id'] as string;
+      console.log("Auth ID from header in test-storage:", authId);
+      
       // Import the storage utility directly
       const { uploadImageFromUrl, uploadLogoFromUrl } = await import('./storage-utils');
       
@@ -746,7 +750,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           testImageUrl,
           projectId || 999999, // Default test project ID if not provided
           conceptId || 999999, // Default test concept ID if not provided
-          'svg' // Default to SVG format for logos
+          'svg', // Default to SVG format for logos
+          authId // Pass the authenticated user ID for proper storage path
         );
         
         if (storedLogoUrl) {

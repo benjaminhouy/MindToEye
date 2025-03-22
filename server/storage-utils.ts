@@ -201,9 +201,10 @@ export async function initializeStorageBucket() {
 /**
  * Upload an image from a URL to Supabase storage
  * @param imageUrl The URL of the image to upload
+ * @param authId The authenticated user's ID from Supabase (optional, falls back to demo user)
  * @returns The URL of the uploaded image in Supabase storage or null if upload fails
  */
-export async function uploadImageFromUrl(imageUrl: string): Promise<string | null> {
+export async function uploadImageFromUrl(imageUrl: string, authId?: string): Promise<string | null> {
   if (!supabase) {
     console.log('Supabase client not initialized. Using Replicate URL directly.');
     return null;
