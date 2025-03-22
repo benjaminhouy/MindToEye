@@ -24,12 +24,14 @@ export default function AuthPage() {
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
     await signIn(email, password);
-    navigate('/dashboard');
+    // The redirection will happen automatically via the ProtectedRoute component
+    // once the user is authenticated
   };
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     await signUp(email, password);
+    // Stay on the auth page after signup to show verification message
   };
 
   return (

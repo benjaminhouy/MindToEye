@@ -60,13 +60,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(true);
       setError(null);
       
-      const { error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
       
       if (error) {
         setError(error.message);
+      } else if (data?.user && data?.session) {
+        // Immediately update user and session on successful login
+        setSession(data.session);
+        setUser(data.user);
       }
     } catch (error) {
       setError('An unexpected error occurred');
@@ -82,16 +86,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(true);
       setError(null);
       
-      const { error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
       });
       
       if (error) {
         setError(error.message);
-      } else {
-        // Success, but might need email verification
-        setError('Please check your email for the confirmation link');
+      } else if (data?.user) {
+        if (data.user.identities?.length === 0) {
+          setError('This email is already registered. Please try logging in instead.');
+        } else if (data.session) {
+          // Auto-login if no email confirmation required
+          setSession(data.session);
+          setUser(data.user);
+        } else {
+          // Need email verification
+          setError('Please check your email for the confirmation link');
+        }
       }
     } catch (error) {
       setError('An unexpected error occurred');

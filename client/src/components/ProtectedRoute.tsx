@@ -21,9 +21,16 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     }
   }, [user, loading, navigate]);
 
-  // Show nothing while loading to avoid flash of content
+  // Show a loading spinner while checking authentication
   if (loading) {
-    return <div className="flex items-center justify-center h-screen">Loading...</div>;
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="flex flex-col items-center">
+          <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+          <p className="mt-4 text-gray-600">Checking authentication...</p>
+        </div>
+      </div>
+    );
   }
 
   // Only render children if user is authenticated
