@@ -8,6 +8,9 @@ import {
   users, projects, brandConcepts
 } from "@shared/schema";
 
+// Import Supabase items at the top to avoid circular dependencies
+import { supabase, supabaseStorage } from './supabase';
+
 export interface IStorage {
   // User operations
   getUser(id: number): Promise<User | undefined>;
@@ -544,15 +547,25 @@ export class DatabaseStorage implements IStorage {
   }
 }
 
+// Import supabase and supabaseStorage
+import { supabase, supabaseStorage } from './supabase';
+
 // Determine which storage implementation to use
 // Set up the storage implementation with fallback logic
 let storageImplementation: IStorage;
 
-// Use PostgreSQL database if available
-if (process.env.DATABASE_URL && db) {
+// First priority: Use Supabase if available
+if (process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY && supabase) {
+  console.log('Using Supabase backend');
+  storageImplementation = supabaseStorage;
+} 
+// Second priority: Use PostgreSQL database if available
+else if (process.env.DATABASE_URL && db) {
   console.log('Using PostgreSQL database backend');
-  storageImplementation = new DatabaseStorage(); // Use our new implementation
-} else {
+  storageImplementation = new DatabaseStorage(); 
+} 
+// Last resort: Use in-memory storage
+else {
   console.log('Using in-memory storage backend - No database connection available');
   storageImplementation = new MemStorage();
 }
