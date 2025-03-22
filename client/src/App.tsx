@@ -8,6 +8,7 @@ import ProjectWorkspace from "@/pages/ProjectWorkspace";
 import NewProject from "@/pages/NewProject";
 import Header from "@/components/Header";
 import AuthPage from "@/pages/Auth";
+import UserProfile from "@/pages/UserProfile";
 import { AuthProvider } from "@/lib/auth-context";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 
@@ -57,6 +58,27 @@ function Router() {
               </div>
             </ProtectedRoute>
           )}
+        </Route>
+        <Route path="/profile">
+          <ProtectedRoute>
+            <div className="min-h-screen flex flex-col">
+              <Header />
+              <div className="flex-grow">
+                <UserProfile />
+              </div>
+            </div>
+          </ProtectedRoute>
+        </Route>
+        {/* Settings route is a placeholder for future settings implementation */}
+        <Route path="/settings">
+          <ProtectedRoute>
+            <div className="min-h-screen flex flex-col">
+              <Header />
+              <div className="flex-grow">
+                <UserProfile /> {/* Using UserProfile for now as a placeholder */}
+              </div>
+            </div>
+          </ProtectedRoute>
         </Route>
         <Route component={NotFound} />
       </Switch>
