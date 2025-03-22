@@ -8,6 +8,9 @@ import {
   users, projects, brandConcepts
 } from "@shared/schema";
 
+import { postgresStorage, db } from './db';
+import { eq, desc } from "drizzle-orm";
+
 // Using direct PostgreSQL connection via pooled connection string
 
 export interface IStorage {
@@ -302,11 +305,7 @@ export class MemStorage implements IStorage {
   }
 }
 
-// Import PostgreSQL storage implementation
-import { postgresStorage, db } from './db';
-import { eq, desc } from "drizzle-orm";
-
-// Add the DatabaseStorage implementation
+// DatabaseStorage implementation
 export class DatabaseStorage implements IStorage {
   async getUser(id: number): Promise<User | undefined> {
     if (!db) {
