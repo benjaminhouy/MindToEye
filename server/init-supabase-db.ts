@@ -15,7 +15,7 @@ dotenv.config();
 // Get Supabase credentials from environment variables
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_ANON_KEY;
-const supabaseDbUrl = process.env.SUPABASE_DB_URL;
+const databaseUrl = process.env.DATABASE_URL;
 
 // Create a Supabase client
 const supabase = supabaseUrl && supabaseKey 
@@ -126,15 +126,15 @@ async function createTablesViaAPI() {
  * This function provides instructions on how to do that.
  */
 async function executeSqlDirectly(sql: string) {
-  if (!supabaseDbUrl) {
+  if (!databaseUrl) {
     console.error('Direct SQL connection URL not provided. Cannot execute SQL directly.');
     return false;
   }
 
   try {
-    console.log('Attempting to connect to Supabase PostgreSQL database directly...');
+    console.log('Attempting to connect to PostgreSQL database directly...');
     
-    const pgClient = postgres(supabaseDbUrl, { ssl: 'require' });
+    const pgClient = postgres(databaseUrl, { ssl: { rejectUnauthorized: false } });
     
     // Execute the SQL statement
     await pgClient.unsafe(sql);
@@ -144,7 +144,7 @@ async function executeSqlDirectly(sql: string) {
     return true;
   } catch (error) {
     console.error('Error executing SQL directly:', error);
-    console.log('Please execute the SQL manually in the Supabase SQL editor:');
+    console.log('Please execute the SQL manually in the database SQL editor:');
     console.log(sql);
     return false;
   }

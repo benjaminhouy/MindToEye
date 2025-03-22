@@ -272,10 +272,10 @@ export interface IStorage {
   }
 }
 
-// Use Supabase PostgreSQL connection via their pooled connection string
-// Connection to Supabase database directly (bypassing the REST API)
-// SUPABASE_DB_URL is already a pooled connection managed by Supabase
-console.log('Using Supabase PostgreSQL via pooled connection string');
+// Use PostgreSQL connection via pooled connection string
+// Direct database connection using the connection string
+// DATABASE_URL contains a pooled connection managed by the hosting provider
+console.log('Using PostgreSQL via pooled connection string');
 
 // Export PostgreSQL storage implementation
 export const storage = postgresStorage;
