@@ -52,10 +52,10 @@ function logSupabaseError(operation: string, error: any) {
   });
 }
 
-// Initialize Supabase client
+// Initialize Supabase client with more debugging
 export const supabase: SupabaseClient<Database> | null = supabaseUrl && supabaseKey
   ? createClient<Database>(supabaseUrl, supabaseKey, {
-      // Configure Supabase client to use the correct schema
+      // Always use public schema to match our table definitions
       db: {
         schema: 'public',
       },
@@ -65,8 +65,16 @@ export const supabase: SupabaseClient<Database> | null = supabaseUrl && supabase
           'X-Client-Info': 'mindtoeye-app',
         },
       },
+      auth: {
+        autoRefreshToken: true,
+        persistSession: true,
+      },
     })
   : null;
+
+// Log Supabase initialization status
+console.log('Supabase client initialized with URL:', supabaseUrl ? supabaseUrl.substring(0, 20) + '...' : 'undefined');
+console.log('Using Supabase schema: public');
 
 /**
  * Supabase implementation of the storage interface
