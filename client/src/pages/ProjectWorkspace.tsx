@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
-import { useRoute, Link } from "wouter";
+import { useRoute, Link, useLocation } from "wouter";
 import { useQuery, QueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { DownloadIcon, PresentationIcon, CalendarIcon, InfoIcon } from "lucide-react";
+import { DownloadIcon, PresentationIcon, CalendarIcon, InfoIcon, AlertTriangleIcon, ArrowLeftIcon } from "lucide-react";
 import { Project, BrandConcept } from "@shared/schema";
 import { format } from "date-fns";
 import BrandInputPanel from "@/components/BrandInputPanel";
@@ -11,6 +11,7 @@ import VisualizationPanel from "@/components/VisualizationPanel";
 import LoadingOverlay from "@/components/LoadingOverlay";
 import { supabase } from "@/lib/supabase";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 
 interface ProjectWorkspaceProps {
   id?: string;
@@ -18,6 +19,8 @@ interface ProjectWorkspaceProps {
 
 const ProjectWorkspace = ({ id }: ProjectWorkspaceProps) => {
   const [match, params] = useRoute<{ id: string }>("/projects/:id");
+  const [, setLocation] = useLocation();
+  const { toast } = useToast();
   
   // Use the prop id if provided, otherwise use the route param
   const projectId = id || params?.id;
@@ -26,6 +29,7 @@ const ProjectWorkspace = ({ id }: ProjectWorkspaceProps) => {
   const [progress, setProgress] = useState(0);
   const [activeConceptId, setActiveConceptId] = useState<number | null>(null);
   const [authId, setAuthId] = useState<string | null>(null);
+  const [accessError, setAccessError] = useState<string | null>(null);
 
   // Retrieve the auth ID for API requests
   useEffect(() => {
@@ -46,14 +50,27 @@ const ProjectWorkspace = ({ id }: ProjectWorkspaceProps) => {
   // Create a reusable auth header object
   const authHeaders = authId ? { 'x-auth-id': authId } : {};
 
-  const { data: project, isLoading: projectLoading } = useQuery<Project>({
+  const { data: project, isLoading: projectLoading, error: projectError } = useQuery<Project>({
     queryKey: [`/api/projects/${projectId}`],
     enabled: !!projectId,
+    onError: (error: any) => {
+      console.error("Project fetch error:", error);
+      
+      // Check if this is a 403 Forbidden error
+      if (error.message.includes("403")) {
+        setAccessError("You do not have permission to access this project.");
+      } else {
+        setAccessError("An error occurred while loading this project.");
+      }
+    }
   });
 
-  const { data: concepts, isLoading: conceptsLoading, refetch: refetchConcepts } = useQuery<BrandConcept[]>({
+  const { data: concepts, isLoading: conceptsLoading, refetch: refetchConcepts, error: conceptsError } = useQuery<BrandConcept[]>({
     queryKey: [`/api/projects/${projectId}/concepts`],
-    enabled: !!projectId,
+    enabled: !!projectId && !accessError,
+    onError: (error: any) => {
+      console.error("Concepts fetch error:", error);
+    }
   });
 
   const activeConcept = concepts?.find(concept => concept.id === activeConceptId) || 
@@ -77,8 +94,34 @@ const ProjectWorkspace = ({ id }: ProjectWorkspaceProps) => {
     }
   };
 
+  // Function to handle navigation back to dashboard
+  const navigateToDashboard = () => {
+    setLocation("/");
+  };
+
   if (!match) return null;
   
+  // Show access error if present
+  if (accessError) {
+    return (
+      <div className="max-w-7xl mx-auto py-12 px-4 sm:px-6 lg:px-8 text-center">
+        <div className="bg-red-50 border border-red-100 rounded-lg p-8 max-w-2xl mx-auto">
+          <AlertTriangleIcon className="h-16 w-16 text-red-400 mx-auto mb-4" />
+          <h2 className="text-2xl font-bold text-red-800 mb-2">Access Denied</h2>
+          <p className="text-lg text-red-600 mb-6">{accessError}</p>
+          <p className="text-sm text-red-500 mb-6">
+            If you believe this is an error, please contact the project owner.
+          </p>
+          <Button onClick={navigateToDashboard} className="mx-auto">
+            <ArrowLeftIcon className="mr-2 h-4 w-4" />
+            Return to Dashboard
+          </Button>
+        </div>
+      </div>
+    );
+  }
+  
+  // Show loading state while fetching data
   if (projectLoading) {
     return (
       <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
