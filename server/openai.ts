@@ -485,6 +485,8 @@ export function generateReverseLogo(logoSvg: string): string {
 
 // Generate brand concept with Claude
 export const generateBrandConcept = async (brandInput: BrandInput, authId?: string, jwtToken?: string) => {
+  // Extract projectId and conceptId from brandInput for storage paths
+  // These will be used for storage path organization
   console.log("Starting brand concept generation with input:", JSON.stringify(brandInput));
   // Generate a unique timestamp seed to ensure different results each time
   const uniqueSeed = Date.now() % 1000;

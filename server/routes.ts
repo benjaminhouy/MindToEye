@@ -799,8 +799,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           log(`Using projectId: ${projectId}, conceptId: ${conceptId} for storage paths`);
           
-          // Pass authId, jwtToken, projectId and conceptId to the generateBrandConcept function
-          const brandOutput = await generateBrandConcept(brandInput, authId, jwtToken, projectId, conceptId);
+          // Add projectId and conceptId to brandInput for hierarchical storage paths
+          brandInput.projectId = projectId;
+          brandInput.conceptId = conceptId;
+          
+          // Pass authId and jwtToken to the generateBrandConcept function
+          const brandOutput = await generateBrandConcept(brandInput, authId, jwtToken);
           log("AI service returned brand concept successfully");
           
           // Send a progress update at 90% before final response
@@ -1600,7 +1604,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Extract auth ID and JWT token from headers if present
       const authId = req.headers['x-auth-id'] as string;
-      let jwtToken = req.headers['x-supabase-auth'] as string;
+      let jwtToken = req.headers['x-supabase-auth'] as string | undefined;
       console.log("Auth ID from header in logo generation:", authId);
       console.log("JWT token present in logo generation:", !!jwtToken);
       
@@ -1662,7 +1666,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Extract JWT token from Authorization header if not already present
       if (!jwtToken) {
         const authHeader = req.headers.authorization;
-        jwtToken = authHeader ? authHeader.split(' ')[1] : undefined;
+        if (authHeader) {
+          const bearerToken = authHeader.split(' ')[1];
+          if (bearerToken) {
+            jwtToken = bearerToken;
+          }
+        }
       }
       
       // Default path: Generate a regular logo
