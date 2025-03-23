@@ -83,10 +83,21 @@ const PUBLIC_FOLDER = 'public';
 
 /**
  * Initialize the storage bucket if it doesn't exist
+ * @param jwtToken Optional JWT token for authenticated operations with RLS
  */
-export async function initializeStorageBucket() {
+export async function initializeStorageBucket(jwtToken?: string) {
   if (!supabase) {
     console.error('Supabase client not initialized. Check your environment variables.');
+    return false;
+  }
+  
+  // Choose the appropriate Supabase client based on JWT token
+  const storageClient = jwtToken 
+    ? createSupabaseClientWithToken(jwtToken)
+    : supabase;
+    
+  if (!storageClient) {
+    console.log('Failed to create Supabase client with token');
     return false;
   }
 
@@ -100,7 +111,7 @@ export async function initializeStorageBucket() {
       
       // Try to list files from the existing bucket
       try {
-        const { data: files, error: listError } = await supabase
+        const { data: files, error: listError } = await storageClient
           .storage
           .from(STORAGE_BUCKET)
           .list();
@@ -114,7 +125,7 @@ export async function initializeStorageBucket() {
           const testPngData = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII=', 'base64');
           const testFileName = `test-${Date.now()}.png`;
           
-          const { error: uploadError } = await supabase
+          const { error: uploadError } = await storageClient
             .storage
             .from(STORAGE_BUCKET)
             .upload(testFileName, testPngData, {
@@ -143,7 +154,7 @@ export async function initializeStorageBucket() {
     }
     
     // First check if we can list storage buckets
-    const { data: buckets, error: bucketsError } = await supabase
+    const { data: buckets, error: bucketsError } = await storageClient
       .storage
       .listBuckets();
     
@@ -159,7 +170,7 @@ export async function initializeStorageBucket() {
       if (existingBucket) {
         console.log(`Storage bucket '${STORAGE_BUCKET}' found in API response.`);
         // Try to access the bucket to confirm we have permissions
-        const { data: files, error: listError } = await supabase
+        const { data: files, error: listError } = await storageClient
           .storage
           .from(STORAGE_BUCKET)
           .list();
@@ -215,7 +226,7 @@ export async function uploadImageFromUrl(
     }
     
     // Initialize bucket if needed
-    const bucketInitialized = await initializeStorageBucket();
+    const bucketInitialized = await initializeStorageBucket(jwtToken);
     if (!bucketInitialized) {
       console.log('Bucket initialization failed. Using Replicate URL directly.');
       return null;
@@ -404,7 +415,7 @@ export async function uploadLogoFromUrl(
     }
     
     // Initialize bucket if needed
-    const bucketInitialized = await initializeStorageBucket();
+    const bucketInitialized = await initializeStorageBucket(jwtToken);
     if (!bucketInitialized) {
       console.log('Bucket initialization failed. Using Replicate URL directly.');
       return imageUrl; // Return original URL as fallback
