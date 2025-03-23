@@ -213,10 +213,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Test endpoint for Supabase storage
-  app.get("/api/check-storage-policies", async (_req: Request, res: Response) => {
+  app.get("/api/check-storage-policies", async (req: Request, res: Response) => {
     try {
+      // Extract JWT from the request for authenticated policy checks
+      const authHeader = req.headers.authorization;
+      const jwtToken = authHeader ? authHeader.split(' ')[1] : undefined;
       const { checkStoragePolicies } = await import('./check-storage-policy');
+      const { createSupabaseClientWithToken } = await import('./storage-utils');
+      
+      // First try with the JWT token if available
+      console.log(`Checking storage policies${jwtToken ? ' with JWT token' : ' without JWT token'}...`);
+      
+      let jwtTestResult = { success: false, reason: "No JWT token provided" };
+      
+      if (jwtToken) {
+        // Try a direct test upload using the JWT token
+        const storageClient = createSupabaseClientWithToken(jwtToken);
+        if (storageClient) {
+          try {
+            const testContent = Buffer.from('Storage policy test with JWT - ' + new Date().toISOString());
+            const testPath = `policy-test/jwt-${Date.now()}.txt`;
+            
+            console.log(`Testing file upload to ${testPath} with JWT token...`);
+            
+            const { error: uploadError } = await storageClient
+              .storage
+              .from('assets')
+              .upload(testPath, testContent, {
+                contentType: 'text/plain',
+                upsert: true
+              });
+            
+            if (uploadError) {
+              console.log('JWT token upload test failed:', uploadError.message);
+              jwtTestResult = {
+                success: false,
+                reason: uploadError.message,
+                details: "RLS policy may be missing or incorrect"
+              };
+            } else {
+              console.log('JWT token upload test succeeded!');
+              jwtTestResult = { success: true };
+              // Clean up test file
+              await storageClient.storage.from('assets').remove([testPath]);
+            }
+          } catch (jwtError) {
+            console.error('Error in JWT token test:', jwtError);
+            jwtTestResult = {
+              success: false,
+              reason: jwtError instanceof Error ? jwtError.message : String(jwtError),
+              details: "Exception occurred during JWT test"
+            };
+          }
+        } else {
+          jwtTestResult = {
+            success: false,
+            reason: "Failed to create Supabase client with token"
+          };
+        }
+      }
+      
+      // Also run the standard policy check
       const result = await checkStoragePolicies();
+      
+      // Add JWT test results to the response
+      result.jwtTest = jwtTestResult;
+      
       res.json(result);
     } catch (error) {
       console.error('Error checking storage policies:', error);
