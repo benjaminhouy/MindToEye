@@ -792,8 +792,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
           
           log("Calling AI service to generate brand concept");
-          // Pass both authId and jwtToken to the generateBrandConcept function
-          const brandOutput = await generateBrandConcept(brandInput, authId, jwtToken);
+          
+          // Extract project ID and concept ID if available
+          const projectId = brandInput.projectId || req.body.projectId || 'general';
+          const conceptId = brandInput.conceptId || req.body.conceptId || Date.now().toString();
+          
+          log(`Using projectId: ${projectId}, conceptId: ${conceptId} for storage paths`);
+          
+          // Pass authId, jwtToken, projectId and conceptId to the generateBrandConcept function
+          const brandOutput = await generateBrandConcept(brandInput, authId, jwtToken, projectId, conceptId);
           log("AI service returned brand concept successfully");
           
           // Send a progress update at 90% before final response
@@ -1379,7 +1386,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         log(`Testing Supabase general storage with image URL: ${testImageUrl}`);
         
         // Attempt to upload the image with authId for proper user storage path
-        const storedImageUrl = await uploadImageFromUrl(testImageUrl, authId);
+        const storedImageUrl = await uploadImageFromUrl(
+          testImageUrl, 
+          {}, // Empty params object for default storage path
+          authId, 
+          jwtToken // Pass JWT token for authenticated storage operations
+        );
         
         if (storedImageUrl) {
           log(`Successfully stored image in Supabase: ${storedImageUrl}`);
@@ -1588,7 +1600,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Extract auth ID and JWT token from headers if present
       const authId = req.headers['x-auth-id'] as string;
-      const jwtToken = req.headers['x-supabase-auth'] as string;
+      let jwtToken = req.headers['x-supabase-auth'] as string;
       console.log("Auth ID from header in logo generation:", authId);
       console.log("JWT token present in logo generation:", !!jwtToken);
       
@@ -1642,6 +1654,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
       
+      // Temporary project and concept IDs for standalone logo generation
+      // Use actual project/concept IDs if available from the request
+      const temporaryProjectId = req.body.projectId || 999999;
+      const temporaryConceptId = req.body.conceptId || 999999;
+      
+      // Extract JWT token from Authorization header if not already present
+      if (!jwtToken) {
+        const authHeader = req.headers.authorization;
+        jwtToken = authHeader ? authHeader.split(' ')[1] : undefined;
+      }
+      
       // Default path: Generate a regular logo
       const logoResult = await generateLogo({
         brandName,
@@ -1650,13 +1673,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         values: Array.isArray(values) ? values : [],  // Handle undefined values
         style: style || "modern",       // Default style
         colors: Array.isArray(colors) ? colors : [],  // Handle undefined colors
-        authId: authId // Pass the authId for proper storage permissions
+        projectId: temporaryProjectId, // Pass project ID for storage path
+        conceptId: temporaryConceptId, // Pass concept ID for storage path
+        authId: authId, // Pass the authId for proper storage permissions
+        jwtToken: jwtToken // Pass JWT token for authenticated storage operations
       });
-      
-      // Temporary project and concept IDs for standalone logo generation
-      // Use actual project/concept IDs if available from the request
-      const temporaryProjectId = req.body.projectId || 999999;
-      const temporaryConceptId = req.body.conceptId || 999999;
       
       // Extract logo URL from SVG if present
       let originalLogoUrl = '';
