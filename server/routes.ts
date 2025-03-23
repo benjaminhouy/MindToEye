@@ -971,6 +971,151 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Test route for Supabase storage with JWT authentication
+  // Direct JWT token upload test with simple path structure
+  app.post("/api/direct-jwt-upload", async (req: Request, res: Response) => {
+    try {
+      // Get JWT token from Authorization header
+      const authHeader = req.headers.authorization;
+      const jwtToken = authHeader ? authHeader.split(' ')[1] : undefined;
+      const authId = req.headers['x-auth-id'] as string;
+      
+      if (!jwtToken || !authId) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "JWT token and auth ID are required in headers" 
+        });
+      }
+      
+      console.log("Running direct JWT upload test...");
+      console.log("Auth ID:", authId);
+      console.log("JWT token present:", !!jwtToken);
+      
+      // Import the Supabase client creator
+      const { createSupabaseClientWithToken } = await import('./storage-utils');
+      
+      // Create a Supabase client with the JWT token
+      const supabaseClient = createSupabaseClientWithToken(jwtToken);
+      
+      if (!supabaseClient) {
+        return res.status(500).json({ 
+          success: false, 
+          message: "Failed to create Supabase client with token" 
+        });
+      }
+      
+      // Create a simple test SVG
+      const testSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="50">
+        <rect width="200" height="50" fill="#10B981" rx="10" />
+        <text x="100" y="30" font-family="Arial" font-size="20" fill="white" text-anchor="middle">JWT Test</text>
+      </svg>`;
+      
+      const testData = Buffer.from(testSvg);
+      
+      // Try multiple path structures and test uploads
+      const testResults = [];
+      
+      // Test 1: Root level path (should fail with proper RLS)
+      const rootPath = `test-${Date.now()}.svg`;
+      
+      try {
+        const { data: rootData, error: rootError } = await supabaseClient
+          .storage
+          .from('assets')
+          .upload(rootPath, testData, {
+            contentType: 'image/svg+xml',
+            upsert: true
+          });
+          
+        testResults.push({
+          test: "Root path",
+          path: rootPath,
+          success: !rootError,
+          error: rootError ? rootError.message : null
+        });
+      } catch (e) {
+        testResults.push({
+          test: "Root path",
+          path: rootPath,
+          success: false,
+          error: e instanceof Error ? e.message : String(e)
+        });
+      }
+      
+      // Test 2: Direct auth ID folder
+      const authPath = `${authId}/test-${Date.now()}.svg`;
+      
+      try {
+        const { data: authData, error: authError } = await supabaseClient
+          .storage
+          .from('assets')
+          .upload(authPath, testData, {
+            contentType: 'image/svg+xml',
+            upsert: true
+          });
+          
+        testResults.push({
+          test: "Auth ID folder",
+          path: authPath,
+          success: !authError,
+          url: authData ? supabaseClient.storage.from('assets').getPublicUrl(authPath).data.publicUrl : null,
+          error: authError ? authError.message : null
+        });
+      } catch (e) {
+        testResults.push({
+          test: "Auth ID folder",
+          path: authPath,
+          success: false,
+          error: e instanceof Error ? e.message : String(e)
+        });
+      }
+      
+      // Test 3: Project subfolder
+      const projectPath = `${authId}/projects/test-${Date.now()}.svg`;
+      
+      try {
+        const { data: projectData, error: projectError } = await supabaseClient
+          .storage
+          .from('assets')
+          .upload(projectPath, testData, {
+            contentType: 'image/svg+xml',
+            upsert: true
+          });
+          
+        testResults.push({
+          test: "Project subfolder",
+          path: projectPath,
+          success: !projectError,
+          url: projectData ? supabaseClient.storage.from('assets').getPublicUrl(projectPath).data.publicUrl : null,
+          error: projectError ? projectError.message : null
+        });
+      } catch (e) {
+        testResults.push({
+          test: "Project subfolder",
+          path: projectPath,
+          success: false,
+          error: e instanceof Error ? e.message : String(e)
+        });
+      }
+      
+      // Return comprehensive results
+      res.json({
+        success: true,
+        message: "Direct JWT upload tests completed",
+        testResults,
+        policy: {
+          recommendation: "If all tests failed, your policy might be incorrect. Try: ((bucket_id = 'assets'::text) AND (auth.role() = 'authenticated'::text))"
+        }
+      });
+    } catch (error) {
+      console.error("Error in direct JWT upload test:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Error running direct JWT upload test",
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
   app.post("/api/test-storage-upload", async (req: Request, res: Response) => {
     try {
       // Extract auth ID from header

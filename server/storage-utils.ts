@@ -405,6 +405,7 @@ export async function uploadLogoFromUrl(
 
   try {
     // Choose the appropriate Supabase client based on whether we have a JWT token
+    console.log(`JWT token provided for storage upload: ${!!jwtToken}`);
     const storageClient = jwtToken 
       ? createSupabaseClientWithToken(jwtToken)
       : supabase;
@@ -412,6 +413,12 @@ export async function uploadLogoFromUrl(
     if (!storageClient) {
       console.log('Failed to create Supabase client. Using Replicate URL directly.');
       return imageUrl;
+    }
+    
+    // Log important information about the authentication state
+    console.log(`Storage client authentication: JWT Token = ${!!jwtToken}`);
+    if (!jwtToken) {
+      console.warn('WARNING: No JWT token provided for authenticated storage access. This may cause permission issues with RLS policies.');
     }
     
     // Initialize bucket if needed
