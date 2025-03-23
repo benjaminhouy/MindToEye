@@ -206,6 +206,11 @@ export async function initializeStorageBucket(jwtToken?: string) {
  */
 export async function uploadImageFromUrl(
   imageUrl: string, 
+  params: {
+    projectId?: number | string;
+    conceptId?: number | string;
+    [key: string]: any;
+  } = {},
   authId?: string,
   jwtToken?: string
 ): Promise<string | null> {
@@ -275,8 +280,16 @@ export async function uploadImageFromUrl(
     const userId = authId || DEMO_USER_ID;
     console.log(`Using user ID for storage path in uploadImageFromUrl: ${userId}`);
     
-    // Use the same hierarchical structure as in uploadLogoFromUrl
-    const filePath = `${userId}/images/image-${timestamp}-${randomId}.png`;
+    // For landing page heroes, we need project & concept IDs to organize properly
+    // This will be passed in from generateLandingPageHero
+    console.log('Upload params:', params);
+    
+    // Use hierarchical structure: userId/projectId/conceptId/heroes/image-timestamp-randomId.png
+    const filePath = params.projectId && params.conceptId 
+      ? `${userId}/${params.projectId}/${params.conceptId}/heroes/image-${timestamp}-${randomId}.png`
+      : `${userId}/images/image-${timestamp}-${randomId}.png`; // Fallback for backward compatibility
+      
+    console.log(`Using storage path: ${filePath}`);
     
     // Upload the image to Supabase storage
     console.log(`Attempting to upload image to Supabase storage bucket '${STORAGE_BUCKET}' as '${filePath}'...`);
