@@ -1246,7 +1246,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             temporaryProjectId,
             temporaryConceptId,
             'svg', // Assuming SVG format for logos
-            authId // Pass the authenticated user ID for proper storage path
+            authId, // Pass the authenticated user ID for proper storage path
+            jwtToken // Pass the JWT token for authenticated storage operations
           );
           
           // If we got back a permanent URL, update the SVG
@@ -1418,11 +1419,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Check authentication
       let userId: number | undefined;
       let authId: string | undefined;
+      const jwtToken = req.headers['x-supabase-auth'] as string;
       
       // ALWAYS check for x-auth-id header first (most reliable method)
       if (req.headers['x-auth-id']) {
         authId = req.headers['x-auth-id'] as string;
         console.log("Auth ID from header in regenerate-element:", authId);
+        console.log("JWT token present in regenerate-element:", !!jwtToken);
         
         // Look up the user by authId
         if (authId) {
@@ -1750,7 +1753,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 projectId,
                 conceptId,
                 'svg', // Assuming SVG format for logos
-                authId // Pass the authenticated user ID for proper storage path
+                authId, // Pass the authenticated user ID for proper storage path
+                jwtToken // Pass the JWT token for authenticated storage operations
               );
               
               console.log(`Storage result: ${storedLogoUrl ? 'Success - URL: ' + storedLogoUrl.substring(0, 30) + '...' : 'Failed - using original URL'}`);
