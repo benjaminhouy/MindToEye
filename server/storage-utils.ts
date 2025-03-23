@@ -13,14 +13,9 @@ const supabaseKey = process.env.SUPABASE_ANON_KEY;
 // This is because RLS policies prevent anon/authenticated users from creating buckets
 const BUCKET_EXISTS = true; // Set this to true to skip bucket creation attempts
 
-// Service role key (if available) for bypassing RLS on the server
-// This is needed for server-side operations that need to bypass RLS policies
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || supabaseKey;
-
 // Initialize Supabase client with additional options for better reliability
-// For server-side operations, use the service role key to bypass RLS
 export const supabase = supabaseUrl && supabaseKey
-  ? createClient(supabaseUrl, supabaseServiceKey, {
+  ? createClient(supabaseUrl, supabaseKey, {
       auth: {
         persistSession: false,  // Don't persist the session to avoid token expiry issues
         autoRefreshToken: false // Disable auto refresh to avoid related errors
@@ -36,6 +31,38 @@ export const supabase = supabaseUrl && supabaseKey
       }
     })
   : null;
+
+// Function to create a Supabase client with user's JWT token
+// This is crucial for server-side uploads respecting RLS policies
+export function createSupabaseClientWithToken(jwt: string | undefined) {
+  if (!supabaseUrl || !supabaseKey) {
+    console.log('Supabase credentials not available');
+    return null;
+  }
+
+  if (!jwt) {
+    console.log('No JWT token provided, using anonymous client');
+    return supabase;
+  }
+
+  try {
+    return createClient(supabaseUrl, supabaseKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false
+      },
+      global: {
+        headers: {
+          'X-Client-Info': 'mindtoeye-server',
+          'Authorization': `Bearer ${jwt}`
+        },
+      }
+    });
+  } catch (error) {
+    console.error('Error creating authenticated Supabase client:', error);
+    return supabase; // Fallback to anonymous client
+  }
+}
 
 // Log Supabase connection status
 if (supabase) {
