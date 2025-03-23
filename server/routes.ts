@@ -224,7 +224,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // First try with the JWT token if available
       console.log(`Checking storage policies${jwtToken ? ' with JWT token' : ' without JWT token'}...`);
       
-      let jwtTestResult = { success: false, reason: "No JWT token provided" };
+      // Define a type for JWT test results to ensure consistency
+      type JwtTestResult = { 
+        success: boolean; 
+        reason: string; 
+        message?: string;
+      };
+      
+      let jwtTestResult: JwtTestResult = { 
+        success: false, 
+        reason: "No JWT token provided" 
+      };
       
       if (jwtToken) {
         // Try a direct test upload using the JWT token
@@ -249,11 +259,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
               jwtTestResult = {
                 success: false,
                 reason: uploadError.message,
-                details: "RLS policy may be missing or incorrect"
+                message: "RLS policy may be missing or incorrect"
               };
             } else {
               console.log('JWT token upload test succeeded!');
-              jwtTestResult = { success: true };
+              jwtTestResult = { 
+                success: true,
+                reason: "Upload successful" 
+              };
               // Clean up test file
               await storageClient.storage.from('assets').remove([testPath]);
             }
@@ -957,11 +970,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Test route for FLUX logo generation 
+  // Test route for Supabase storage with JWT authentication
   app.post("/api/test-storage-upload", async (req: Request, res: Response) => {
     try {
+      // Extract auth ID from header
       const authId = req.headers['x-auth-id'] as string || 'demo-user';
+      
+      // Extract JWT token from Authorization header
+      const authHeader = req.headers.authorization;
+      const jwtToken = authHeader ? authHeader.split(' ')[1] : undefined;
+      
       console.log(`Testing storage upload with auth ID: ${authId}`);
+      console.log(`JWT token provided: ${jwtToken ? 'Yes' : 'No'}`);
       
       // Create a test SVG image
       const svgContent = `<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100">
@@ -969,19 +989,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         <text x="50" y="55" font-family="Arial" font-size="12" text-anchor="middle" fill="white">Test</text>
       </svg>`;
       
-      const { uploadLogoFromUrl, supabase, initializeStorageBucket } = await import('./storage-utils');
+      const { 
+        uploadLogoFromUrl, 
+        createSupabaseClientWithToken, 
+        initializeStorageBucket 
+      } = await import('./storage-utils');
+      
       const STORAGE_BUCKET = 'assets';
+      
+      // Get the Supabase client - use JWT token if available
+      const storageClient = jwtToken 
+        ? createSupabaseClientWithToken(jwtToken)
+        : (await import('./storage-utils')).supabase;
       
       // First test direct bucket access
       let bucketAccessResults = null;
-      if (supabase) {
+      if (storageClient) {
         try {
-          // Initialize the bucket with our improved function
-          await initializeStorageBucket();
+          // Initialize the bucket with JWT token if available
+          await initializeStorageBucket(jwtToken);
           
           // 1. Try to directly access the bucket
-          console.log(`Directly testing access to the '${STORAGE_BUCKET}' bucket...`);
-          const { data: filesList, error: listError } = await supabase
+          console.log(`Directly testing access to the '${STORAGE_BUCKET}' bucket with ${jwtToken ? 'JWT token' : 'anon key'}...`);
+          const { data: filesList, error: listError } = await storageClient
             .storage
             .from(STORAGE_BUCKET)
             .list();
@@ -1001,9 +1031,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const testData = Buffer.from(testSvg);
             const testPath = `${authId}/test-upload-${Date.now()}.svg`;
             
-            console.log(`Attempting test upload to '${STORAGE_BUCKET}/${testPath}'...`);
+            console.log(`Attempting test upload to '${STORAGE_BUCKET}/${testPath}' with ${jwtToken ? 'JWT token' : 'anon key'}...`);
             
-            const { data: uploadData, error: uploadError } = await supabase
+            const { data: uploadData, error: uploadError } = await storageClient
               .storage
               .from(STORAGE_BUCKET)
               .upload(testPath, testData, {
@@ -1013,17 +1043,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
             
             if (uploadError) {
               console.error(`Test upload failed: ${uploadError.message}`);
+              console.error(`Error details:`, uploadError);
               bucketAccessResults = { 
                 listBucketSuccess: true, 
                 listFilesSuccess: true, 
                 uploadSuccess: false,
-                error: uploadError.message 
+                error: uploadError.message,
+                errorDetails: {
+                  code: uploadError.code,
+                  details: uploadError.details,
+                  hint: uploadError.hint,
+                  message: uploadError.message
+                }
               };
             } else {
               console.log(`Test upload succeeded! Path: ${uploadData?.path || 'unknown'}`);
               
               // Get public URL
-              const { data: publicUrlData } = supabase
+              const { data: publicUrlData } = storageClient
                 .storage
                 .from(STORAGE_BUCKET)
                 .getPublicUrl(testPath);
@@ -1047,33 +1084,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const dataUrl = `data:image/svg+xml;base64,${Buffer.from(svgContent).toString('base64')}`;
       
       console.log(`Attempting to upload test SVG to Supabase storage via uploadLogoFromUrl...`);
+      // Pass JWT token to the upload function
       const result = await uploadLogoFromUrl(
         dataUrl,
         999, // Test project ID
         999, // Test concept ID
         'svg',
-        authId
+        authId,
+        jwtToken // Pass JWT token for authenticated upload
       );
       
+      // Return comprehensive results
       if (result) {
         console.log(`Storage test successful! URL: ${result}`);
         res.json({ 
           success: true, 
           message: "Successfully uploaded test image to Supabase storage",
-          url: result
+          url: result,
+          bucketAccessResults: bucketAccessResults,
+          authMethod: jwtToken ? 'JWT Token' : 'Anon Key',
+          authId: authId
         });
       } else {
         console.log(`Storage test failed, no URL returned`);
         res.json({ 
           success: false, 
-          message: "Failed to upload test image to Supabase storage" 
+          message: "Failed to upload test image to Supabase storage",
+          bucketAccessResults: bucketAccessResults,
+          authMethod: jwtToken ? 'JWT Token' : 'Anon Key',
+          authId: authId
         });
       }
     } catch (error) {
       console.error("Error in test-storage-upload:", error);
       res.status(500).json({ 
         success: false, 
-        error: error instanceof Error ? error.message : String(error)
+        error: error instanceof Error ? error.message : String(error),
+        authMethodAttempted: req.headers.authorization ? 'JWT Token' : 'Anon Key'
       });
     }
   });
