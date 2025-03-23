@@ -1252,6 +1252,178 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Diagnostic endpoint to test Supabase storage with various auth methods
+  app.post("/api/diagnose-storage", async (req: Request, res: Response) => {
+    try {
+      // Extract auth ID and JWT token from headers
+      const authId = req.headers['x-auth-id'] as string;
+      const authHeader = req.headers.authorization;
+      const jwtToken = authHeader ? authHeader.split(' ')[1] : undefined;
+      
+      console.log("Diagnosing storage with auth ID:", authId);
+      console.log("JWT token present:", !!jwtToken);
+      
+      // Import necessary modules
+      const { supabase, createSupabaseClientWithToken, initializeStorageBucket } = await import('./storage-utils');
+      
+      // Verify storage bucket exists
+      const bucketInitialized = await initializeStorageBucket();
+      console.log("Storage bucket initialization:", bucketInitialized ? "success" : "failed");
+      
+      // Test variables to track results
+      const results: any = {
+        authProvided: { authId: !!authId, jwtToken: !!jwtToken },
+        bucketInitialized,
+        anonymousResults: { attempted: false },
+        jwtResults: { attempted: false },
+        userFolderResults: { attempted: false }
+      };
+      
+      // 1. First test with anonymous key (should fail with proper RLS)
+      if (supabase) {
+        try {
+          console.log("Testing with anonymous key...");
+          const testData = Buffer.from('Anonymous test - ' + new Date().toISOString());
+          const testPath = `test-anonymous-${Date.now()}.txt`;
+          
+          const { data: anonData, error: anonError } = await supabase
+            .storage
+            .from('assets')
+            .upload(testPath, testData, {
+              contentType: 'text/plain',
+              upsert: true
+            });
+            
+          results.anonymousResults = {
+            attempted: true,
+            success: !anonError,
+            path: anonData?.path,
+            error: anonError ? anonError.message : null
+          };
+          
+          console.log("Anonymous upload result:", !anonError ? "success" : "failed");
+        } catch (anonExError) {
+          results.anonymousResults = {
+            attempted: true,
+            success: false,
+            error: anonExError instanceof Error ? anonExError.message : String(anonExError)
+          };
+        }
+      }
+      
+      // 2. Test with JWT token (should succeed with proper RLS)
+      if (jwtToken) {
+        try {
+          console.log("Testing with JWT token...");
+          const jwtClient = createSupabaseClientWithToken(jwtToken);
+          
+          if (jwtClient) {
+            const testJwtData = Buffer.from('JWT test - ' + new Date().toISOString());
+            const testJwtPath = `test-jwt-${Date.now()}.txt`;
+            
+            const { data: jwtData, error: jwtError } = await jwtClient
+              .storage
+              .from('assets')
+              .upload(testJwtPath, testJwtData, {
+                contentType: 'text/plain',
+                upsert: true
+              });
+              
+            results.jwtResults = {
+              attempted: true,
+              success: !jwtError,
+              path: jwtData?.path,
+              error: jwtError ? jwtError.message : null
+            };
+            
+            console.log("JWT token upload result:", !jwtError ? "success" : "failed");
+          } else {
+            results.jwtResults = {
+              attempted: true,
+              success: false,
+              error: "Failed to create Supabase client with token"
+            };
+          }
+        } catch (jwtExError) {
+          results.jwtResults = {
+            attempted: true,
+            success: false,
+            error: jwtExError instanceof Error ? jwtExError.message : String(jwtExError)
+          };
+        }
+      }
+      
+      // 3. Test with user-specific folder using JWT (most relevant to our app)
+      if (jwtToken && authId) {
+        try {
+          console.log("Testing with JWT token in user-specific folder...");
+          const jwtClient = createSupabaseClientWithToken(jwtToken);
+          
+          if (jwtClient) {
+            const testUserData = Buffer.from('User folder test - ' + new Date().toISOString());
+            const testUserPath = `${authId}/test-folder/test-${Date.now()}.txt`;
+            
+            const { data: userData, error: userError } = await jwtClient
+              .storage
+              .from('assets')
+              .upload(testUserPath, testUserData, {
+                contentType: 'text/plain',
+                upsert: true
+              });
+              
+            results.userFolderResults = {
+              attempted: true,
+              success: !userError,
+              path: userData?.path,
+              error: userError ? userError.message : null
+            };
+            
+            console.log("User folder upload result:", !userError ? "success" : "failed");
+          } else {
+            results.userFolderResults = {
+              attempted: true,
+              success: false,
+              error: "Failed to create Supabase client with token"
+            };
+          }
+        } catch (userExError) {
+          results.userFolderResults = {
+            attempted: true,
+            success: false,
+            error: userExError instanceof Error ? userExError.message : String(userExError)
+          };
+        }
+      }
+      
+      // Add guidance for fixing RLS if any uploads failed
+      if (!results.jwtResults.success || !results.userFolderResults.success) {
+        results.rlsGuidance = {
+          title: "Storage Permission Issue Detected",
+          steps: [
+            "Go to your Supabase dashboard",
+            "Navigate to Storage → Policies",
+            "Find the 'assets' bucket",
+            "For INSERT policy, add 'auth.role() = authenticated'",
+            "For better security, use '(auth.uid() = storage.foldername::text)' to only allow users to upload to folders matching their ID"
+          ]
+        };
+      }
+      
+      res.json({
+        success: true,
+        message: "Storage diagnostic complete",
+        results
+      });
+    } catch (error) {
+      console.error("Error in storage diagnostic:", error);
+      res.status(500).json({
+        success: false,
+        message: "Storage diagnostic failed",
+        error: error instanceof Error ? error.message : String(error)
+      });
+    }
+  });
+
   // Logo generation route - handles both logos and billboard generation
   app.post("/api/generate-logo", async (req: Request, res: Response) => {
     try {
