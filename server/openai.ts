@@ -191,10 +191,12 @@ export const generateLogo = async (params: {
   style: string,
   colors: string[],
   promptOverride?: string, // Optional parameter to allow users to edit the prompt directly
+  projectId?: number | string, // Project ID for hierarchical storage path
+  conceptId?: number | string, // Concept ID for hierarchical storage path
   authId?: string, // Optional authenticated user ID for storage permissions
   jwtToken?: string // Optional JWT token for authenticated storage operations
 }): Promise<{svg: string, prompt: string}> => {
-  const { brandName, industry, description, values, style, colors, promptOverride, authId, jwtToken } = params;
+  const { brandName, industry, description, values, style, colors, promptOverride, projectId, conceptId, authId, jwtToken } = params;
   
   // Generate a unique timestamp seed to make each request different
   const uniqueSeed = Date.now() % 1000;
@@ -346,7 +348,21 @@ Make it simple, memorable, and unique.
           console.log("AUTH ID IN GENERATE LOGO:", authId); // Log the authId to verify it's passed correctly
           console.log("JWT TOKEN AVAILABLE IN GENERATE LOGO:", !!jwtToken); // Log if jwt token is available
           // Pass authId and jwtToken to uploadImageFromUrl to use the correct user path in storage
-          const uploadedImageUrl = await uploadImageFromUrl(replicateImageUrl, authId, jwtToken);
+          // Create params object with project and concept IDs for hierarchical storage path
+          const uploadParams = {
+            projectId: projectId || 'general', 
+            conceptId: conceptId || 'general'
+          };
+          
+          console.log(`Storing logo with project params:`, uploadParams);
+          
+          // Pass project/concept IDs in params for hierarchical storage
+          const uploadedImageUrl = await uploadImageFromUrl(
+            replicateImageUrl, 
+            uploadParams,
+            authId, 
+            jwtToken
+          );
           
           // Use the uploaded image URL if available, otherwise fall back to the Replicate URL
           const imageUrl = uploadedImageUrl || replicateImageUrl;
