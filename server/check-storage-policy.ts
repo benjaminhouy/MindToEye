@@ -4,10 +4,29 @@
 
 import { supabase } from './storage-utils';
 
+// Define the type for JWT test results
+export type JwtTestResult = { 
+  success: boolean; 
+  reason: string; 
+  message?: string;
+};
+
+// Define the return type for the checkStoragePolicies function
+export type StoragePolicyCheckResult = {
+  success: boolean;
+  message: string;
+  details?: string;
+  error?: string;
+  buckets?: any[];
+  policyStatus?: Record<string, any>;
+  tests?: Record<string, any>;
+  jwtTest?: JwtTestResult;
+};
+
 /**
  * Test if Supabase storage is properly configured with the right policies
  */
-export async function checkStoragePolicies() {
+export async function checkStoragePolicies(): Promise<StoragePolicyCheckResult> {
   if (!supabase) {
     return {
       success: false,

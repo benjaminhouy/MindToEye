@@ -224,14 +224,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // First try with the JWT token if available
       console.log(`Checking storage policies${jwtToken ? ' with JWT token' : ' without JWT token'}...`);
       
-      // Define a type for JWT test results to ensure consistency
-      type JwtTestResult = { 
+      // Define the result type locally
+      type JwtTestResultType = { 
         success: boolean; 
         reason: string; 
         message?: string;
       };
       
-      let jwtTestResult: JwtTestResult = { 
+      let jwtTestResult: JwtTestResultType = { 
         success: false, 
         reason: "No JWT token provided" 
       };
@@ -275,7 +275,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             jwtTestResult = {
               success: false,
               reason: jwtError instanceof Error ? jwtError.message : String(jwtError),
-              details: "Exception occurred during JWT test"
+              message: "Exception occurred during JWT test"
             };
           }
         } else {
@@ -1050,10 +1050,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
                 uploadSuccess: false,
                 error: uploadError.message,
                 errorDetails: {
-                  code: uploadError.code,
-                  details: uploadError.details,
-                  hint: uploadError.hint,
-                  message: uploadError.message
+                  // Access only known properties of StorageError to avoid TypeScript errors
+                  message: uploadError.message,
+                  // Include any additional error information as a safe stringified JSON
+                  fullError: JSON.stringify(uploadError)
                 }
               };
             } else {
