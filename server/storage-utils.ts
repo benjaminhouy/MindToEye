@@ -347,7 +347,7 @@ export async function uploadImageFromUrl(
     // If we've made it this far, we should have a successful upload
     // Now get the public URL
     try {
-      const { data: publicUrlData } = supabase
+      const { data: publicUrlData } = storageClient
         .storage
         .from(STORAGE_BUCKET)
         .getPublicUrl(filePath);
@@ -495,7 +495,7 @@ export async function uploadLogoFromUrl(
         // For the fallback path, use a flatter structure that's more likely to work with default Supabase policies
         const simplePath = `${userId}/logos/logo-${projectId}-${conceptId}-${timestamp}.${fileType}`;
         
-        const { error: retryError } = await supabase
+        const { error: retryError } = await storageClient
           .storage
           .from(STORAGE_BUCKET)
           .upload(simplePath, imageData, {
@@ -510,7 +510,7 @@ export async function uploadLogoFromUrl(
         }
         
         // Get URL for the simplified path upload
-        const { data: publicUrlData } = supabase
+        const { data: publicUrlData } = storageClient
           .storage
           .from(STORAGE_BUCKET)
           .getPublicUrl(simplePath);
@@ -527,7 +527,7 @@ export async function uploadLogoFromUrl(
     }
     
     // Get the public URL for the uploaded logo
-    const { data: publicUrlData } = supabase
+    const { data: publicUrlData } = storageClient
       .storage
       .from(STORAGE_BUCKET)
       .getPublicUrl(filePath);
