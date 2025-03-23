@@ -37,10 +37,12 @@ export const generateLandingPageHero = async (params: {
   description: string;
   colors: string[];
   typography: { headings: string; body: string };
+  projectId?: string | number; // Project ID for hierarchical storage path
+  conceptId?: string | number; // Concept ID for hierarchical storage path
   authId?: string; // Optional authenticated user ID for storage permissions
   jwtToken?: string; // Optional JWT token for authenticated storage operations
 }) => {
-  const { brandName, industry, description, colors, typography, authId } = params;
+  const { brandName, industry, description, colors, typography, projectId, conceptId, authId, jwtToken } = params;
   
   try {
     // Create prompt for Claude to generate landing page hero content
@@ -684,8 +686,10 @@ export const generateBrandConcept = async (brandInput: BrandInput, authId?: stri
         description: sanitizedDescription,
         colors: parsed.colors?.map((c: any) => c.hex) || ['#10B981', '#0F766E', '#38BDF8'],
         typography: parsed.typography || { headings: "Montserrat", body: "Open Sans" },
-        authId: authId, // Pass the authId for proper storage permissions
-        jwtToken: jwtToken // Pass the JWT token for authenticated storage operations
+        projectId, // Pass the projectId for storage path hierarchy
+        conceptId, // Pass the conceptId for storage path hierarchy
+        authId, // Pass the authId for proper storage permissions
+        jwtToken // Pass the JWT token for authenticated storage operations
       }),
       logoDescription: parsed.logoDescription || "Modern and minimalist logo design"
     };
