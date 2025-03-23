@@ -29,8 +29,9 @@ export async function apiRequest(
         
         // If we have a valid JWT token, include it for Supabase RLS policies
         if (session?.access_token) {
-          authHeaders['x-supabase-auth'] = session.access_token;
-          console.log("Including JWT token in request headers for Supabase RLS");
+          // Use standard Authorization header with Bearer token format
+          authHeaders['Authorization'] = `Bearer ${session.access_token}`;
+          console.log("Including JWT token in Authorization header for Supabase RLS");
         }
       }
     }
@@ -77,8 +78,9 @@ export const getQueryFn: <T>(options: {
         
         // If we have a valid JWT token, include it for Supabase RLS policies
         if (session?.access_token) {
-          authHeaders['x-supabase-auth'] = session.access_token;
-          console.log("Including JWT token in fetch request for Supabase RLS");
+          // Use standard Authorization header with Bearer token format
+          authHeaders['Authorization'] = `Bearer ${session.access_token}`;
+          console.log("Including JWT token in Authorization header for Supabase RLS");
         }
       }
     } catch (err) {

@@ -779,9 +779,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
             log(`Using authId from header: ${authId} for concept generation`);
           }
           
+          // Extract JWT token from authorization header if available
+          const authHeader = req.headers.authorization;
+          const jwtToken = authHeader?.startsWith('Bearer ') 
+            ? authHeader.substring(7) // Remove 'Bearer ' prefix
+            : undefined;
+            
+          if (jwtToken) {
+            log(`Using JWT token from authorization header for authenticated storage operations`);
+          } else {
+            log(`No JWT token found in authorization header, storage operations may fail`);
+          }
+          
           log("Calling AI service to generate brand concept");
-          // Pass the authId to the generateBrandConcept function
-          const brandOutput = await generateBrandConcept(brandInput, authId);
+          // Pass both authId and jwtToken to the generateBrandConcept function
+          const brandOutput = await generateBrandConcept(brandInput, authId, jwtToken);
           log("AI service returned brand concept successfully");
           
           // Send a progress update at 90% before final response

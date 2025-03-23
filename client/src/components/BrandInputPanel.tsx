@@ -49,15 +49,24 @@ const BrandInputPanel = ({ onGenerate, savedConcepts, activeConcept, onConceptSe
   
   const [newValue, setNewValue] = useState("");
   const [authId, setAuthId] = useState<string | null>(null);
+  const [jwtToken, setJwtToken] = useState<string | null>(null);
   
-  // Get auth ID for API requests
+  // Get auth ID and JWT token for API requests
   useEffect(() => {
     const getAuthUser = async () => {
       try {
-        const { data } = await supabase.auth.getUser();
-        if (data?.user?.id) {
-          setAuthId(data.user.id);
-          console.log("BrandInputPanel: Auth ID retrieved:", data.user.id);
+        // Get the user ID
+        const { data: userData } = await supabase.auth.getUser();
+        if (userData?.user?.id) {
+          setAuthId(userData.user.id);
+          console.log("BrandInputPanel: Auth ID retrieved:", userData.user.id);
+        }
+        
+        // Get the JWT token from the session
+        const { data: sessionData } = await supabase.auth.getSession();
+        if (sessionData?.session?.access_token) {
+          setJwtToken(sessionData.session.access_token);
+          console.log("BrandInputPanel: JWT token retrieved");
         }
       } catch (error) {
         console.error("Error fetching auth user in BrandInputPanel:", error);

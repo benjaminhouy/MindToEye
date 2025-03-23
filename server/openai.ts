@@ -660,7 +660,8 @@ export const generateBrandConcept = async (brandInput: BrandInput, authId?: stri
         description: sanitizedDescription,
         colors: parsed.colors?.map((c: any) => c.hex) || ['#10B981', '#0F766E', '#38BDF8'],
         typography: parsed.typography || { headings: "Montserrat", body: "Open Sans" },
-        authId: authId // Pass the authId for proper storage permissions
+        authId: authId, // Pass the authId for proper storage permissions
+        jwtToken: jwtToken // Pass the JWT token for authenticated storage operations
       }),
       logoDescription: parsed.logoDescription || "Modern and minimalist logo design"
     };
