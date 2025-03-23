@@ -1312,6 +1312,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Call the generate logo function with the full parameter set
       // Including the optimal parameters for Flux Schnell model
+      // Create temporary IDs for test logos so they're stored in a consistent location
+      const temporaryProjectId = 'test';
+      const temporaryConceptId = Date.now().toString();
+      
+      // Get JWT token for storage operations
+      const jwtToken = req.headers.authorization?.split(' ')[1];
+      
       const logoResult = await generateLogo({
         brandName,
         industry: industry || "Technology",
@@ -1320,7 +1327,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         style: style || "Modern",
         colors: Array.isArray(colors) ? colors : ["#3366CC", "#FF9900"],
         promptOverride: req.body.prompt, // Optional prompt override
-        authId // Pass the authId for storage permissions
+        projectId: temporaryProjectId, // Pass project ID for storage path
+        conceptId: temporaryConceptId, // Pass concept ID for storage path
+        authId, // Pass the authId for storage permissions
+        jwtToken // Pass JWT token for authenticated storage operations
       });
       
       log("Logo generation successful with Flux Schnell model");

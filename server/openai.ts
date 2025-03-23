@@ -2,7 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import Replicate from "replicate";
 import OpenAI from "openai";
 import { BrandInput } from "@shared/schema";
-import { uploadImageFromUrl, initializeStorageBucket } from './storage-utils';
+import { uploadImageFromUrl, uploadLogoFromUrl, initializeStorageBucket } from './storage-utils';
 
 // Initialize OpenAI client
 export const openai = new OpenAI({
