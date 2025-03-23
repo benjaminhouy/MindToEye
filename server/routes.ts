@@ -1066,7 +1066,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       // Extract auth ID from header if present
       const authId = req.headers['x-auth-id'] as string;
+      const jwtToken = req.headers['x-supabase-auth'] as string;
       console.log("Auth ID from header in test-storage:", authId);
+      console.log("JWT token present:", !!jwtToken);
       
       // Import the storage utility directly
       const { uploadImageFromUrl, uploadLogoFromUrl } = await import('./storage-utils');
@@ -1085,7 +1087,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           projectId || 999999, // Default test project ID if not provided
           conceptId || 999999, // Default test concept ID if not provided
           'svg', // Default to SVG format for logos
-          authId // Pass the authenticated user ID for proper storage path
+          authId, // Pass the authenticated user ID for proper storage path
+          jwtToken // Pass the JWT token for authenticated storage operations
         );
         
         if (storedLogoUrl) {
@@ -1145,9 +1148,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { brandName, industry, description, values, style, colors, prompt } = req.body;
       
-      // Extract auth ID from header if present
+      // Extract auth ID and JWT token from headers if present
       const authId = req.headers['x-auth-id'] as string;
+      const jwtToken = req.headers['x-supabase-auth'] as string;
       console.log("Auth ID from header in logo generation:", authId);
+      console.log("JWT token present in logo generation:", !!jwtToken);
       
       if (!brandName || !industry) {
         return res.status(400).json({ error: "Brand name and industry are required" });

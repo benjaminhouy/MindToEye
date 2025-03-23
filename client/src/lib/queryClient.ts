@@ -20,9 +20,18 @@ export async function apiRequest(
   try {
     // Use Supabase auth session if available 
     if (!customHeaders || !customHeaders['x-auth-id']) {
+      // Get the current session which includes the JWT token
+      const { data: { session } } = await supabase?.auth.getSession() || { data: { session: null } };
       const { data: { user } } = await supabase?.auth.getUser() || { data: { user: null } };
+
       if (user?.id) {
         authHeaders['x-auth-id'] = user.id;
+        
+        // If we have a valid JWT token, include it for Supabase RLS policies
+        if (session?.access_token) {
+          authHeaders['x-supabase-auth'] = session.access_token;
+          console.log("Including JWT token in request headers for Supabase RLS");
+        }
       }
     }
   } catch (err) {
@@ -59,10 +68,18 @@ export const getQueryFn: <T>(options: {
       const supabaseLib = supabase || ((await import('./supabase')).supabase);
       
       // Use Supabase auth session if available
+      const { data: { session } } = await supabaseLib?.auth.getSession() || { data: { session: null } };
       const { data: { user } } = await supabaseLib?.auth.getUser() || { data: { user: null } };
+      
       if (user?.id) {
         authHeaders['x-auth-id'] = user.id;
         console.log("Including auth ID in fetch request:", user.id);
+        
+        // If we have a valid JWT token, include it for Supabase RLS policies
+        if (session?.access_token) {
+          authHeaders['x-supabase-auth'] = session.access_token;
+          console.log("Including JWT token in fetch request for Supabase RLS");
+        }
       }
     } catch (err) {
       console.error("Error getting auth user for fetch request:", err);

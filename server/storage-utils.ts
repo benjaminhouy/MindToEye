@@ -190,15 +190,30 @@ export async function initializeStorageBucket() {
  * Upload an image from a URL to Supabase storage
  * @param imageUrl The URL of the image to upload
  * @param authId The authenticated user's ID from Supabase (optional, falls back to demo user)
+ * @param jwtToken Optional JWT token for authenticated uploads with RLS
  * @returns The URL of the uploaded image in Supabase storage or null if upload fails
  */
-export async function uploadImageFromUrl(imageUrl: string, authId?: string): Promise<string | null> {
+export async function uploadImageFromUrl(
+  imageUrl: string, 
+  authId?: string,
+  jwtToken?: string
+): Promise<string | null> {
   if (!supabase) {
     console.log('Supabase client not initialized. Using Replicate URL directly.');
     return null;
   }
 
   try {
+    // Choose the appropriate Supabase client based on whether we have a JWT token
+    const storageClient = jwtToken 
+      ? createSupabaseClientWithToken(jwtToken)
+      : supabase;
+      
+    if (!storageClient) {
+      console.log('Failed to create Supabase client. Using Replicate URL directly.');
+      return null;
+    }
+    
     // Initialize bucket if needed
     const bucketInitialized = await initializeStorageBucket();
     if (!bucketInitialized) {
@@ -249,10 +264,12 @@ export async function uploadImageFromUrl(imageUrl: string, authId?: string): Pro
     
     // Upload the image to Supabase storage
     console.log(`Attempting to upload image to Supabase storage bucket '${STORAGE_BUCKET}' as '${filePath}'...`);
+    console.log(`Using JWT Auth: ${!!jwtToken}`);
+    
     let uploadResult;
     try {
-      // First try direct upload
-      uploadResult = await supabase
+      // First try authenticated upload with the appropriate client
+      uploadResult = await storageClient
         .storage
         .from(STORAGE_BUCKET)
         .upload(filePath, imageData, {
@@ -359,6 +376,7 @@ export async function uploadImageFromUrl(imageUrl: string, authId?: string): Pro
  * @param conceptId The concept ID to associate with this logo
  * @param fileType The file type/extension of the logo (default: svg)
  * @param authId The authenticated user's ID from Supabase (optional, falls back to demo user)
+ * @param jwtToken Optional JWT token for authenticated uploads with RLS
  * @returns The URL of the uploaded logo in Supabase storage or null if upload fails
  */
 export async function uploadLogoFromUrl(
@@ -366,7 +384,8 @@ export async function uploadLogoFromUrl(
   projectId: number,
   conceptId: number,
   fileType: string = 'svg',
-  authId?: string
+  authId?: string,
+  jwtToken?: string
 ): Promise<string | null> {
   if (!supabase) {
     console.log('Supabase client not initialized. Using Replicate URL directly.');
@@ -374,6 +393,16 @@ export async function uploadLogoFromUrl(
   }
 
   try {
+    // Choose the appropriate Supabase client based on whether we have a JWT token
+    const storageClient = jwtToken 
+      ? createSupabaseClientWithToken(jwtToken)
+      : supabase;
+      
+    if (!storageClient) {
+      console.log('Failed to create Supabase client. Using Replicate URL directly.');
+      return imageUrl;
+    }
+    
     // Initialize bucket if needed
     const bucketInitialized = await initializeStorageBucket();
     if (!bucketInitialized) {
@@ -423,6 +452,7 @@ export async function uploadLogoFromUrl(
       - Storage bucket: ${STORAGE_BUCKET}
       - Project ID: ${projectId}
       - Concept ID: ${conceptId}
+      - Using JWT Auth: ${!!jwtToken}
     `);
     
     // Improved path structure: userId/projectId/conceptId/logos/logo-timestamp-randomId.fileType
@@ -448,7 +478,7 @@ export async function uploadLogoFromUrl(
     
     // Upload the logo to Supabase storage
     console.log(`Uploading logo to Supabase storage path: ${filePath}`);
-    const { error: uploadError } = await supabase
+    const { error: uploadError } = await storageClient
       .storage
       .from(STORAGE_BUCKET)
       .upload(filePath, imageData, {
