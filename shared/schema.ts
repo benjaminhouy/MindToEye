@@ -70,6 +70,9 @@ export const brandInputSchema = z.object({
   })),
   designStyle: z.enum(["modern", "classic", "minimalist", "bold"]),
   colorPreferences: z.array(z.string()).optional(),
+  // Optional IDs for storage organization in hierarchical path structure
+  projectId: z.union([z.number(), z.string()]).optional(),
+  conceptId: z.union([z.number(), z.string()]).optional(),
 });
 
 export type BrandInput = z.infer<typeof brandInputSchema>;

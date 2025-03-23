@@ -635,6 +635,12 @@ export const generateBrandConcept = async (brandInput: BrandInput, authId?: stri
       throw new Error("Failed to parse Claude response as JSON despite recovery attempts");
     }
     
+    // Extract projectId and conceptId if available in the brandInput
+    const projectId = brandInput.projectId || 'general';
+    const conceptId = brandInput.conceptId || 'general';
+    
+    console.log(`Generating logo with projectId: ${projectId}, conceptId: ${conceptId}`);
+    
     // Generate a logo using the brand input (with sanitized description)
     const { svg: logoSvg, prompt: logoPrompt } = await generateLogo({
       brandName: brandInput.brandName,
@@ -643,8 +649,10 @@ export const generateBrandConcept = async (brandInput: BrandInput, authId?: stri
       values: brandInput.values.map(v => v.value),
       style: brandInput.designStyle,
       colors: brandInput.colorPreferences || [],
-      authId: authId, // Pass the authId for proper storage permissions
-      jwtToken: jwtToken // Pass the JWT token for authenticated storage operations
+      projectId, // Pass projectId for storage path hierarchy
+      conceptId, // Pass conceptId for storage path hierarchy
+      authId, // Pass the authId for proper storage permissions
+      jwtToken // Pass the JWT token for authenticated storage operations
     });
     
     // Generate monochrome and reverse versions of the logo from the SVG string

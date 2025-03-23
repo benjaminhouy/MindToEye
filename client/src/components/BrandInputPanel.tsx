@@ -178,11 +178,15 @@ const BrandInputPanel = ({ onGenerate, savedConcepts, activeConcept, onConceptSe
   };
 
   const handleGenerateClick = async () => {
-    // Add a unique request ID to force diversity in AI responses
+    // Add a unique request ID and projectId for storage organization
     const uniqueBrandInput = {
       ...brandInput,
-      requestId: Date.now().toString() // Add a timestamp to ensure uniqueness
+      requestId: Date.now().toString(), // Add timestamp to ensure uniqueness
+      projectId, // Add projectId for storage path organization
+      conceptId: Date.now() // Use timestamp as temporary conceptId
     };
+    
+    console.log(`Generating brand concept with projectId: ${projectId}, temporary conceptId: ${uniqueBrandInput.conceptId}`);
     
     // Start the generation process and show loading overlay
     onGenerate();
