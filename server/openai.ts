@@ -38,6 +38,7 @@ export const generateLandingPageHero = async (params: {
   colors: string[];
   typography: { headings: string; body: string };
   authId?: string; // Optional authenticated user ID for storage permissions
+  jwtToken?: string; // Optional JWT token for authenticated storage operations
 }) => {
   const { brandName, industry, description, colors, typography, authId } = params;
   
@@ -190,9 +191,10 @@ export const generateLogo = async (params: {
   style: string,
   colors: string[],
   promptOverride?: string, // Optional parameter to allow users to edit the prompt directly
-  authId?: string // Optional authenticated user ID for storage permissions
+  authId?: string, // Optional authenticated user ID for storage permissions
+  jwtToken?: string // Optional JWT token for authenticated storage operations
 }): Promise<{svg: string, prompt: string}> => {
-  const { brandName, industry, description, values, style, colors, promptOverride, authId } = params;
+  const { brandName, industry, description, values, style, colors, promptOverride, authId, jwtToken } = params;
   
   // Generate a unique timestamp seed to make each request different
   const uniqueSeed = Date.now() % 1000;
@@ -342,8 +344,9 @@ Make it simple, memorable, and unique.
           // Upload the image to Supabase storage
           console.log("Uploading image to Supabase storage from Replicate URL...");
           console.log("AUTH ID IN GENERATE LOGO:", authId); // Log the authId to verify it's passed correctly
-          // Pass authId to uploadImageFromUrl to use the correct user path in storage
-          const uploadedImageUrl = await uploadImageFromUrl(replicateImageUrl, authId);
+          console.log("JWT TOKEN AVAILABLE IN GENERATE LOGO:", !!jwtToken); // Log if jwt token is available
+          // Pass authId and jwtToken to uploadImageFromUrl to use the correct user path in storage
+          const uploadedImageUrl = await uploadImageFromUrl(replicateImageUrl, authId, jwtToken);
           
           // Use the uploaded image URL if available, otherwise fall back to the Replicate URL
           const imageUrl = uploadedImageUrl || replicateImageUrl;
@@ -463,7 +466,7 @@ export function generateReverseLogo(logoSvg: string): string {
 }
 
 // Generate brand concept with Claude
-export const generateBrandConcept = async (brandInput: BrandInput, authId?: string) => {
+export const generateBrandConcept = async (brandInput: BrandInput, authId?: string, jwtToken?: string) => {
   console.log("Starting brand concept generation with input:", JSON.stringify(brandInput));
   // Generate a unique timestamp seed to ensure different results each time
   const uniqueSeed = Date.now() % 1000;
@@ -624,7 +627,8 @@ export const generateBrandConcept = async (brandInput: BrandInput, authId?: stri
       values: brandInput.values.map(v => v.value),
       style: brandInput.designStyle,
       colors: brandInput.colorPreferences || [],
-      authId: authId // Pass the authId for proper storage permissions
+      authId: authId, // Pass the authId for proper storage permissions
+      jwtToken: jwtToken // Pass the JWT token for authenticated storage operations
     });
     
     // Generate monochrome and reverse versions of the logo from the SVG string
