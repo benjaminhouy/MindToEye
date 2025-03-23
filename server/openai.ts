@@ -345,23 +345,24 @@ Make it simple, memorable, and unique.
       // This allows us to maintain compatibility with our existing code
       if (replicateImageUrl) {
         try {
-          // Upload the image to Supabase storage
-          console.log("Uploading image to Supabase storage from Replicate URL...");
+          // Upload the image to Supabase storage using logo-specific upload function
+          console.log("Uploading logo to Supabase storage from Replicate URL...");
           console.log("AUTH ID IN GENERATE LOGO:", authId); // Log the authId to verify it's passed correctly
           console.log("JWT TOKEN AVAILABLE IN GENERATE LOGO:", !!jwtToken); // Log if jwt token is available
-          // Pass authId and jwtToken to uploadImageFromUrl to use the correct user path in storage
-          // Create params object with project and concept IDs for hierarchical storage path
-          const uploadParams = {
-            projectId: projectId || 'general', 
-            conceptId: conceptId || 'general'
-          };
           
-          console.log(`Storing logo with project params:`, uploadParams);
+          // Use the correct function for logo upload: uploadLogoFromUrl instead of uploadImageFromUrl
+          // This ensures logos are stored in the logos folder, not the heroes folder
+          const numericProjectId = typeof projectId === 'string' ? parseInt(projectId, 10) || 0 : (projectId || 0);
+          const numericConceptId = typeof conceptId === 'string' ? parseInt(conceptId, 10) || 0 : (conceptId || 0);
           
-          // Pass project/concept IDs in params for hierarchical storage
-          const uploadedImageUrl = await uploadImageFromUrl(
+          console.log(`Storing logo with projectId: ${numericProjectId}, conceptId: ${numericConceptId}`);
+          
+          // Use uploadLogoFromUrl which has the correct path structure for logos
+          const uploadedImageUrl = await uploadLogoFromUrl(
             replicateImageUrl, 
-            uploadParams,
+            numericProjectId,
+            numericConceptId,
+            'png', // File type for the logo
             authId, 
             jwtToken
           );
