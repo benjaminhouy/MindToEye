@@ -216,14 +216,19 @@ export async function uploadImageFromUrl(
 
   try {
     // Choose the appropriate Supabase client based on whether we have a JWT token
+    console.log(`Using JWT auth for upload: ${!!jwtToken}`);
+    
     const storageClient = jwtToken 
       ? createSupabaseClientWithToken(jwtToken)
       : supabase;
       
     if (!storageClient) {
-      console.log('Failed to create Supabase client. Using Replicate URL directly.');
+      console.error('Failed to create storage client for upload');
       return null;
     }
+    
+    console.log(`Storage client authenticated: ${!!storageClient.auth}`);
+    console.log(`Target storage bucket: assets`);
     
     // Initialize bucket if needed
     const bucketInitialized = await initializeStorageBucket(jwtToken);

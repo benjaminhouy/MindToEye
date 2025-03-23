@@ -195,6 +195,12 @@ const BrandInputPanel = ({ onGenerate, savedConcepts, activeConcept, onConceptSe
         console.log("Including auth ID in concept generation:", authId);
       }
       
+      // Add JWT token for Supabase storage operations if available
+      if (jwtToken) {
+        headers['Authorization'] = `Bearer ${jwtToken}`;
+        console.log("Including JWT token in Authorization header for Supabase storage operations");
+      }
+      
       // Use the direct API with progress tracking and auth headers
       const brandOutput = await generateBrandConcept(
         uniqueBrandInput, 
