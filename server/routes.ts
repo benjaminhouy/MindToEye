@@ -700,29 +700,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Update the user record in our database, but don't change isDemo status yet
-      // This way we store the email for future reference, but keep the anonymous session active
-      const updatedUser = await storage.updateUser(userId, {
-        username: email,
-        // Keep isDemo true to indicate this is still using the anonymous session
-        // but now has an email associated with it
-        isDemo: true 
-      });
-      
-      if (!updatedUser) {
-        return res.status(500).json({ error: "Failed to update user" });
+      // Use Supabase Admin functions to properly create or link the user
+      try {
+        // Import the Supabase admin functions
+        const { linkAnonymousUser, generatePasswordResetLink } = await import('./supabase-admin');
+        
+        // Attempt to link the anonymous account to the new email in Supabase
+        const supabaseUser = await linkAnonymousUser(authId, email);
+        
+        // Generate a password reset link for the user to set their password
+        const { properties } = await generatePasswordResetLink(email);
+        
+        // In a production app, you would send the reset link via email
+        // For development, we'll log it to the console
+        if (process.env.NODE_ENV !== 'production') {
+          console.log(`Password reset link (for testing only): ${properties.action_link}`);
+        }
+        
+        console.log(
+          `Demo account saved with Supabase Auth integration. Email: ${email}, ` +
+          `Supabase User ID: ${supabaseUser.id}, Reset link generated` +
+          (process.env.NODE_ENV !== 'production' ? ' (see logs)' : ' (would be emailed in production)')
+        );
+        
+        // Update our database record with the email but keep isDemo flag for now
+        // The user will be fully converted after they set a password via the reset link
+        const updatedUser = await storage.updateUser(userId, {
+          username: email,
+          isDemo: true // Keep isDemo true until password is set
+        });
+        
+        if (!updatedUser) {
+          return res.status(500).json({ error: "Failed to update user in database" });
+        }
+        
+        // Return the updated user
+        res.status(200).json({
+          ...updatedUser,
+          // Tell the client the user is no longer in demo mode
+          // This prevents the "Save Your Work" button from appearing
+          isDemo: false,
+          // Add info about password reset
+          passwordResetSent: true
+        });
+      } catch (supabaseError) {
+        // Log the error but continue with the database-only approach as fallback
+        console.error("Supabase Auth integration failed:", supabaseError);
+        
+        // Fall back to our original implementation
+        console.log("Falling back to database-only account save");
+        
+        // Update the user record in our database, but don't change isDemo status yet
+        const updatedUser = await storage.updateUser(userId, {
+          username: email,
+          isDemo: true // Keep isDemo true for session continuity
+        });
+        
+        if (!updatedUser) {
+          return res.status(500).json({ error: "Failed to update user" });
+        }
+        
+        console.log(`Demo user work saved (database only): ID=${updatedUser.id}, Email=${email}`);
+        
+        // Return the updated user
+        res.status(200).json({
+          ...updatedUser,
+          isDemo: false, // Tell client user is not in demo mode
+          passwordResetSent: false // Indicate no password reset was sent
+        });
       }
-      
-      console.log(`Demo user work saved: ID=${updatedUser.id}, Email=${email}, Keeping anonymous session active`);
-      
-      // Return the updated user
-      res.status(200).json({
-        ...updatedUser,
-        // We tell the client the user is no longer in demo mode,
-        // even though we've kept isDemo=true in the database
-        // This prevents the "Save Your Work" button from appearing
-        isDemo: false
-      });
     } catch (error) {
       console.error("Error saving demo account:", error);
       

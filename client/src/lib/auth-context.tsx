@@ -156,6 +156,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setSession({
             access_token: `local-auth-${result.user.id}`, // Simplified token
             refresh_token: '',
+            token_type: 'bearer', // Required by Session type
             expires_in: 86400,
             expires_at: new Date().getTime() + 86400 * 1000,
             user: result.user
