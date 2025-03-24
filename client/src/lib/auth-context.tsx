@@ -11,6 +11,7 @@ type AuthContextType = {
   signUp: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   startDemoSession: () => Promise<void>;
+  upgradeDemoAccount: (email: string) => Promise<void>;
   loading: boolean;
   error: string | null;
   isDemo: boolean;
@@ -281,6 +282,61 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Upgrade a demo account to a regular account
+  const upgradeDemoAccount = async (email: string) => {
+    try {
+      console.log("Upgrading demo account to regular account with email:", email);
+      setLoading(true);
+      setError(null);
+      
+      if (!user || !session) {
+        throw new Error('No active session');
+      }
+      
+      // Call the API to upgrade the demo account
+      const response = await fetch('/api/upgrade-demo-account', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+          'x-auth-id': user.id,
+        },
+        body: JSON.stringify({
+          email,
+        }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to upgrade demo account');
+      }
+      
+      const upgradedUser = await response.json();
+      console.log("Demo account upgraded successfully:", upgradedUser);
+      
+      // Turn off demo mode
+      setIsDemo(false);
+      
+      // Update auth user email
+      const { error: updateError } = await supabase.auth.updateUser({
+        email: email,
+      });
+      
+      if (updateError) {
+        console.error("Error updating Supabase user email:", updateError);
+        // Continue anyway - the backend upgrade was successful
+      }
+      
+      return upgradedUser;
+    } catch (error) {
+      console.error('Error upgrading demo account:', error);
+      setError(error instanceof Error ? error.message : 'Failed to upgrade demo account');
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+  
   // Provide the auth context value
   const value = {
     session,
@@ -289,6 +345,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signUp,
     signOut,
     startDemoSession,
+    upgradeDemoAccount,
     loading,
     error,
     isDemo,

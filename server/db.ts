@@ -191,6 +191,36 @@ export class PostgresStorage implements IStorage {
     }
   }
   
+  async updateUser(id: number, userData: Partial<User>): Promise<User | undefined> {
+    if (!db) {
+      console.warn('PostgreSQL client not initialized. Cannot update user.');
+      return undefined;
+    }
+    
+    try {
+      // Exclude id from update data
+      const { id: _, ...updateValues } = userData;
+      
+      if (Object.keys(updateValues).length === 0) {
+        // If there's nothing to update, just return the current user
+        return this.getUser(id);
+      }
+      
+      const result = await db
+        .update(users)
+        .set(updateValues)
+        .where(eq(users.id, id))
+        .returning();
+      
+      if (result.length === 0) return undefined;
+      
+      return result[0];
+    } catch (error) {
+      console.error('Error updating user:', error);
+      return undefined;
+    }
+  }
+  
   /**
    * Project Operations
    */
