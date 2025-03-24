@@ -2860,6 +2860,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Admin password reset endpoint as a fallback for Supabase's built-in method
+  app.post("/api/admin-password-reset", async (req: Request, res: Response) => {
+    try {
+      const { email } = req.body;
+      
+      if (!email) {
+        return res.status(400).json({ 
+          success: false,
+          error: "Email is required" 
+        });
+      }
+      
+      console.log(`Admin password reset request for email: ${email}`);
+      
+      // Import the Supabase admin module
+      const { generatePasswordResetLink } = await import('./supabase-admin');
+      
+      // Generate a password reset link using the admin API
+      try {
+        const resetLinkData = await generatePasswordResetLink(email);
+        
+        console.log(`Password reset link generated for ${email}`);
+        
+        // Success - we don't send the actual link for security reasons
+        return res.status(200).json({
+          success: true,
+          message: "Password reset link generated successfully"
+        });
+      } catch (resetError) {
+        console.error(`Error generating password reset link: ${resetError instanceof Error ? resetError.message : String(resetError)}`);
+        
+        // Check if this is a user not found error - we return success anyway
+        // to avoid leaking information about which emails exist
+        if (resetError instanceof Error && resetError.message.includes('User not found')) {
+          console.log(`User not found for ${email}, but returning success response for security`);
+          return res.status(200).json({
+            success: true,
+            message: "If this email exists in our system, a reset link has been sent"
+          });
+        }
+        
+        // Otherwise return a generic error
+        return res.status(500).json({
+          success: false,
+          error: "Failed to generate password reset link",
+          message: resetError instanceof Error ? resetError.message : String(resetError)
+        });
+      }
+    } catch (error) {
+      console.error("Admin password reset error:", 
+        error instanceof Error ? error.message : String(error));
+      
+      // Return generic error
+      return res.status(500).json({
+        success: false,
+        error: "Failed to process password reset request"
+      });
+    }
+  });
+  
   app.post("/api/login-with-email-password", async (req: Request, res: Response) => {
     try {
       const { email, password } = req.body;

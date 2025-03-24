@@ -87,16 +87,35 @@ export default function ForgotPassword({ onBack }: ForgotPasswordProps) {
               Reset link sent. Please check your email inbox.
             </AlertDescription>
           </Alert>
-          <p className="text-sm text-muted-foreground">
-            If you don't see the email, please check your spam folder. The link will expire in 24 hours.
-          </p>
-          <Button
-            variant="outline"
-            className="w-full mt-4"
-            onClick={onBack}
-          >
-            Back to login
-          </Button>
+          <div className="space-y-3 mb-4">
+            <p className="text-sm text-muted-foreground">
+              If you don't see the email in a few minutes:
+            </p>
+            <ul className="text-sm text-muted-foreground list-disc pl-5 space-y-1">
+              <li>Check your spam/junk folder</li>
+              <li>Verify you entered the correct email address</li>
+              <li>The link will expire in 24 hours</li>
+            </ul>
+            <p className="text-sm font-medium">
+              Note: Some email providers may delay or block password reset emails. If you don't receive an email, try again with a different email address or contact support.
+            </p>
+          </div>
+          <div className="flex flex-col space-y-2">
+            <Button
+              variant="default"
+              className="w-full"
+              onClick={() => form.reset() && setResetSent(false)}
+            >
+              Try again with different email
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full"
+              onClick={onBack}
+            >
+              Back to login
+            </Button>
+          </div>
         </CardContent>
       ) : (
         <Form {...form}>

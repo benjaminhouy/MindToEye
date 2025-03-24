@@ -528,35 +528,70 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Reset password function
+  // Enhanced reset password function with better diagnostics
   const resetPassword = async (email: string) => {
     try {
       setLoading(true);
       setError(null);
       
+      console.log(`Attempting password reset for email: ${email}`);
+      
       // Use Supabase's built-in password reset method
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/auth?reset=true`,
       });
+      
+      // Log the response for diagnostic purposes
+      console.log('Password reset response:', { data, error });
       
       if (error) {
         throw error;
       }
       
-      // Success message
+      // Even if there's no error, double-check that Supabase accepted the request
+      if (!data || (Array.isArray(data) && data.length === 0)) {
+        console.warn('Password reset returned empty data, but no error');
+      }
+      
+      // Try to use our admin API as a fallback method to send a reset link
+      try {
+        // This endpoint would need to be created server-side to use Supabase admin API
+        const response = await fetch('/api/admin-password-reset', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ email }),
+        });
+        
+        const adminResetResult = await response.json();
+        console.log('Admin password reset result:', adminResetResult);
+        
+        if (adminResetResult.success) {
+          console.log('Admin password reset successful');
+        }
+      } catch (adminError) {
+        // Just log this error, don't let it affect the user experience
+        console.warn('Failed to use admin reset fallback:', adminError);
+      }
+      
+      // Success message with additional guidance
       toast({
         title: "Password reset link sent",
-        description: "Check your email for the reset link",
+        description: "Please check your email inbox and spam folder for the reset link. It may take a few minutes to arrive.",
+        duration: 6000, // Show for longer (6 seconds)
       });
       
     } catch (error: any) {
       console.error('Password reset error:', error);
       setError(error.message || 'Failed to send reset link');
       
+      // Provide a more helpful error message with troubleshooting steps
       toast({
-        title: "Password reset failed",
-        description: error.message || 'Please try again',
+        title: "Password reset request issue",
+        description: `${error.message || 'Issue sending reset link'}. Please check that your email address is correct and try again.`,
         variant: "destructive",
+        duration: 8000, // Show for even longer (8 seconds)
       });
       
       throw error;
