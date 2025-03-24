@@ -536,7 +536,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Anonymous demo user creation route
+  // Legacy demo user creation route (keeping for backwards compatibility)
   app.post("/api/demo-user", async (req: Request, res: Response) => {
     try {
       // Create a unique demo user with timestamp
@@ -564,6 +564,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error creating demo user:", error);
       res.status(500).json({ error: "Failed to create demo user" });
+    }
+  });
+  
+  // Anonymous user registration with Supabase
+  app.post("/api/register-anonymous", async (req: Request, res: Response) => {
+    try {
+      // Get the authorization token from the header
+      const authHeader = req.headers.authorization;
+      if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        return res.status(401).json({ error: "Missing or invalid authorization token" });
+      }
+      
+      const token = authHeader.split(' ')[1];
+      
+      // Verify the Supabase token by calling their auth API
+      const { supabase } = await import('./storage-utils');
+      if (!supabase) {
+        return res.status(500).json({ error: "Supabase client not initialized" });
+      }
+      
+      // Get the user from the token
+      const { data: userData, error: userError } = await supabase.auth.getUser(token);
+      
+      if (userError || !userData?.user) {
+        console.error("Error verifying Supabase token:", userError);
+        return res.status(401).json({ error: "Invalid authentication token" });
+      }
+      
+      // Get the authId from Supabase user
+      const authId = userData.user.id;
+      
+      // Check if this user already exists in our database
+      let user = await storage.getUserByAuthId(authId);
+      
+      if (!user) {
+        // Create a new user in our database
+        const timestamp = new Date().getTime();
+        const username = `anon-${timestamp}@mindtoeye.demo`;
+        
+        const newUser = {
+          username,
+          password: `anon-password-${Date.now()}`, // Random password for anonymous user
+          authId,
+          isDemo: true, // Mark as demo user
+        };
+        
+        user = await storage.createUser(newUser);
+        console.log(`Anonymous user created: ID=${user.id}, AuthID=${authId}`);
+      } else {
+        console.log(`Existing anonymous user found: ID=${user.id}, AuthID=${authId}`);
+      }
+      
+      // Return the user information
+      res.status(201).json({
+        ...user,
+        isDemo: true
+      });
+    } catch (error) {
+      console.error("Error registering anonymous user:", error);
+      res.status(500).json({ error: "Failed to register anonymous user" });
     }
   });
 
