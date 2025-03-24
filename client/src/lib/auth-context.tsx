@@ -248,6 +248,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(true);
       setError(null);
       
+      // Store auth ID before we clear the session
+      const currentAuthId = user?.id;
+      
       try {
         // Try to sign out with Supabase
         const { error } = await supabase.auth.signOut();
@@ -261,6 +264,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } catch (signOutError) {
         // Log but don't rethrow - we want to clear local state regardless
         console.warn('Error during Supabase sign out:', signOutError);
+      }
+      
+      // Also call our server API to log out (to handle revocation of tokens)
+      if (currentAuthId) {
+        try {
+          await fetch('/api/logout', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-auth-id': currentAuthId
+            }
+          });
+          console.log('Server-side logout completed');
+        } catch (serverLogoutError) {
+          // Log but continue - client-side logout is more important
+          console.warn('Error during server-side logout:', serverLogoutError);
+        }
       }
       
       // Always clear local state, even if the Supabase sign out fails

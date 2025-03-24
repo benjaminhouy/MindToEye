@@ -2778,6 +2778,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // Server-side authentication endpoint for converted demo accounts
+  app.post("/api/logout", async (req: Request, res: Response) => {
+    try {
+      // Get the auth ID from the request header
+      const authId = req.headers['x-auth-id'] as string;
+      
+      console.log(`Logging out user with authId: ${authId}`);
+      
+      // If we have Supabase configured, try to invalidate the session there
+      if (authId) {
+        try {
+          // Import the supabase admin module
+          const { supabaseAdmin } = await import('./supabase-admin');
+          
+          // Use the admin API to revoke all sessions for this user
+          if (supabaseAdmin) {
+            const { error } = await supabaseAdmin.auth.admin.signOut(authId);
+            if (error) {
+              console.warn("Error revoking session with Supabase admin:", error);
+              // Continue anyway - we'll log the user out locally
+            } else {
+              console.log(`Successfully revoked all sessions for user ${authId} with Supabase admin API`);
+            }
+          }
+        } catch (error) {
+          console.warn("Error during Supabase admin logout:", error);
+          // Continue anyway - we'll log the user out locally
+        }
+      }
+      
+      // Return success response
+      return res.status(200).json({
+        success: true,
+        message: "Successfully logged out"
+      });
+    } catch (error) {
+      console.error("Error during logout:", error);
+      res.status(500).json({ 
+        success: false,
+        error: "Failed to log out"
+      });
+    }
+  });
+
   app.post("/api/login-with-email-password", async (req: Request, res: Response) => {
     try {
       const { email, password } = req.body;
