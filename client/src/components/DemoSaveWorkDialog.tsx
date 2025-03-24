@@ -72,6 +72,31 @@ export function DemoSaveWorkDialog({ children }: DemoSaveWorkDialogProps) {
       window.location.reload();
     } catch (error) {
       console.error('Error creating account:', error);
+      
+      // Check for specific error responses from the server
+      if (error instanceof Error) {
+        // Try to parse the error message if it's JSON
+        try {
+          const errorData = JSON.parse(error.message);
+          if (errorData.error === 'This email is already registered') {
+            // Set field-specific error for email already in use
+            form.setError('email', {
+              type: 'manual',
+              message: 'This email is already registered. Please use a different email address.'
+            });
+            toast({
+              title: 'Email already registered',
+              description: errorData.message || 'Please use a different email address.',
+              variant: 'destructive',
+            });
+            return;
+          }
+        } catch (e) {
+          // Not JSON, use the error message as is
+        }
+      }
+      
+      // General error handling
       toast({
         title: 'Failed to create account',
         description: error instanceof Error ? error.message : 'An unexpected error occurred',

@@ -308,7 +308,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to save demo account');
+        // For better error handling, throw the entire error object as a string
+        throw new Error(JSON.stringify(errorData));
       }
       
       const savedUser = await response.json();

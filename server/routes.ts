@@ -671,6 +671,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Only demo accounts can be saved to a permanent account" });
       }
       
+      // Check if the email is already in use by another account
+      const existingUser = await storage.getUserByUsername(email);
+      if (existingUser && existingUser.id !== userId) {
+        return res.status(409).json({ 
+          error: "This email is already registered",
+          message: "Please use a different email address or log in with this email if it's yours."
+        });
+      }
+      
       // Update the user to set isDemo to false and update the username/email
       const updatedUser = await storage.updateUser(userId, {
         username: email,
@@ -687,6 +696,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(200).json(updatedUser);
     } catch (error) {
       console.error("Error saving demo account:", error);
+      
+      // Check for duplicate key error and provide a better message
+      if (error instanceof Error && error.message.includes('duplicate key') && error.message.includes('username')) {
+        return res.status(409).json({ 
+          error: "This email is already registered",
+          message: "Please use a different email address or log in with this email if it's yours."
+        });
+      }
+      
       res.status(500).json({ error: "Failed to save demo account" });
     }
   });
