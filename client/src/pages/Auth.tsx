@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { useLocation } from 'wouter';
 
@@ -23,7 +23,7 @@ export default function AuthPage() {
   const [demoLoading, setDemoLoading] = useState(false);
   
   // Handle demo session
-  const handleDemoClick = async () => {
+  const handleDemoClick = useCallback(async () => {
     try {
       setDemoLoading(true);
       console.log("Starting demo session");
@@ -35,7 +35,7 @@ export default function AuthPage() {
     } finally {
       setDemoLoading(false);
     }
-  };
+  }, [startDemoSession, navigate]);
 
   // Check for demo=true in URL parameters when component mounts
   useEffect(() => {
@@ -71,21 +71,6 @@ export default function AuthPage() {
       // Stay on the auth page after signup to show verification message
     } catch (error) {
       console.error("Error during sign up:", error);
-    }
-  };
-  
-  // Handle demo session
-  const handleDemoClick = async () => {
-    try {
-      setDemoLoading(true);
-      console.log("Starting demo session");
-      await startDemoSession();
-      console.log("Demo session started, redirecting to dashboard");
-      navigate("/");
-    } catch (error) {
-      console.error("Error starting demo session:", error);
-    } finally {
-      setDemoLoading(false);
     }
   };
 
