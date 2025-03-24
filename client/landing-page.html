@@ -73,8 +73,12 @@
                     <a class="text-gray-600 hover:text-indigo-600 font-medium" href="#how-it-works">How It Works</a>
                     <a class="text-gray-600 hover:text-indigo-600 font-medium" href="#testimonials">Testimonials</a>
                     <a class="text-gray-600 hover:text-indigo-600 font-medium" href="#pricing">Pricing</a>
-                    <a class="bg-indigo-600 text-white py-2 px-6 rounded-md font-medium hover:bg-indigo-700 transition-colors shadow-md"
-                        href="/">Launch App</a>
+                    <div class="flex gap-2">
+                        <a class="bg-indigo-600 text-white py-2 px-4 rounded-md font-medium hover:bg-indigo-700 transition-colors shadow-md"
+                            href="/auth?mode=login">Login</a>
+                        <a class="bg-indigo-700 text-white py-2 px-4 rounded-md font-medium hover:bg-indigo-800 transition-colors shadow-md"
+                            href="/auth?mode=signup">Sign Up</a>
+                    </div>
                 </div>
                 <div class="md:hidden">
                     <button class="text-gray-500 hover:text-indigo-600 focus:outline-none">
@@ -94,24 +98,30 @@
             <div class="lg:grid lg:grid-cols-12 lg:gap-12 items-center">
                 <div class="lg:col-span-6 mb-10 lg:mb-0">
                     <div class="pill mb-4">
-                        AI-POWERED BRAND CONCEPT VISUALIZATION
+                        FOR BRANDING AGENCIES
                     </div>
                     <h1 class="text-4xl sm:text-5xl font-extrabold text-gray-900 leading-tight mb-6">
-                        Transform brand ideas into compelling visuals in seconds
+                        Win client approvals 2-3x faster with AI-powered brand visualizations
                     </h1>
                     <p class="text-xl text-gray-600 mb-8">
-                        MindToEye helps branding agencies visualize concepts, win client approvals faster, and reduce revisions with AI-powered brand identity generation.
+                        MindToEye helps agencies struggling with slow client approvals by instantly generating high-quality brand visualizations—eliminating endless revisions and reducing unpaid speculative work.
                     </p>
                     <div class="flex flex-col sm:flex-row gap-4">
-                        <a href="/"
-                            class="inline-flex items-center justify-center px-8 py-4 border border-transparent text-base font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 md:py-4 md:text-lg md:px-10 shadow-lg transition-all duration-200 transform hover:-translate-y-1">
-                            Try It Now
-                            <svg fill="currentColor" viewBox="0 0 20 20" class="ml-2 -mr-1 w-5 h-5">
-                                <path fill-rule="evenodd"
-                                    d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z"
-                                    clip-rule="evenodd"></path>
-                            </svg>
-                        </a>
+                        <div class="flex flex-col sm:flex-row gap-4">
+                            <a href="/auth?mode=signup"
+                                class="inline-flex items-center justify-center px-8 py-4 border border-transparent text-base font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 md:py-4 md:text-lg md:px-10 shadow-lg transition-all duration-200 transform hover:-translate-y-1">
+                                Get Started Free
+                                <svg fill="currentColor" viewBox="0 0 20 20" class="ml-2 -mr-1 w-5 h-5">
+                                    <path fill-rule="evenodd"
+                                        d="M10.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L12.586 11H5a1 1 0 110-2h7.586l-2.293-2.293a1 1 0 010-1.414z"
+                                        clip-rule="evenodd"></path>
+                                </svg>
+                            </a>
+                            <a href="/auth?mode=login"
+                                class="inline-flex items-center justify-center px-8 py-4 border border-transparent text-base font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200 md:py-4 md:text-lg md:px-10 transition-colors">
+                                Login
+                            </a>
+                        </div>
                         <a href="#how-it-works"
                             class="inline-flex items-center justify-center px-8 py-4 border border-transparent text-base font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200 md:py-4 md:text-lg md:px-10 transition-colors">
                             See How It Works
