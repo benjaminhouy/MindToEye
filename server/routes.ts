@@ -2811,33 +2811,32 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Track server-side logout success
       let serverLogoutSuccess = false;
+      let logoutMessage = "Logout request processed";
       
       // Only proceed with server-side logout if authId is present
       if (authId) {
         try {
-          // Import the supabase admin module
-          const { supabaseAdmin } = await import('./supabase-admin');
+          // Import the supabase admin module with our enhanced logout function
+          const { safelySignOutUser } = await import('./supabase-admin');
           
-          if (supabaseAdmin) {
-            // Use the Supabase admin API to invalidate all sessions
-            try {
-              // Following Supabase docs: https://supabase.com/docs/reference/javascript/auth-admin-signout
-              // This will invalidate all refresh tokens for this user
-              const { error } = await supabaseAdmin.auth.admin.signOut(authId);
-              
-              if (error) {
-                console.warn("Error with admin.signOut:", error.message);
-              } else {
-                console.log(`Successfully revoked all sessions for user ${authId}`);
-                serverLogoutSuccess = true;
-              }
-            } catch (signOutError) {
-              console.warn("Error during admin.signOut:", signOutError);
-            }
+          // Use our enhanced safe logout function that properly handles various auth ID formats
+          const logoutResult = await safelySignOutUser(authId);
+          
+          if (!logoutResult.success) {
+            console.warn(`Supabase logout warning: ${logoutResult.message}`);
+            logoutMessage = `Logout processed (client-side only): ${logoutResult.message}`;
+          } else {
+            console.log(logoutResult.message);
+            serverLogoutSuccess = true;
+            logoutMessage = "Logout successful (server-side sessions revoked)";
           }
         } catch (error) {
-          console.warn("Error during Supabase admin logout:", error);
+          // This should rarely happen since safelySignOutUser handles most errors internally
+          console.warn("Unexpected error during Supabase admin logout:", 
+            error instanceof Error ? error.message : String(error));
         }
+      } else {
+        logoutMessage = "Logout processed (client-side only, no auth ID provided)";
       }
       
       // Return success response - we consider it a success even if server-side logout fails
@@ -2845,10 +2844,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(200).json({
         success: true,
         serverLogoutSuccess,
-        message: "Logout request processed"
+        message: logoutMessage
       });
     } catch (error) {
-      console.error("Error processing logout request:", error);
+      console.error("Error processing logout request:", 
+        error instanceof Error ? error.message : String(error));
+      
       // Even with an error, we return success to the client
       // since client-side logout can proceed independently
       res.status(200).json({ 
