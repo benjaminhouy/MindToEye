@@ -147,6 +147,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
 
       if (error) {
+        console.warn("Supabase auth failed, trying database auth:", error.message);
+        
+        // Create a more user-friendly error message for common Supabase errors
+        let userFriendlyError = error.message;
+        
+        if (error.message.includes('Email not confirmed')) {
+          userFriendlyError = 'Please verify your email address before logging in';
+        } else if (error.message.includes('Invalid login credentials')) {
+          userFriendlyError = 'Invalid email or password';
+        }
+        
         // If Supabase auth fails, try our custom endpoint as a fallback
         // This is mainly for converted demo accounts that might have special handling
         try {
@@ -183,11 +194,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             return;
           }
           
-          // If both authentication methods fail, throw the original Supabase error
-          throw error;
+          // If both authentication methods fail, throw a user-friendly error
+          console.error("Both authentication methods failed:", error);
+          const errorWithBetterMessage = new Error(userFriendlyError);
+          throw errorWithBetterMessage;
         } catch (fallbackError) {
           console.error("Both authentication methods failed:", fallbackError);
-          throw error; // Throw the original error from Supabase
+          // Throw the user-friendly error instead of the technical one
+          const errorWithBetterMessage = new Error(userFriendlyError);
+          throw errorWithBetterMessage;
         }
       }
       
