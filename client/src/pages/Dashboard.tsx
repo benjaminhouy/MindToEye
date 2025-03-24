@@ -9,20 +9,20 @@ import { format } from "date-fns";
 import { useAuth } from "@/lib/auth-context";
 
 const Dashboard = () => {
-  const { user } = useAuth();
+  const { user, session } = useAuth();
   // Use the Supabase Auth ID directly
   const authId = user?.id;
   
   const { data: projects, isLoading, error } = useQuery<Project[]>({
     // Include authId in queryKey to prevent cross-user caching
     queryKey: ['/api/projects', authId],
-    enabled: !!authId, // Only run query when we have an authId
+    enabled: !!authId && !!session?.access_token, // Only run query when we have authId and access token
     queryFn: async () => {
       console.log("Fetching projects for user with authId:", authId);
       try {
         const response = await fetch('/api/projects', {
           headers: {
-            'Authorization': 'Bearer token',  // The token itself doesn't matter for our simplified auth
+            'Authorization': `Bearer ${session?.access_token}`,  // Include the actual access token
             'x-auth-id': authId || ''  // Send the auth ID in the custom header
           }
         });
@@ -43,6 +43,7 @@ const Dashboard = () => {
         console.error("Error fetching projects:", err);
         // Return empty array instead of throwing for demo or anonymous users
         if (user) {
+          // For authenticated users with errors, return empty array rather than failing
           return [];
         }
         throw err;

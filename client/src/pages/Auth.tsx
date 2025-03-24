@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { useLocation } from 'wouter';
+import { Loader2 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,7 +13,7 @@ import { Separator } from '@/components/ui/separator';
 
 export default function AuthPage() {
   // Get authentication context
-  const { signIn, signUp, startDemoSession, loading, error } = useAuth();
+  const { user, session, signIn, signUp, startDemoSession, loading, error } = useAuth();
   
   // For redirecting after successful authentication
   const [, navigate] = useLocation();
@@ -21,6 +22,17 @@ export default function AuthPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [demoLoading, setDemoLoading] = useState(false);
+  const [pageLoading, setPageLoading] = useState(true);
+  
+  // If user is already authenticated, redirect to dashboard
+  useEffect(() => {
+    if (user && session) {
+      console.log("User already authenticated, redirecting to dashboard");
+      navigate("/");
+    } else {
+      setPageLoading(false);
+    }
+  }, [user, session, navigate]);
   
   // Handle demo session
   const handleDemoClick = useCallback(async () => {
@@ -73,6 +85,18 @@ export default function AuthPage() {
       console.error("Error during sign up:", error);
     }
   };
+
+  // Show loading spinner if checking authentication status
+  if (pageLoading || (loading && !demoLoading)) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+        <div className="text-center">
+          <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-50">

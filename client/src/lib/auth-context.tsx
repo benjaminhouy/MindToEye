@@ -242,34 +242,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(true);
       setError(null);
       
-      // Sign in anonymously via our API
+      // First sign in anonymously with Supabase
+      console.log("Starting demo session");
+      const { data: authData, error: authError } = await supabase.auth.signInAnonymously();
+      
+      if (authError || !authData.session) {
+        throw new Error(authError?.message || 'Failed to start anonymous session');
+      }
+      
+      console.log("Anonymous session created, registering with server");
+      
+      // Now register this anonymous user with our server
       const response = await fetch('/api/register-anonymous', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authData.session.access_token}`
         }
       });
       
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to start demo session');
+        throw new Error(errorData.error || 'Failed to register anonymous user');
       }
       
-      const { authId, token } = await response.json();
-      
-      if (!authId || !token) {
-        throw new Error('Invalid response from server for demo session');
-      }
-      
-      // Sign in with the custom token
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: `demo-${authId}@example.com`,
-        password: token
-      });
-      
-      if (error) {
-        throw error;
-      }
+      // Get user data from our API
+      const userData = await response.json();
       
       // Set demo flag
       setIsDemo(true);
