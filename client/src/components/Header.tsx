@@ -31,7 +31,14 @@ const Header = () => {
   };
 
   const getUserInitials = () => {
-    const name = user?.user_metadata?.name || user?.email || "";
+    // Look for a name or email from various sources
+    const savedEmail = typeof window !== 'undefined' ? window.sessionStorage.getItem('savedEmail') : null;
+    const name = user?.user_metadata?.name || 
+                 user?.user_metadata?.email || 
+                 savedEmail || 
+                 user?.email || 
+                 "";
+                 
     if (!name) return "U";
     
     // If it's an email, just take the first letter
@@ -188,11 +195,23 @@ const Header = () => {
                     <p className="text-sm">Signed in as</p>
                     <div className="flex items-center">
                       <p className="text-sm font-medium truncate">
-                        {user?.email || user?.user_metadata?.email || 'Anonymous User'}
+                        {/* Check for saved email first from user_metadata */}
+                        {user?.user_metadata?.email || 
+                         /* Then check for sessionStorage saved email */
+                         (typeof window !== 'undefined' && window.sessionStorage.getItem('savedEmail')) || 
+                         /* Then check regular email field */
+                         user?.email || 
+                         /* Fallback to anonymous label */
+                         'Anonymous User'}
                       </p>
                       {isDemo && (
                         <span className="ml-2 px-1.5 py-0.5 text-xs font-medium bg-amber-100 text-amber-800 rounded-full">
                           Demo
+                        </span>
+                      )}
+                      {!isDemo && user?.app_metadata?.provider === 'anonymous' && (
+                        <span className="ml-2 px-1.5 py-0.5 text-xs font-medium bg-green-100 text-green-800 rounded-full">
+                          Saved
                         </span>
                       )}
                     </div>

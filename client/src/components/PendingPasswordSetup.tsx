@@ -1,39 +1,41 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { SetPasswordDialog } from './SetPasswordDialog';
 
 /**
- * This component checks if there's a pending password setup
- * (which happens after a user saves their demo account with an email).
- * It will render the SetPasswordDialog if there's a pending setup.
+ * This component checks if there's a pending password setup in the session storage
+ * and renders the SetPasswordDialog if needed. This ensures that the password
+ * setup dialog appears after a user has saved their demo account with an email.
+ * 
+ * It uses sessionStorage to persist the state across refreshes and navigation.
  */
 export function PendingPasswordSetup() {
-  const [open, setOpen] = useState(false);
-  const [email, setEmail] = useState<string | null>(null);
+  // Track if we need to show the password setup dialog
+  const [showPasswordDialog, setShowPasswordDialog] = useState(false);
   
+  // Check sessionStorage on component mount
   useEffect(() => {
-    // Check for pending password setup in session storage
-    const pendingEmail = sessionStorage.getItem('pendingPasswordSetup');
-    if (pendingEmail) {
-      console.log('Found pending password setup for:', pendingEmail);
-      setEmail(pendingEmail);
-      setOpen(true);
-    }
+    const isPending = sessionStorage.getItem('pendingPasswordSetup') === 'true';
+    setShowPasswordDialog(isPending);
   }, []);
   
-  // If there's no pending setup, don't render anything
-  if (!email) return null;
+  // Handle dialog close
+  const handleDialogClose = () => {
+    // Remove the pending flag from sessionStorage
+    sessionStorage.removeItem('pendingPasswordSetup');
+    setShowPasswordDialog(false);
+  };
   
+  // Render nothing if no pending setup
+  if (!showPasswordDialog) {
+    return null;
+  }
+  
+  // Otherwise render the password setup dialog
   return (
     <SetPasswordDialog 
-      open={open} 
-      onOpenChange={(isOpen) => {
-        setOpen(isOpen);
-        if (!isOpen) {
-          // When dialog closes, clear the pendingPasswordSetup from session storage
-          sessionStorage.removeItem('pendingPasswordSetup');
-        }
-      }}
-      email={email}
+      open={showPasswordDialog} 
+      onOpenChange={setShowPasswordDialog}
+      onDialogClose={handleDialogClose}
     />
   );
 }

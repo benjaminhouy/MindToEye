@@ -12,6 +12,26 @@ import {
 import { generateBrandConcept, generateLogo } from "./openai";
 import { log } from "./vite";
 import { ZodError } from "zod";
+import { scrypt, randomBytes, timingSafeEqual } from "crypto";
+import { promisify } from "util";
+
+// Async version of scrypt
+const scryptAsync = promisify(scrypt);
+
+// Password hashing function
+async function hashPassword(password: string): Promise<string> {
+  const salt = randomBytes(16).toString('hex');
+  const buf = (await scryptAsync(password, salt, 64)) as Buffer;
+  return `${buf.toString('hex')}.${salt}`;
+}
+
+// Password comparison function
+async function comparePasswords(supplied: string, stored: string): Promise<boolean> {
+  const [hashed, salt] = stored.split('.');
+  const hashedBuf = Buffer.from(hashed, 'hex');
+  const suppliedBuf = (await scryptAsync(supplied, salt, 64)) as Buffer;
+  return timingSafeEqual(hashedBuf, suppliedBuf);
+}
 
 // Extend the Express Request type to include our custom properties
 interface Request extends ExpressRequest {
@@ -2535,6 +2555,79 @@ export async function registerRoutes(app: Express): Promise<Server> {
         success: false, 
         message: "Failed to regenerate brand element", 
         error: error?.message || String(error)
+      });
+    }
+  });
+
+  // API endpoint for setting password on a previously saved demo account
+  app.post("/api/set-account-password", async (req: Request, res: Response) => {
+    try {
+      // Get the authorization token and auth ID
+      const authHeader = req.headers.authorization;
+      const authId = req.headers['x-auth-id'] as string;
+      
+      if (!authHeader && !authId) {
+        return res.status(401).json({ error: "Missing authentication details" });
+      }
+      
+      // Get the password from the request body
+      const { password } = req.body;
+      
+      if (!password) {
+        return res.status(400).json({ error: "Password is required" });
+      }
+      
+      // Find the user by authId
+      let userId: number | undefined;
+      
+      if (authId) {
+        const user = await storage.getUserByAuthId(authId);
+        if (user) {
+          userId = user.id;
+        }
+      }
+      
+      if (!userId) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      // Get the user
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      // Hash the password
+      const hashedPassword = await hashPassword(password);
+      
+      // Update the user account with the password and fully convert from demo
+      // This completes the two-phase authentication process
+      const updatedUser = await storage.updateUser(userId, {
+        password: hashedPassword,
+        isDemo: false // Now fully convert from demo to regular account
+      });
+      
+      if (!updatedUser) {
+        return res.status(500).json({ error: "Failed to set password" });
+      }
+      
+      console.log(`Password set for user ID=${updatedUser.id}, Email=${updatedUser.username}, Account fully converted`);
+      
+      // Return success response
+      res.status(200).json({
+        success: true,
+        message: "Password set successfully",
+        user: {
+          ...updatedUser,
+          password: undefined // Never return password to client
+        }
+      });
+    } catch (error) {
+      console.error("Error setting account password:", error);
+      res.status(500).json({ 
+        error: "Failed to set password", 
+        message: error instanceof Error ? error.message : String(error)
       });
     }
   });

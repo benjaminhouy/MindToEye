@@ -1,9 +1,9 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from './supabase';
-import { apiRequest, queryClient } from './queryClient';
+import { useToast } from '@/hooks/use-toast';
 
-// Define the shape of our auth context
+// Define the context type
 type AuthContextType = {
   session: Session | null;
   user: User | null;
@@ -12,520 +12,408 @@ type AuthContextType = {
   signOut: () => Promise<void>;
   startDemoSession: () => Promise<void>;
   saveDemoAccount: (email: string) => Promise<void>;
-  setPassword: (email: string, password: string) => Promise<void>;
+  setPassword: (password: string) => Promise<void>;
   loading: boolean;
   error: string | null;
   isDemo: boolean;
 };
 
-// Create the context with a default value
+// Create the context with default values
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Custom hook to use the auth context
+// Custom hook for accessing the auth context
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (context === undefined) {
+  if (!context) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
 }
 
-// Provider component that wraps the app and makes auth available
+// Auth provider component
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  // State
   const [session, setSession] = useState<Session | null>(null);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [isDemo, setIsDemo] = useState<boolean>(false);
+  const [isDemo, setIsDemo] = useState(false);
+  const { toast } = useToast();
 
-  // Register user with our API after Supabase auth
+  // Register a new user with our own API
   const registerUserWithApi = async (authUser: User) => {
     try {
-      // Skip registration if we don't have an email (anonymous users)
-      if (!authUser.email) {
-        console.log("Skipping API registration for anonymous user");
-        return null;
-      }
-      
-      console.log("Registering user with API:", authUser.email);
-      
+      // Register the user with our own API
       const response = await fetch('/api/register', {
         method: 'POST',
-        body: JSON.stringify({
-          email: authUser.email,
-          authId: authUser.id,
-        }),
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token || ''}`,
+          'x-auth-id': authUser.id
         },
+        body: JSON.stringify({
+          authId: authUser.id,
+          username: authUser.email || `user-${authUser.id.substring(0, 8)}`,
+          email: authUser.email
+        })
       });
-      
-      const data = await response.json();
-      console.log("API registration response:", data);
-      return data;
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('API registration error:', errorData);
+        throw new Error(errorData.error || 'Failed to register with API');
+      }
+
+      return await response.json();
     } catch (error) {
-      console.error("Error registering user with API:", error);
+      console.error('Error registering user with API:', error);
       throw error;
     }
   };
 
-  // Handle authentication state changes
+  // Effect to set up the auth state listener
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
-      setSession(session);
-      if (session?.user) {
-        setUser(session.user);
+    async function getInitialSession() {
+      try {
+        setLoading(true);
         
-        // Check if this is an anonymous user session
-        // Do not set isDemo if we've marked this user as converted
-        console.log("Checking if user is in demo mode:", {
-          converted: !!session.user?.user_metadata?.converted,
-          provider: session.user?.app_metadata?.provider,
-          hasEmail: !!session.user?.email,
-          metadata: session.user?.user_metadata,
-        });
+        // Get the initial session
+        const { data: { session: initialSession } } = await supabase.auth.getSession();
+        setSession(initialSession);
         
-        if (!session.user?.user_metadata?.converted && 
-            (session.user?.app_metadata?.provider === 'anonymous' || 
-             session.user?.aud === 'authenticated' && !session.user.email)) {
-          console.log("Detected anonymous user session, setting demo mode");
-          setIsDemo(true);
-        } else if (session.user?.user_metadata?.converted) {
-          console.log("User has been converted, not setting demo mode");
-          setIsDemo(false);
-        }
-        
-        // Register with our API
-        try {
-          await registerUserWithApi(session.user);
-        } catch (err) {
-          console.error("Failed to register user with API during initial session:", err);
-          // Continue anyway - don't block the user experience
-        }
-      } else {
-        setUser(null);
-      }
-      
-      setLoading(false);
-    });
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        setSession(session);
-        
-        if (session?.user) {
-          setUser(session.user);
+        if (initialSession?.user) {
+          setUser(initialSession.user);
           
-          // Check if this is an anonymous user session
-          // Do not set isDemo if we've marked this user as converted
-          console.log("Auth state change - checking if user is in demo mode:", {
-            converted: !!session.user?.user_metadata?.converted,
-            provider: session.user?.app_metadata?.provider,
-            hasEmail: !!session.user?.email,
-            metadata: session.user?.user_metadata,
-          });
-          
-          if (!session.user?.user_metadata?.converted && 
-              (session.user?.app_metadata?.provider === 'anonymous' || 
-               session.user?.aud === 'authenticated' && !session.user.email)) {
-            console.log("Detected anonymous user session on auth state change, setting demo mode");
-            setIsDemo(true);
-          } else if (session.user?.user_metadata?.converted) {
-            console.log("Auth state change - User has been converted, not setting demo mode");
-            setIsDemo(false);
-          }
-          
-          // Register with our API on sign in or sign up
-          try {
-            await registerUserWithApi(session.user);
-          } catch (err) {
-            console.error("Failed to register user with API on auth change:", err);
-            // Continue anyway
-          }
-        } else {
-          setUser(null);
-          console.log("No authenticated user detected, clearing query cache");
-          // Clear the query cache when no user is authenticated
-          queryClient.clear();
+          // Check if this is a demo user
+          const isAnonymous = initialSession.user.app_metadata.provider === 'anonymous';
+          const isConverted = initialSession.user.user_metadata.converted === true;
+          setIsDemo(isAnonymous && !isConverted);
         }
-        
+      } catch (error) {
+        console.error('Error getting initial session:', error);
+        setError('Failed to initialize authentication');
+      } finally {
         setLoading(false);
+      }
+    }
+
+    // Set up auth change listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+        setLoading(false);
+        
+        // Handle demo detection on auth state change
+        if (session?.user) {
+          const isAnonymous = session.user.app_metadata.provider === 'anonymous';
+          const isConverted = session.user.user_metadata.converted === true;
+          setIsDemo(isAnonymous && !isConverted);
+          
+          // If this is a new user, register them with our API
+          if (event === 'SIGNED_IN') {
+            try {
+              await registerUserWithApi(session.user);
+            } catch (error) {
+              console.error('Error during API registration:', error);
+              // Don't treat this as a fatal error, user might already be registered
+            }
+          }
+        }
       }
     );
 
-    // Cleanup on unmount
-    return () => subscription.unsubscribe();
+    // Get the initial session
+    getInitialSession();
+
+    // Clean up the subscription on unmount
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
-  // Sign in with email and password
+  // Sign in function
   const signIn = async (email: string, password: string) => {
     try {
-      console.log("Auth context: Starting sign in process");
       setLoading(true);
       setError(null);
       
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
-        password,
+        password
       });
-      
-      console.log("Auth response:", { data, error });
-      
+
       if (error) {
-        console.error("Auth error:", error.message);
-        setError(error.message);
-        return Promise.reject(error);
-      } else if (data?.user && data?.session) {
-        console.log("Sign in successful, updating user context");
-        // Immediately update user and session on successful login
-        setSession(data.session);
-        setUser(data.user);
-        return Promise.resolve();
-      } else {
-        console.error("No user or session in response");
-        setError('Failed to sign in: No user data received');
-        return Promise.reject(new Error('No user data received'));
+        throw error;
       }
-    } catch (error) {
-      console.error('Unexpected sign in error:', error);
-      setError('An unexpected error occurred');
-      return Promise.reject(error);
+
+      // Success message
+      toast({
+        title: "Signed in successfully",
+        description: "Welcome back!",
+      });
+    } catch (error: any) {
+      console.error('Sign in error:', error);
+      setError(error.message || 'Failed to sign in');
+      
+      toast({
+        title: "Sign in failed",
+        description: error.message || 'Please try again',
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  // Sign up with email and password
+  // Sign up function
   const signUp = async (email: string, password: string) => {
     try {
       setLoading(true);
       setError(null);
-      
+
       const { data, error } = await supabase.auth.signUp({
         email,
-        password,
+        password
       });
-      
+
       if (error) {
-        setError(error.message);
-      } else if (data?.user) {
-        if (data.user.identities?.length === 0) {
-          setError('This email is already registered. Please try logging in instead.');
-        } else if (data.session) {
-          // Auto-login if no email confirmation required
-          setSession(data.session);
-          setUser(data.user);
-        } else {
-          // Need email verification
-          setError('Please check your email for the confirmation link');
-        }
+        throw error;
       }
-    } catch (error) {
-      setError('An unexpected error occurred');
+
+      // Success message
+      toast({
+        title: "Account created successfully",
+        description: "Check your email to confirm your account.",
+      });
+    } catch (error: any) {
       console.error('Sign up error:', error);
+      setError(error.message || 'Failed to sign up');
+      
+      toast({
+        title: "Sign up failed",
+        description: error.message || 'Please try again',
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  // Sign out
+  // Sign out function
   const signOut = async () => {
     try {
-      console.log("Auth context: Starting sign out process");
       setLoading(true);
       setError(null);
-      
-      // Reset query cache to ensure projects from previous user are not displayed
-      queryClient.clear();
-      
-      // Special handling for demo users
-      if (isDemo) {
-        console.log("Demo session detected, clearing demo state");
-        setIsDemo(false);
-        setSession(null);
-        setUser(null);
-        setLoading(false);
-        return;
-      }
       
       const { error } = await supabase.auth.signOut();
       
       if (error) {
-        console.error("Sign out error:", error.message);
-        setError(error.message);
-      } else {
-        console.log("Sign out successful, clearing user context");
-        // Explicitly clear the user and session state
-        setSession(null);
-        setUser(null);
-      }
-    } catch (error) {
-      console.error('Unexpected sign out error:', error);
-      setError('An unexpected error occurred');
-    } finally {
-      setLoading(false);
-    }
-  };
-  
-  // Start a demo session using Supabase anonymous authentication
-  const startDemoSession = async () => {
-    try {
-      console.log("Starting demo session with Supabase anonymous auth");
-      setLoading(true);
-      setError(null);
-      
-      // Check if we already have an anonymous session to prevent duplicates
-      if (session?.user?.app_metadata?.provider === 'anonymous') {
-        console.log("Already have an anonymous session, reusing it");
-        setIsDemo(true);
-        setLoading(false);
-        return;
-      }
-      
-      // Use a retry mechanism to handle rate limits
-      let retryCount = 0;
-      const maxRetries = 3;
-      let data, error;
-      
-      while (retryCount < maxRetries) {
-        try {
-          // Sign in anonymously with Supabase
-          const result = await supabase.auth.signInAnonymously();
-          data = result.data;
-          error = result.error;
-          
-          // Break if successful or if error is not rate limiting
-          if (!error || error.status !== 429) break;
-          
-          // Wait before retrying (exponential backoff)
-          const waitTime = Math.pow(2, retryCount) * 1000;
-          console.log(`Rate limited, retrying in ${waitTime}ms...`);
-          await new Promise(resolve => setTimeout(resolve, waitTime));
-          retryCount++;
-        } catch (e) {
-          console.error("Error during anonymous auth:", e);
-          error = e;
-          break;
-        }
-      }
-      
-      if (error) {
-        console.error("Anonymous auth error:", error instanceof Error ? error.message : JSON.stringify(error));
         throw error;
       }
       
-      if (!data?.user || !data?.session) {
-        throw new Error('Failed to create anonymous session');
-      }
+      // Clear any local state
+      setSession(null);
+      setUser(null);
+      setIsDemo(false);
       
-      console.log("Anonymous auth successful:", data.user.id);
+      // Success message
+      toast({
+        title: "Signed out successfully",
+        description: "You have been signed out.",
+      });
+    } catch (error: any) {
+      console.error('Sign out error:', error);
+      setError(error.message || 'Failed to sign out');
       
-      // Ensure client side state is set first to prevent race conditions
-      setUser(data.user);
-      setSession(data.session);
-      setIsDemo(true);
-      
-      // Register the anonymous user with our API
-      try {
-        const response = await fetch('/api/register-anonymous', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${data.session.access_token}`
-          },
-          body: JSON.stringify({
-            authId: data.user.id,
-          }),
-        });
-        
-        if (!response.ok) {
-          const errorData = await response.json();
-          console.error("Error registering anonymous user:", errorData);
-          // We continue anyway since auth is already done
-        } else {
-          const apiUser = await response.json();
-          console.log("Anonymous user registered with API:", apiUser);
-        }
-      } catch (apiError) {
-        console.error("Error registering with API:", apiError);
-        // Continue anyway since the auth is done
-      }
-      
-      console.log("Demo session started, redirecting to dashboard");
-      
-    } catch (error) {
-      console.error('Error starting demo session:', error);
-      setError(error instanceof Error ? error.message : 'Failed to start demo session');
+      toast({
+        title: "Sign out failed",
+        description: error.message || 'Please try again',
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  // Save a demo account by creating a regular account
-  const saveDemoAccount = async (email: string) => {
+  // Start a demo session with anonymous authentication
+  const startDemoSession = async () => {
     try {
-      console.log("Saving demo work by creating regular account with email:", email);
       setLoading(true);
       setError(null);
       
-      if (!user || !session) {
+      // Sign in anonymously via our API
+      const response = await fetch('/api/register-anonymous', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to start demo session');
+      }
+      
+      const { authId, token } = await response.json();
+      
+      if (!authId || !token) {
+        throw new Error('Invalid response from server for demo session');
+      }
+      
+      // Sign in with the custom token
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: `demo-${authId}@example.com`,
+        password: token
+      });
+      
+      if (error) {
+        throw error;
+      }
+      
+      // Set demo flag
+      setIsDemo(true);
+      
+      // Success message
+      toast({
+        title: "Demo session started",
+        description: "You can now explore the platform. Save your work to create an account.",
+      });
+    } catch (error: any) {
+      console.error('Demo session error:', error);
+      setError(error.message || 'Failed to start demo session');
+      
+      toast({
+        title: "Failed to start demo",
+        description: error.message || 'Please try again',
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Save a demo account with email (step 1 of 2 in conversion)
+  const saveDemoAccount = async (email: string) => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      if (!session?.access_token || !user?.id) {
         throw new Error('No active session');
       }
       
-      // Call the API to convert the demo account
+      // Call our API to save the demo account
       const response = await fetch('/api/save-demo-account', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.access_token}`,
-          'x-auth-id': user.id,
+          'x-auth-id': user.id
         },
-        body: JSON.stringify({
-          email,
-        }),
+        body: JSON.stringify({ email })
       });
       
       if (!response.ok) {
         const errorData = await response.json();
-        // For better error handling, throw the entire error object as a string
-        throw new Error(JSON.stringify(errorData));
+        throw new Error(errorData.error || 'Failed to save demo account');
       }
       
-      const savedUser = await response.json();
-      console.log("Demo work saved to regular account successfully:", savedUser);
+      // Get the response data
+      const updatedUser = await response.json();
       
-      // Turn off demo mode in local state
+      // Update our state to reflect that this is no longer a demo user
       setIsDemo(false);
       
-      // We are NOT updating the Supabase auth email anymore, as it requires email verification
-      // and disrupts the user experience. The email is saved in our database for future reference,
-      // but we'll keep using the anonymous auth session for the current user session.
-      
-      // Let the user know their work is saved and provide login instructions for the future
-      console.log("Work saved successfully. User can continue to use the app with current session.");
-      
-      // Create a modified user object with isDemo=false to prevent auto-detection as demo
-      if (user) {
-        try {
-          // Update Supabase user metadata to mark as converted
-          const { data: updatedUserData, error: updateError } = await supabase.auth.updateUser({
-            data: { 
-              converted: true,
-              email: email,
-            }
-          });
-          
-          if (updateError) {
-            console.error("Failed to update user metadata:", updateError);
-          } else if (updatedUserData?.user) {
-            console.log("Successfully updated user metadata:", updatedUserData.user);
-            // Set the updated user in our state
-            setUser(updatedUserData.user);
-          } else {
-            // Fallback to manual update if Supabase update fails
-            console.log("No user returned from metadata update, using local update");
-            const updatedUser = {
-              ...user,
-              // Add a custom metadata flag to mark this as a converted user
-              user_metadata: {
-                ...user.user_metadata,
-                converted: true,
-                email: email,
-              }
-            };
-            setUser(updatedUser);
-          }
-        } catch (updateError) {
-          console.error("Error updating user metadata:", updateError);
-          // Fallback to manual update
-          const updatedUser = {
-            ...user,
-            user_metadata: {
-              ...user.user_metadata,
-              converted: true,
-              email: email,
-            }
-          };
-          setUser(updatedUser);
+      // Update the user metadata on the Supabase side
+      await supabase.auth.updateUser({
+        data: { 
+          email,
+          converted: true
         }
-      }
+      });
       
-      return savedUser;
-    } catch (error) {
-      console.error('Error saving demo account:', error);
-      setError(error instanceof Error ? error.message : 'Failed to save demo account');
+      // Flag in sessionStorage that we need to prompt for password
+      sessionStorage.setItem('pendingPasswordSetup', 'true');
+      sessionStorage.setItem('savedEmail', email);
+      
+      // Success message
+      toast({
+        title: "Account saved successfully",
+        description: "Your work has been saved. Set a password to secure your account.",
+      });
+      
+      return updatedUser;
+    } catch (error: any) {
+      console.error('Save demo account error:', error);
+      setError(error.message || 'Failed to save account');
+      
+      toast({
+        title: "Failed to save account",
+        description: error.message || 'Please try again',
+        variant: "destructive",
+      });
       throw error;
     } finally {
       setLoading(false);
     }
   };
   
-  // Set password for a converted demo account
-  const setPassword = async (email: string, password: string) => {
+  // Set password for a previously saved demo account (step 2 of 2 in conversion)
+  const setPassword = async (password: string) => {
     try {
-      console.log("Setting password for converted account:", email);
       setLoading(true);
       setError(null);
       
-      if (!user || !session) {
+      if (!session?.access_token || !user?.id) {
         throw new Error('No active session');
       }
       
-      // Call the API to set password for the converted account
+      // Call our API to set the password
       const response = await fetch('/api/set-account-password', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${session.access_token}`,
-          'x-auth-id': user.id,
+          'x-auth-id': user.id
         },
-        body: JSON.stringify({
-          email,
-          password,
-        }),
+        body: JSON.stringify({ password })
       });
       
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(JSON.stringify(errorData));
+        throw new Error(errorData.error || 'Failed to set password');
       }
       
-      const updatedUser = await response.json();
-      console.log("Password set successfully for account:", updatedUser);
+      // Get the response data
+      const result = await response.json();
       
-      // Update the user metadata to include password status
-      try {
-        // Update Supabase user metadata to mark password as set
-        const { data: updatedUserData, error: updateError } = await supabase.auth.updateUser({
-          data: { 
-            passwordSet: true,
-          }
-        });
-        
-        if (updateError) {
-          console.error("Failed to update user metadata:", updateError);
-        } else if (updatedUserData?.user) {
-          console.log("Successfully updated user metadata:", updatedUserData.user);
-          // Set the updated user in our state
-          setUser(updatedUserData.user);
-        }
-      } catch (updateError) {
-        console.error("Error updating user metadata:", updateError);
-      }
+      // Clear the pending password setup flag
+      sessionStorage.removeItem('pendingPasswordSetup');
       
-      return updatedUser;
-    } catch (error) {
-      console.error('Error setting password:', error);
-      setError(error instanceof Error ? error.message : 'Failed to set password');
+      // Success message
+      toast({
+        title: "Password set successfully",
+        description: "Your account is now secure. You can log in with your email and password anytime.",
+      });
+      
+      return result;
+    } catch (error: any) {
+      console.error('Set password error:', error);
+      setError(error.message || 'Failed to set password');
+      
+      toast({
+        title: "Failed to set password",
+        description: error.message || 'Please try again',
+        variant: "destructive",
+      });
       throw error;
     } finally {
       setLoading(false);
     }
   };
-  
-  // Provide the auth context value
+
+  // Context value
   const value = {
     session,
     user,
@@ -537,8 +425,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setPassword,
     loading,
     error,
-    isDemo,
+    isDemo
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  // Provide the context to children
+  return (
+    <AuthContext.Provider value={value}>
+      {children}
+    </AuthContext.Provider>
+  );
 }
