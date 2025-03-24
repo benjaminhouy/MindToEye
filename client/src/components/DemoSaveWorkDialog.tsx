@@ -4,7 +4,6 @@ import { useToast } from '@/hooks/use-toast';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { SetPasswordDialog } from '@/components/SetPasswordDialog';
 
 import {
   Dialog,
@@ -39,8 +38,6 @@ export function DemoSaveWorkDialog({ children }: DemoSaveWorkDialogProps) {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showPasswordDialog, setShowPasswordDialog] = useState(false);
-  const [savedEmail, setSavedEmail] = useState('');
 
   // Initialize form
   const form = useForm<AccountFormValues>({
@@ -70,16 +67,14 @@ export function DemoSaveWorkDialog({ children }: DemoSaveWorkDialogProps) {
         variant: 'default',
       });
       
-      // Save email for password dialog
-      setSavedEmail(values.email);
-      
-      // Close current dialog and open password dialog
+      // Close current dialog
       setOpen(false);
       
-      // Small delay to allow the first dialog to close
-      setTimeout(() => {
-        setShowPasswordDialog(true);
-      }, 500);
+      // Store in session storage that we need to show the password dialog after reload
+      sessionStorage.setItem('pendingPasswordSetup', values.email);
+      
+      // Refresh the page to load the updated user state
+      window.location.reload();
     } catch (error) {
       console.error('Error creating account:', error);
       
@@ -123,74 +118,58 @@ export function DemoSaveWorkDialog({ children }: DemoSaveWorkDialogProps) {
   }
 
   return (
-    <>
-      {/* Email collection dialog */}
-      <Dialog open={open} onOpenChange={setOpen}>
-        <DialogTrigger asChild>{children}</DialogTrigger>
-        <DialogContent className="sm:max-w-[425px]">
-          <form onSubmit={form.handleSubmit(onSubmit)}>
-            <DialogHeader>
-              <DialogTitle>Save Your Work</DialogTitle>
-              <DialogDescription>
-                <span className="block mb-2">
-                  <strong>Don't lose your creative work!</strong> Demo accounts have limited storage time.
-                </span>
-                <span className="block">
-                  Save your work by providing an email address. Your current session will remain active,
-                  and all your projects will be saved.
-                </span>
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="email">Email address</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="you@example.com"
-                  required
-                  {...form.register('email', { required: 'Email is required' })}
-                />
-                {form.formState.errors.email && (
-                  <p className="text-sm text-destructive">{form.formState.errors.email.message}</p>
-                )}
-              </div>
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>{children}</DialogTrigger>
+      <DialogContent className="sm:max-w-[425px]">
+        <form onSubmit={form.handleSubmit(onSubmit)}>
+          <DialogHeader>
+            <DialogTitle>Save Your Work</DialogTitle>
+            <DialogDescription>
+              <span className="block mb-2">
+                <strong>Don't lose your creative work!</strong> Demo accounts have limited storage time.
+              </span>
+              <span className="block">
+                Save your work by providing an email address. Your current session will remain active,
+                and all your projects will be saved.
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="email">Email address</Label>
+              <Input
+                id="email"
+                type="email"
+                placeholder="you@example.com"
+                required
+                {...form.register('email', { required: 'Email is required' })}
+              />
+              {form.formState.errors.email && (
+                <p className="text-sm text-destructive">{form.formState.errors.email.message}</p>
+              )}
             </div>
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setOpen(false)}
-                disabled={isSubmitting}
-              >
-                Cancel
-              </Button>
-              <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving Your Work...
-                  </>
-                ) : (
-                  'Save Your Work'
-                )}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Password setting dialog (optional second phase) */}
-      <SetPasswordDialog 
-        open={showPasswordDialog} 
-        onOpenChange={(open) => {
-          setShowPasswordDialog(open);
-          if (!open) {
-            // Refresh page when closing the password dialog
-            window.location.reload();
-          }
-        }}
-        email={savedEmail}
-      />
-    </>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setOpen(false)}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving Your Work...
+                </>
+              ) : (
+                'Save Your Work'
+              )}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }

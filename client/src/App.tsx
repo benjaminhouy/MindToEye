@@ -11,10 +11,14 @@ import AuthPage from "@/pages/Auth";
 import UserProfile from "@/pages/UserProfile";
 import { AuthProvider } from "@/lib/auth-context";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { PendingPasswordSetup } from "@/components/PendingPasswordSetup";
 
 function Router() {
   return (
     <div className="min-h-screen flex flex-col">
+      {/* Check for pending password setup regardless of route */}
+      <PendingPasswordSetup />
+      
       <Switch>
         <Route path="/auth" component={AuthPage} />
         <Route path="/">
