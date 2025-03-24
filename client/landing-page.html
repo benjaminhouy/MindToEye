@@ -81,12 +81,28 @@
                     </div>
                 </div>
                 <div class="md:hidden">
-                    <button class="text-gray-500 hover:text-indigo-600 focus:outline-none">
+                    <button id="mobile-menu-button" class="text-gray-500 hover:text-indigo-600 focus:outline-none">
                         <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                 d="M4 6h16M4 12h16M4 18h16"></path>
                         </svg>
                     </button>
+                </div>
+                
+                <!-- Mobile menu dropdown (hidden by default) -->
+                <div id="mobile-menu" class="md:hidden hidden absolute top-16 left-0 right-0 p-4 bg-white shadow-xl z-50">
+                    <div class="flex flex-col space-y-3">
+                        <a class="text-gray-600 hover:text-indigo-600 font-medium py-2" href="#features">Features</a>
+                        <a class="text-gray-600 hover:text-indigo-600 font-medium py-2" href="#how-it-works">How It Works</a>
+                        <a class="text-gray-600 hover:text-indigo-600 font-medium py-2" href="#testimonials">Testimonials</a>
+                        <a class="text-gray-600 hover:text-indigo-600 font-medium py-2" href="#pricing">Pricing</a>
+                        <div class="flex gap-2 mt-2">
+                            <a class="bg-indigo-600 text-white py-2 px-4 rounded-md font-medium hover:bg-indigo-700 transition-colors shadow-md"
+                                href="/auth?mode=login">Login</a>
+                            <a class="bg-indigo-700 text-white py-2 px-4 rounded-md font-medium hover:bg-indigo-800 transition-colors shadow-md"
+                                href="/auth?mode=signup">Sign Up</a>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -693,15 +709,30 @@
 
     <script>
         // Mobile menu toggle
-        document.addEventListener('DOMContentLoaded', function () {
-            const mobileMenuButton = document.querySelector('.mobile-menu-button');
-            if (mobileMenuButton) {
-                mobileMenuButton.addEventListener('click', function () {
-                    // Mobile menu toggle implementation would go here
-                    alert('Mobile menu functionality would be implemented here');
+        document.addEventListener('DOMContentLoaded', function() {
+            const mobileMenuButton = document.getElementById('mobile-menu-button');
+            const mobileMenu = document.getElementById('mobile-menu');
+            
+            if (mobileMenuButton && mobileMenu) {
+                mobileMenuButton.addEventListener('click', function() {
+                    // Toggle the mobile menu visibility
+                    if (mobileMenu.classList.contains('hidden')) {
+                        mobileMenu.classList.remove('hidden');
+                    } else {
+                        mobileMenu.classList.add('hidden');
+                    }
+                });
+                
+                // Close mobile menu when clicking on a link
+                const mobileMenuLinks = mobileMenu.querySelectorAll('a');
+                mobileMenuLinks.forEach(link => {
+                    link.addEventListener('click', function() {
+                        mobileMenu.classList.add('hidden');
+                    });
                 });
             }
         });
     </script>
+
 </body>
 </html>
