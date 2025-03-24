@@ -627,8 +627,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Route to upgrade a demo account to a regular account
-  app.post("/api/upgrade-demo-account", async (req: Request, res: Response) => {
+  // Route to save a demo account's work to a regular account
+  app.post("/api/save-demo-account", async (req: Request, res: Response) => {
     try {
       // Get the authorization token and auth ID
       const authHeader = req.headers.authorization;
@@ -642,7 +642,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { email } = req.body;
       
       if (!email) {
-        return res.status(400).json({ error: "Email is required to upgrade account" });
+        return res.status(400).json({ error: "Email is required to save your work" });
       }
       
       // Find the user by authId
@@ -668,7 +668,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Check if the user is actually a demo user
       if (!user.isDemo) {
-        return res.status(400).json({ error: "Only demo accounts can be upgraded" });
+        return res.status(400).json({ error: "Only demo accounts can be saved to a permanent account" });
       }
       
       // Update the user to set isDemo to false and update the username/email
@@ -681,13 +681,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(500).json({ error: "Failed to update user" });
       }
       
-      console.log(`Demo user upgraded: ID=${updatedUser.id}, Email=${email}`);
+      console.log(`Demo user work saved: ID=${updatedUser.id}, Email=${email}`);
       
       // Return the updated user
       res.status(200).json(updatedUser);
     } catch (error) {
-      console.error("Error upgrading demo account:", error);
-      res.status(500).json({ error: "Failed to upgrade demo account" });
+      console.error("Error saving demo account:", error);
+      res.status(500).json({ error: "Failed to save demo account" });
     }
   });
 

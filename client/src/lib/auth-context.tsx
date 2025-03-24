@@ -294,7 +294,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       
       // Call the API to convert the demo account
-      const response = await fetch('/api/upgrade-demo-account', {
+      const response = await fetch('/api/save-demo-account', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
