@@ -47,11 +47,6 @@ export function DemoUpgradeDialog({ children }: DemoUpgradeDialogProps) {
     },
   });
 
-  // Only show the upgrade dialog if the user is in demo mode
-  if (!isDemo) {
-    return null;
-  }
-
   const onSubmit = async (values: UpgradeFormValues) => {
     try {
       setIsSubmitting(true);
@@ -77,6 +72,11 @@ export function DemoUpgradeDialog({ children }: DemoUpgradeDialogProps) {
       setIsSubmitting(false);
     }
   };
+
+  // Only render the dialog when in demo mode
+  if (!isDemo) {
+    return null;
+  }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>

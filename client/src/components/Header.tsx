@@ -241,15 +241,15 @@ const Header = () => {
               )}
             </div>
 
-            {/* Show the upgrade button for demo users */}
-            {isDemo ? (
-              <DemoUpgradeDialog>
-                <Button size="sm" className="ml-4" variant="secondary">
-                  <ZapIcon className="-ml-0.5 mr-2 h-4 w-4" />
-                  Upgrade Account
-                </Button>
-              </DemoUpgradeDialog>
-            ) : (
+            {/* Always render both components, but DemoUpgradeDialog will self-filter */}
+            <DemoUpgradeDialog>
+              <Button size="sm" className="ml-4" variant="secondary">
+                <ZapIcon className="-ml-0.5 mr-2 h-4 w-4" />
+                Upgrade Account
+              </Button>
+            </DemoUpgradeDialog>
+            
+            {!isDemo && (
               <Link href="/projects/new">
                 <Button size="sm" className="ml-4">
                   <PlusIcon className="-ml-0.5 mr-2 h-4 w-4" />
