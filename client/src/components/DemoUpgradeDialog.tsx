@@ -84,15 +84,15 @@ export function DemoUpgradeDialog({ children }: DemoUpgradeDialogProps) {
       <DialogContent className="sm:max-w-[425px]">
         <form onSubmit={form.handleSubmit(onSubmit)}>
           <DialogHeader>
-            <DialogTitle>Save Your Work by Upgrading</DialogTitle>
+            <DialogTitle>Save Your Work</DialogTitle>
             <DialogDescription>
-              <p className="mb-2">
+              <span className="block mb-2">
                 <strong>Don't lose your creative work!</strong> Demo accounts have limited storage time.
-              </p>
-              <p>
-                Upgrade to a permanent account to save all your projects and concepts forever.
+              </span>
+              <span className="block">
+                Create a free account to save all your projects and concepts forever.
                 Everything you've created will be preserved automatically.
-              </p>
+              </span>
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -121,10 +121,10 @@ export function DemoUpgradeDialog({ children }: DemoUpgradeDialogProps) {
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Upgrading...
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Creating Account...
                 </>
               ) : (
-                'Upgrade Account'
+                'Create Free Account'
               )}
             </Button>
           </DialogFooter>

@@ -11,7 +11,7 @@ type AuthContextType = {
   signUp: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
   startDemoSession: () => Promise<void>;
-  upgradeDemoAccount: (email: string) => Promise<void>;
+  saveDemoAccount: (email: string) => Promise<void>;
   loading: boolean;
   error: string | null;
   isDemo: boolean;
@@ -282,10 +282,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Upgrade a demo account to a regular account
-  const upgradeDemoAccount = async (email: string) => {
+  // Save a demo account by creating a regular account
+  const saveDemoAccount = async (email: string) => {
     try {
-      console.log("Upgrading demo account to regular account with email:", email);
+      console.log("Saving demo work by creating regular account with email:", email);
       setLoading(true);
       setError(null);
       
@@ -293,7 +293,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         throw new Error('No active session');
       }
       
-      // Call the API to upgrade the demo account
+      // Call the API to convert the demo account
       const response = await fetch('/api/upgrade-demo-account', {
         method: 'POST',
         headers: {
@@ -308,11 +308,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to upgrade demo account');
+        throw new Error(errorData.error || 'Failed to save demo account');
       }
       
-      const upgradedUser = await response.json();
-      console.log("Demo account upgraded successfully:", upgradedUser);
+      const savedUser = await response.json();
+      console.log("Demo work saved to regular account successfully:", savedUser);
       
       // Turn off demo mode
       setIsDemo(false);
