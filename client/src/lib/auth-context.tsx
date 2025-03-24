@@ -12,6 +12,7 @@ type AuthContextType = {
   signOut: () => Promise<void>;
   startDemoSession: () => Promise<void>;
   saveDemoAccount: (email: string) => Promise<void>;
+  setPassword: (email: string, password: string) => Promise<void>;
   loading: boolean;
   error: string | null;
   isDemo: boolean;
@@ -461,6 +462,69 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
   
+  // Set password for a converted demo account
+  const setPassword = async (email: string, password: string) => {
+    try {
+      console.log("Setting password for converted account:", email);
+      setLoading(true);
+      setError(null);
+      
+      if (!user || !session) {
+        throw new Error('No active session');
+      }
+      
+      // Call the API to set password for the converted account
+      const response = await fetch('/api/set-account-password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+          'x-auth-id': user.id,
+        },
+        body: JSON.stringify({
+          email,
+          password,
+        }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(JSON.stringify(errorData));
+      }
+      
+      const updatedUser = await response.json();
+      console.log("Password set successfully for account:", updatedUser);
+      
+      // Update the user metadata to include password status
+      try {
+        // Update Supabase user metadata to mark password as set
+        const { data: updatedUserData, error: updateError } = await supabase.auth.updateUser({
+          data: { 
+            passwordSet: true,
+          }
+        });
+        
+        if (updateError) {
+          console.error("Failed to update user metadata:", updateError);
+        } else if (updatedUserData?.user) {
+          console.log("Successfully updated user metadata:", updatedUserData.user);
+          // Set the updated user in our state
+          setUser(updatedUserData.user);
+        }
+      } catch (updateError) {
+        console.error("Error updating user metadata:", updateError);
+      }
+      
+      return updatedUser;
+    } catch (error) {
+      console.error('Error setting password:', error);
+      setError(error instanceof Error ? error.message : 'Failed to set password');
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+  
   // Provide the auth context value
   const value = {
     session,
@@ -470,6 +534,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signOut,
     startDemoSession,
     saveDemoAccount,
+    setPassword,
     loading,
     error,
     isDemo,
