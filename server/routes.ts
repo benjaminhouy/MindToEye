@@ -2663,34 +2663,87 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Get the password from the request body
-      const { password } = req.body;
+      const { password, email } = req.body;
       
       if (!password) {
         return res.status(400).json({ error: "Password is required" });
       }
       
-      // Find the user by authId
+      // Find the user by authId first
       let userId: number | undefined;
+      let user;
       
       if (authId) {
-        const user = await storage.getUserByAuthId(authId);
+        user = await storage.getUserByAuthId(authId);
         if (user) {
           userId = user.id;
         }
       }
       
-      if (!userId) {
+      // If user not found by authId and email is provided, try finding by email
+      if (!userId && email) {
+        user = await storage.getUserByUsername(email);
+        if (user) {
+          userId = user.id;
+        }
+      }
+      
+      if (!userId || !user) {
         return res.status(404).json({ error: "User not found" });
       }
       
-      // Get the user
-      const user = await storage.getUser(userId);
-      
-      if (!user) {
-        return res.status(404).json({ error: "User not found" });
+      // Try to update the password in Supabase Auth first
+      try {
+        // Import the Supabase admin module
+        const supabaseAdminModule = await import('./supabase-admin');
+        const { updateUser, supabaseAdmin } = supabaseAdminModule;
+        
+        // If we have authId, update password directly in Supabase Auth
+        if (authId) {
+          // Update the user's password in Supabase Auth
+          await updateUser(authId, { password });
+          
+          console.log(`Password updated in Supabase Auth for user ID=${authId}`);
+          
+          // Also update user metadata to mark as converted
+          if (supabaseAdmin) {
+            await supabaseAdmin.auth.admin.updateUserById(authId, {
+              user_metadata: {
+                converted: true,
+                converted_at: new Date().toISOString()
+              }
+            });
+          }
+          
+          console.log(`User metadata updated to mark as converted in Supabase Auth`);
+        } 
+        // If no authId but we have email, try to find user in Supabase by email
+        else if (email && supabaseAdmin) {
+          // List users to find by email (not ideal but works for small user bases)
+          const { data } = await supabaseAdmin.auth.admin.listUsers();
+          const supabaseUser = data.users.find(u => u.email === email);
+          
+          if (supabaseUser) {
+            // Update the user's password in Supabase Auth
+            await updateUser(supabaseUser.id, { password });
+            
+            // Also update authId in our database if it's missing
+            if (!user.authId) {
+              await storage.updateUser(userId, { authId: supabaseUser.id });
+              console.log(`Updated authId in database for user ${userId} to ${supabaseUser.id}`);
+            }
+            
+            console.log(`Password updated in Supabase Auth for user with email ${email}`);
+          } else {
+            console.log(`User with email ${email} not found in Supabase Auth`);
+          }
+        }
+      } catch (supabaseError) {
+        // Log error but continue with database update as fallback
+        console.error("Error updating password in Supabase Auth:", supabaseError);
       }
       
-      // Hash the password
+      // Still hash and store password in our database for backward compatibility
       const hashedPassword = await hashPassword(password);
       
       // Update the user account with the password and fully convert from demo
@@ -2733,7 +2786,72 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Email and password are required" });
       }
       
-      // First check if user exists in our database
+      // First try to authenticate with Supabase
+      try {
+        // Import the Supabase client
+        const { supabase } = await import('./storage-utils');
+        if (supabase) {
+          // Try to sign in with Supabase Auth
+          const { data, error } = await supabase.auth.signInWithPassword({
+            email,
+            password
+          });
+          
+          if (!error && data.user) {
+            // Successfully authenticated with Supabase
+            console.log(`User authenticated via Supabase Auth: ID=${data.user.id}, Email=${data.user.email}`);
+            
+            // Check if user exists in our database
+            let user = await storage.getUserByAuthId(data.user.id);
+            
+            // If user doesn't exist by authId, try by email
+            if (!user) {
+              user = await storage.getUserByUsername(email);
+              
+              // If found by email but authId doesn't match, update it
+              if (user && (!user.authId || user.authId !== data.user.id)) {
+                const updatedUser = await storage.updateUser(user.id, { authId: data.user.id });
+                if (updatedUser) {
+                  user = updatedUser;
+                  console.log(`Updated authId for user ${user.id} to ${data.user.id}`);
+                }
+              }
+            }
+            
+            // If still no user in our database, create one
+            if (!user) {
+              console.log(`User exists in Supabase but not in our database. Creating record for ${email}`);
+              user = await storage.createUser({
+                username: email,
+                password: 'auth-via-supabase', // Placeholder, not used for auth
+                authId: data.user.id,
+                isDemo: false
+              });
+            }
+            
+            // Return user and session data
+            return res.status(200).json({
+              success: true,
+              user: {
+                ...user,
+                password: undefined // Never return password to client
+              },
+              session: {
+                ...data.session,
+                user_id: user.id
+              }
+            });
+          }
+        }
+      } catch (supabaseError) {
+        console.error("Error authenticating with Supabase:", supabaseError);
+        // Continue to database authentication as fallback
+      }
+      
+      // Fallback to database authentication if Supabase auth fails
+      console.log(`Falling back to database authentication for ${email}`);
+      
+      // Check if user exists in our database
       const user = await storage.getUserByUsername(email);
       
       if (!user) {
@@ -2753,7 +2871,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(500).json({ error: "Account not properly configured" });
       }
       
-      console.log(`User authenticated via email/password: ID=${user.id}, Email=${user.username}, AuthID=${user.authId}`);
+      console.log(`User authenticated via database: ID=${user.id}, Email=${user.username}, AuthID=${user.authId}`);
       
       // Return the user data including authId needed for API requests
       res.status(200).json({

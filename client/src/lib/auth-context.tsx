@@ -248,22 +248,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(true);
       setError(null);
       
-      const { error } = await supabase.auth.signOut();
-      
-      if (error) {
-        throw error;
+      try {
+        // Try to sign out with Supabase
+        const { error } = await supabase.auth.signOut();
+        
+        if (error) {
+          // If it's an AuthSessionMissingError, we can ignore it and continue
+          if (error.name !== 'AuthSessionMissingError') {
+            console.warn('Non-critical sign out error:', error);
+          }
+        }
+      } catch (signOutError) {
+        // Log but don't rethrow - we want to clear local state regardless
+        console.warn('Error during Supabase sign out:', signOutError);
       }
       
-      // Clear any local state
+      // Always clear local state, even if the Supabase sign out fails
       setSession(null);
       setUser(null);
       setIsDemo(false);
+      
+      // Also clear any session storage items we've set
+      sessionStorage.removeItem('pendingPasswordSetup');
+      sessionStorage.removeItem('savedEmail');
       
       // Success message
       toast({
         title: "Signed out successfully",
         description: "You have been signed out.",
       });
+      
+      // Force reload to clear all app state
+      setTimeout(() => {
+        window.location.href = '/auth';
+      }, 500);
+      
     } catch (error: any) {
       console.error('Sign out error:', error);
       setError(error.message || 'Failed to sign out');
