@@ -2631,6 +2631,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
   });
+  
+  // Server-side authentication endpoint for converted demo accounts
+  app.post("/api/login-with-email-password", async (req: Request, res: Response) => {
+    try {
+      const { email, password } = req.body;
+      
+      if (!email || !password) {
+        return res.status(400).json({ error: "Email and password are required" });
+      }
+      
+      // First check if user exists in our database
+      const user = await storage.getUserByUsername(email);
+      
+      if (!user) {
+        return res.status(401).json({ error: "Invalid credentials" });
+      }
+      
+      // Check if the password matches
+      const passwordMatches = await comparePasswords(password, user.password);
+      
+      if (!passwordMatches) {
+        return res.status(401).json({ error: "Invalid credentials" });
+      }
+      
+      // If it's a converted demo account, we need to use the existing authId
+      // If no authId, we'd need to create one with Supabase, but this is a simplified version
+      if (!user.authId) {
+        return res.status(500).json({ error: "Account not properly configured" });
+      }
+      
+      console.log(`User authenticated via email/password: ID=${user.id}, Email=${user.username}, AuthID=${user.authId}`);
+      
+      // Return the user data including authId needed for API requests
+      res.status(200).json({
+        success: true,
+        user: {
+          ...user,
+          password: undefined // Never return password to client
+        },
+        session: {
+          // We're creating a simplified session here
+          // In a real implementation, you'd use JWT tokens
+          user_id: user.id,
+          auth_id: user.authId
+        }
+      });
+    } catch (error) {
+      console.error("Error during authentication:", error);
+      res.status(500).json({ error: "Authentication failed" });
+    }
+  });
 
   // Create HTTP server
   const httpServer = createServer(app);

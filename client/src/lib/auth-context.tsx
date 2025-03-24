@@ -138,6 +138,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(true);
       setError(null);
       
+      // First try our custom authentication endpoint for converted accounts
+      try {
+        const response = await fetch('/api/login-with-email-password', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ email, password })
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
+          
+          // Set user and session from our server response
+          setUser(result.user);
+          setSession({
+            access_token: `local-auth-${result.user.id}`, // Simplified token
+            refresh_token: '',
+            expires_in: 86400,
+            expires_at: new Date().getTime() + 86400 * 1000,
+            user: result.user
+          });
+          
+          // Success message
+          toast({
+            title: "Signed in successfully",
+            description: "Welcome back!",
+          });
+          
+          // Successfully logged in with our custom endpoint
+          return;
+        }
+        
+        // If response wasn't ok, continue to Supabase auth
+        console.log("Custom auth failed, falling back to Supabase:", await response.text());
+      } catch (err) {
+        // If our endpoint fails, continue to try Supabase auth
+        console.log("Error in custom auth, falling back to Supabase:", err);
+      }
+      
+      // Fall back to Supabase auth for regular accounts
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
