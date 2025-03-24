@@ -34,10 +34,17 @@ interface DemoSaveWorkDialogProps {
 }
 
 export function DemoSaveWorkDialog({ children }: DemoSaveWorkDialogProps) {
-  const { saveDemoAccount, isDemo } = useAuth();
+  const { user, saveDemoAccount, setPassword, isDemo } = useAuth();
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // Check if this is a saved account that needs password setup
+  const isPendingPasswordSetup = 
+    !isDemo && 
+    user?.user_metadata?.converted && 
+    typeof window !== 'undefined' && 
+    window.sessionStorage.getItem('pendingPasswordSetup') === 'true';
 
   // Initialize form
   const form = useForm<AccountFormValues>({
@@ -113,8 +120,58 @@ export function DemoSaveWorkDialog({ children }: DemoSaveWorkDialogProps) {
     }
   };
 
-  // Only render the dialog when in demo mode
-  if (!isDemo) {
+  // Create a separate schema for password form
+  const passwordSchema = z.object({
+    password: z
+      .string()
+      .min(8, 'Password must be at least 8 characters long')
+      .max(100, 'Password is too long'),
+  });
+
+  type PasswordFormValues = z.infer<typeof passwordSchema>;
+
+  // Initialize password form
+  const passwordForm = useForm<PasswordFormValues>({
+    resolver: zodResolver(passwordSchema),
+    defaultValues: {
+      password: '',
+    },
+  });
+
+  // Handle password submission for converted users
+  const onPasswordSubmit = async (values: PasswordFormValues) => {
+    try {
+      setIsSubmitting(true);
+      await setPassword(values.password);
+      
+      // Close the dialog
+      setOpen(false);
+      
+      // Clear the session storage flag
+      sessionStorage.removeItem('pendingPasswordSetup');
+      
+      toast({
+        title: 'Password set successfully!',
+        description: 'Your account is now secure. You can log in with your email and password anytime.',
+        variant: 'default',
+      });
+      
+      // Refresh the page to update the UI state
+      window.location.reload();
+    } catch (error) {
+      console.error('Error setting password:', error);
+      toast({
+        title: 'Failed to set password',
+        description: error instanceof Error ? error.message : 'An unexpected error occurred',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  // Don't render anything if neither in demo mode nor pending password setup
+  if (!isDemo && !isPendingPasswordSetup) {
     return null;
   }
 
@@ -122,54 +179,112 @@ export function DemoSaveWorkDialog({ children }: DemoSaveWorkDialogProps) {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="sm:max-w-[425px]">
-        <form onSubmit={form.handleSubmit(onSubmit)}>
-          <DialogHeader>
-            <DialogTitle>Save Your Work</DialogTitle>
-            <DialogDescription>
-              <span className="block mb-2">
-                <strong>Don't lose your creative work!</strong> Demo accounts have limited storage time.
-              </span>
-              <span className="block">
-                Save your work by providing an email address. Your current session will remain active,
-                and all your projects will be saved.
-              </span>
-            </DialogDescription>
-          </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
-              <Label htmlFor="email">Email address</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="you@example.com"
-                required
-                {...form.register('email', { required: 'Email is required' })}
-              />
-              {form.formState.errors.email && (
-                <p className="text-sm text-destructive">{form.formState.errors.email.message}</p>
-              )}
+        {isPendingPasswordSetup ? (
+          // Password setup form for converted users
+          <form onSubmit={passwordForm.handleSubmit(onPasswordSubmit)}>
+            <DialogHeader>
+              <DialogTitle>Set Your Password</DialogTitle>
+              <DialogDescription>
+                <span className="block mb-2">
+                  <strong>Secure your account!</strong> Set a password to protect your work.
+                </span>
+                <span className="block">
+                  Your account is already saved with email: <strong>{sessionStorage.getItem('savedEmail')}</strong>.
+                  Set a password to complete the account setup.
+                </span>
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="••••••••"
+                  required
+                  {...passwordForm.register('password', { required: 'Password is required' })}
+                />
+                {passwordForm.formState.errors.password && (
+                  <p className="text-sm text-destructive">{passwordForm.formState.errors.password.message}</p>
+                )}
+              </div>
             </div>
-          </div>
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setOpen(false)}
-              disabled={isSubmitting}
-            >
-              Cancel
-            </Button>
-            <Button type="submit" disabled={isSubmitting}>
-              {isSubmitting ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving Your Work...
-                </>
-              ) : (
-                'Save Your Work'
-              )}
-            </Button>
-          </DialogFooter>
-        </form>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  // Allow skipping password setup by removing the flag
+                  sessionStorage.removeItem('pendingPasswordSetup');
+                  setOpen(false);
+                  window.location.reload();
+                }}
+                disabled={isSubmitting}
+              >
+                Skip For Now
+              </Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Setting Password...
+                  </>
+                ) : (
+                  'Set Password'
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        ) : (
+          // Original email form for demo users
+          <form onSubmit={form.handleSubmit(onSubmit)}>
+            <DialogHeader>
+              <DialogTitle>Save Your Work</DialogTitle>
+              <DialogDescription>
+                <span className="block mb-2">
+                  <strong>Don't lose your creative work!</strong> Demo accounts have limited storage time.
+                </span>
+                <span className="block">
+                  Save your work by providing an email address. Your current session will remain active,
+                  and all your projects will be saved.
+                </span>
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="grid gap-2">
+                <Label htmlFor="email">Email address</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="you@example.com"
+                  required
+                  {...form.register('email', { required: 'Email is required' })}
+                />
+                {form.formState.errors.email && (
+                  <p className="text-sm text-destructive">{form.formState.errors.email.message}</p>
+                )}
+              </div>
+            </div>
+            <DialogFooter>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setOpen(false)}
+                disabled={isSubmitting}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving Your Work...
+                  </>
+                ) : (
+                  'Save Your Work'
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        )}
       </DialogContent>
     </Dialog>
   );

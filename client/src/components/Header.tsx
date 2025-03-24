@@ -11,7 +11,7 @@ const Header = () => {
   const [location] = useLocation();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const { user, signOut, isDemo } = useAuth();
+  const { user, session, signOut, isDemo } = useAuth();
   const { toast } = useToast();
 
   const handleSignOut = async () => {
@@ -195,10 +195,10 @@ const Header = () => {
                     <p className="text-sm">Signed in as</p>
                     <div className="flex items-center">
                       <p className="text-sm font-medium truncate">
-                        {/* Check for saved email first from user_metadata */}
+                        {/* Check for saved email first from user_metadata.email */}
                         {user?.user_metadata?.email || 
-                         /* Then check for sessionStorage saved email */
-                         (typeof window !== 'undefined' && window.sessionStorage.getItem('savedEmail')) || 
+                         /* Then check for user_metadata.converted flag with sessionStorage savedEmail */
+                         (user?.user_metadata?.converted && typeof window !== 'undefined' && window.sessionStorage.getItem('savedEmail')) || 
                          /* Then check regular email field */
                          user?.email || 
                          /* Fallback to anonymous label */
@@ -209,9 +209,14 @@ const Header = () => {
                           Demo
                         </span>
                       )}
-                      {!isDemo && user?.app_metadata?.provider === 'anonymous' && (
+                      {!isDemo && user?.user_metadata?.converted && (
                         <span className="ml-2 px-1.5 py-0.5 text-xs font-medium bg-green-100 text-green-800 rounded-full">
                           Saved
+                        </span>
+                      )}
+                      {!isDemo && !user?.user_metadata?.converted && user?.app_metadata?.provider === 'anonymous' && (
+                        <span className="ml-2 px-1.5 py-0.5 text-xs font-medium bg-blue-100 text-blue-800 rounded-full">
+                          Anonymous
                         </span>
                       )}
                     </div>
@@ -260,15 +265,28 @@ const Header = () => {
               )}
             </div>
 
-            {/* Always render both components, but DemoSaveWorkDialog will self-filter */}
-            <DemoSaveWorkDialog>
-              <Button size="sm" className="ml-4" variant="secondary">
-                <ZapIcon className="-ml-0.5 mr-2 h-4 w-4" />
-                Save Your Work
-              </Button>
-            </DemoSaveWorkDialog>
+            {/* For demo users */}
+            {isDemo && (
+              <DemoSaveWorkDialog>
+                <Button size="sm" className="ml-4" variant="secondary">
+                  <ZapIcon className="-ml-0.5 mr-2 h-4 w-4" />
+                  Save Your Work
+                </Button>
+              </DemoSaveWorkDialog>
+            )}
             
-            {!isDemo && (
+            {/* For anonymous users who have saved email but not set password yet */}
+            {!isDemo && user?.user_metadata?.converted && typeof window !== 'undefined' && window.sessionStorage.getItem('pendingPasswordSetup') && (
+              <DemoSaveWorkDialog>
+                <Button size="sm" className="ml-4" variant="secondary">
+                  <ZapIcon className="-ml-0.5 mr-2 h-4 w-4" />
+                  Set Password
+                </Button>
+              </DemoSaveWorkDialog>
+            )}
+            
+            {/* Show New Project button for non-demo users or fully converted users */}
+            {(!isDemo || (user?.user_metadata?.converted && !window.sessionStorage.getItem('pendingPasswordSetup'))) && (
               <Link href="/projects/new">
                 <Button size="sm" className="ml-4">
                   <PlusIcon className="-ml-0.5 mr-2 h-4 w-4" />
