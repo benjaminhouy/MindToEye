@@ -64,9 +64,7 @@ async function addIsDemoFieldToUsersTable() {
   }
 }
 
-// Run the migration when this script is executed directly
-if (require.main === module) {
-  addIsDemoFieldToUsersTable().catch(console.error);
-}
+// Run the migration immediately when this script is imported
+addIsDemoFieldToUsersTable().catch(console.error);
 
 export { addIsDemoFieldToUsersTable };
