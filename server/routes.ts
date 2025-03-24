@@ -2785,71 +2785,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`Logging out user with authId: ${authId}`);
       
-      // Define success flag to track if any backend logout was successful
-      let logoutSuccess = false;
+      // Track server-side logout success
+      let serverLogoutSuccess = false;
       
-      // If we have Supabase configured, try to invalidate the session there
+      // Only proceed with server-side logout if authId is present
       if (authId) {
         try {
           // Import the supabase admin module
           const { supabaseAdmin } = await import('./supabase-admin');
           
           if (supabaseAdmin) {
+            // Use the Supabase admin API to invalidate all sessions
             try {
-              // Method 1: Try using the admin API to sign out the user by ID
-              console.log("Attempting to sign out user with admin.signOut()");
+              // Following Supabase docs: https://supabase.com/docs/reference/javascript/auth-admin-signout
+              // This will invalidate all refresh tokens for this user
               const { error } = await supabaseAdmin.auth.admin.signOut(authId);
               
               if (error) {
                 console.warn("Error with admin.signOut:", error.message);
-                // Don't throw, try alternative methods
               } else {
-                console.log(`Successfully revoked all sessions for user ${authId} with admin.signOut`);
-                logoutSuccess = true;
+                console.log(`Successfully revoked all sessions for user ${authId}`);
+                serverLogoutSuccess = true;
               }
             } catch (signOutError) {
-              console.warn("Exception during admin.signOut:", signOutError);
-              // Continue to alternative methods
-            }
-            
-            // Try a simpler version of the auth admin api
-            if (!logoutSuccess) {
-              try {
-                console.log("Attempting to use admin API to invalidate sessions");
-                
-                // Using the more general admin.signOut method which requires no session IDs
-                // Note: The admin.signOut method doesn't support options in some versions
-                // Try to use it with the simplest form to maximize compatibility
-                const { error: generalSignOutError } = await supabaseAdmin.auth.admin.signOut(authId);
-                
-                if (generalSignOutError) {
-                  console.warn("Error with admin.signOut(global):", generalSignOutError.message);
-                } else {
-                  console.log("Successfully used admin API to invalidate sessions");
-                  logoutSuccess = true;
-                }
-              } catch (sessionsError) {
-                console.warn("Error using alternate admin API method:", sessionsError);
-              }
+              console.warn("Error during admin.signOut:", signOutError);
             }
           }
         } catch (error) {
           console.warn("Error during Supabase admin logout:", error);
-          // Continue anyway - we'll consider this a "soft logout"
         }
       }
       
-      // Return success response
+      // Return success response - we consider it a success even if server-side logout fails
+      // since the client-side logout will still happen
       return res.status(200).json({
         success: true,
-        adminLogoutSuccess: logoutSuccess,
-        message: "Successfully logged out"
+        serverLogoutSuccess,
+        message: "Logout request processed"
       });
     } catch (error) {
-      console.error("Error during logout:", error);
-      res.status(500).json({ 
-        success: false,
-        error: "Failed to log out"
+      console.error("Error processing logout request:", error);
+      // Even with an error, we return success to the client
+      // since client-side logout can proceed independently
+      res.status(200).json({ 
+        success: true,
+        serverLogoutSuccess: false,
+        message: "Logout processed with server-side warnings"
       });
     }
   });

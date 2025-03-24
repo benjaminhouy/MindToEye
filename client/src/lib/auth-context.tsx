@@ -242,68 +242,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Sign out function
+  // Sign out function - following Supabase best practices
   const signOut = async () => {
     try {
       setLoading(true);
       setError(null);
       
-      // Store auth ID before we clear the session
+      // Track the current auth ID for server-side logout
       const currentAuthId = user?.id;
       
-      // Immediately clear React state
-      setSession(null);
-      setUser(null);
-      setIsDemo(false);
-      
-      // Clear all storage - both localStorage and sessionStorage
-      console.log('Clearing all browser storage');
+      // Clear React Query cache to prevent stale data
       try {
-        // Set a flag that we just logged out for ProtectedRoute to detect
-        sessionStorage.setItem('justLoggedOut', 'true');
-        
-        // Clear session storage items
-        sessionStorage.removeItem('pendingPasswordSetup');
-        sessionStorage.removeItem('savedEmail');
-        sessionStorage.removeItem('supabase.auth.token');
-        
-        // Clear local storage items related to Supabase
-        localStorage.removeItem('supabase.auth.token');
-        
-        // Try to find and remove all supabase-related items from storage
-        const supabaseKeyPattern = /^supabase\./;
-        
-        // Clear from localStorage
-        for (let i = 0; i < localStorage.length; i++) {
-          const key = localStorage.key(i);
-          if (key && supabaseKeyPattern.test(key)) {
-            console.log(`Removing localStorage item: ${key}`);
-            localStorage.removeItem(key);
-            // Start over since removing items changes the indices
-            i = -1;
-          }
-        }
-        
-        // Clear from sessionStorage
-        for (let i = 0; i < sessionStorage.length; i++) {
-          const key = sessionStorage.key(i);
-          if (key && supabaseKeyPattern.test(key)) {
-            console.log(`Removing sessionStorage item: ${key}`);
-            sessionStorage.removeItem(key);
-            // Start over since removing items changes the indices
-            i = -1;
-          }
-        }
-      } catch (storageError) {
-        console.warn('Error clearing browser storage:', storageError);
-      }
-      
-      // Clear React Query cache
-      try {
-        // Get access to the query client
         const { queryClient } = await import('../lib/queryClient');
         if (queryClient) {
-          // Clear all queries from the cache to prevent stale data
           queryClient.clear();
           console.log('Query cache cleared');
         }
@@ -311,7 +262,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.warn('Could not clear query cache:', cacheError);
       }
       
-      // Use our API to revoke tokens on the server side
+      // Set a simple flag for ProtectedRoute to detect the logout
+      sessionStorage.setItem('justLoggedOut', 'true');
+      
+      // Clean up any app-specific items
+      sessionStorage.removeItem('pendingPasswordSetup');
+      sessionStorage.removeItem('savedEmail');
+      
+      // Call server-side logout to invalidate sessions
       if (currentAuthId) {
         try {
           await fetch('/api/logout', {
@@ -321,23 +279,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               'x-auth-id': currentAuthId
             }
           });
-          console.log('Server-side logout completed');
+          console.log('Server-side session invalidation completed');
         } catch (serverLogoutError) {
           console.warn('Error during server-side logout:', serverLogoutError);
         }
       }
       
-      // After server-side logout, also call Supabase client-side logout
-      try {
-        const { error } = await supabase.auth.signOut();
-        if (error) {
-          if (error.name !== 'AuthSessionMissingError') {
-            console.warn('Non-critical Supabase sign out error:', error);
-          }
-        }
-      } catch (signOutError) {
-        console.warn('Error during Supabase sign out:', signOutError);
+      // Use the standard Supabase signOut method - let it handle token clearing
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.warn('Supabase sign out warning:', error);
       }
+      
+      // Only after Supabase signOut completes successfully, update state
+      setSession(null);
+      setUser(null);
+      setIsDemo(false);
       
       // Success message
       toast({
@@ -345,13 +302,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         description: "You have been signed out.",
       });
       
-      // Force a full page reload rather than just a redirect to clear everything
-      console.log('Forcing page reload after logout');
-      // Setting location.href to /auth and then reloading ensures we end up at the auth page
+      // Use routing rather than direct page reload
       window.location.href = '/auth';
-      setTimeout(() => {
-        window.location.reload();
-      }, 100);
       
     } catch (error: any) {
       console.error('Sign out error:', error);
@@ -363,11 +315,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         variant: "destructive",
       });
       
-      // Even if there's an error, try to redirect to auth page with a full reload
+      // Even if there's an error, redirect to the auth page
       window.location.href = '/auth';
-      setTimeout(() => {
-        window.location.reload();
-      }, 100);
     } finally {
       setLoading(false);
     }
