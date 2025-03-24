@@ -10,8 +10,10 @@ type AuthContextType = {
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
+  startDemoSession: () => Promise<void>;
   loading: boolean;
   error: string | null;
+  isDemo: boolean;
 };
 
 // Create the context with a default value
@@ -32,6 +34,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isDemo, setIsDemo] = useState<boolean>(false);
 
   // Register user with our API after Supabase auth
   const registerUserWithApi = async (authUser: User) => {
@@ -191,6 +194,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Reset query cache to ensure projects from previous user are not displayed
       queryClient.clear();
       
+      // Special handling for demo users
+      if (isDemo) {
+        console.log("Demo session detected, clearing demo state");
+        setIsDemo(false);
+        setSession(null);
+        setUser(null);
+        setLoading(false);
+        return;
+      }
+      
       const { error } = await supabase.auth.signOut();
       
       if (error) {
@@ -209,6 +222,58 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
     }
   };
+  
+  // Start a demo session without authentication
+  const startDemoSession = async () => {
+    try {
+      console.log("Starting demo session");
+      setLoading(true);
+      setError(null);
+      
+      // Call our demo user creation endpoint
+      const response = await fetch('/api/demo-user', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create demo user');
+      }
+      
+      const demoUser = await response.json();
+      console.log("Demo user created:", demoUser);
+      
+      // Create a fake user and session for the demo
+      const fakeUser = {
+        id: demoUser.authId,
+        email: demoUser.username,
+        app_metadata: { provider: 'demo' },
+        user_metadata: { is_demo: true },
+      } as unknown as User;
+      
+      // Set the demo user state
+      setIsDemo(true);
+      setUser(fakeUser);
+      
+      // Create a fake session with the auth ID that will be used in API calls
+      const fakeSession = {
+        access_token: `demo-token-${demoUser.authId}`,
+        expires_at: Date.now() + 24 * 60 * 60 * 1000, // 1 day in the future
+        user: fakeUser,
+      } as unknown as Session;
+      
+      setSession(fakeSession);
+      
+    } catch (error) {
+      console.error('Error starting demo session:', error);
+      setError(error instanceof Error ? error.message : 'Failed to start demo session');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Provide the auth context value
   const value = {
@@ -217,8 +282,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signIn,
     signUp,
     signOut,
+    startDemoSession,
     loading,
     error,
+    isDemo,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

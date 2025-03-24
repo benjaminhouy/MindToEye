@@ -535,6 +535,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ error: "Failed to register user" });
     }
   });
+  
+  // Anonymous demo user creation route
+  app.post("/api/demo-user", async (req: Request, res: Response) => {
+    try {
+      // Create a unique demo user with timestamp
+      const timestamp = new Date().getTime();
+      const demoEmail = `demo-user-${timestamp}@mindtoeye.demo`;
+      const demoAuthId = `demo-${timestamp}`;
+      
+      // Create demo user in our database
+      const userData = {
+        username: demoEmail,
+        password: "demo-password", // Not used for authentication
+        authId: demoAuthId,
+      };
+      
+      const user = await storage.createUser(userData);
+      
+      console.log(`Demo user created: ID=${user.id}, Email=${demoEmail}, AuthID=${demoAuthId}`);
+      
+      // Return user with auth credentials
+      res.status(201).json({
+        ...user,
+        isDemo: true,
+        demoAuthId
+      });
+    } catch (error) {
+      console.error("Error creating demo user:", error);
+      res.status(500).json({ error: "Failed to create demo user" });
+    }
+  });
 
   // Project routes
   app.get("/api/projects", async (req: Request, res: Response) => {
