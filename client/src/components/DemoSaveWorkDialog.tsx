@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { useToast } from '@/hooks/use-toast';
 import { z } from 'zod';
@@ -38,13 +38,26 @@ export function DemoSaveWorkDialog({ children }: DemoSaveWorkDialogProps) {
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [savedEmail, setSavedEmail] = useState<string | null>(null);
   
   // Check if this is a saved account that needs password setup
   const isPendingPasswordSetup = 
-    !isDemo && 
+    showPasswordForm || // check local state first (for immediate transition)
+    (!isDemo && 
     user?.user_metadata?.converted && 
     typeof window !== 'undefined' && 
-    window.sessionStorage.getItem('pendingPasswordSetup') === 'true';
+    window.sessionStorage.getItem('pendingPasswordSetup') === 'true');
+    
+  // Initialize the saved email from sessionStorage if available
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const email = window.sessionStorage.getItem('savedEmail');
+      if (email) {
+        setSavedEmail(email);
+      }
+    }
+  }, []);
 
   // Initialize form
   const form = useForm<AccountFormValues>({
@@ -74,15 +87,16 @@ export function DemoSaveWorkDialog({ children }: DemoSaveWorkDialogProps) {
         variant: 'default',
       });
       
-      // Close current dialog
-      setOpen(false);
-      
-      // Store in session storage that we need to show the password dialog after reload
+      // Store in session storage but don't reload the page
       sessionStorage.setItem('pendingPasswordSetup', 'true');
       sessionStorage.setItem('savedEmail', values.email);
       
-      // Refresh the page to load the updated user state
-      window.location.reload();
+      // Instead of closing the dialog or reloading the page,
+      // we'll trigger the password setup immediately by updating state
+      // This will cause the component to re-render with the password form
+      setIsSubmitting(false); // First clear the submitting state
+      setSavedEmail(values.email);
+      setShowPasswordForm(true); // This will switch to the password form immediately
     } catch (error) {
       console.error('Error creating account:', error);
       
@@ -189,7 +203,7 @@ export function DemoSaveWorkDialog({ children }: DemoSaveWorkDialogProps) {
                   <strong>Secure your account!</strong> Set a password to protect your work.
                 </span>
                 <span className="block">
-                  Your account is already saved with email: <strong>{sessionStorage.getItem('savedEmail')}</strong>.
+                  Your account is already saved with email: <strong>{savedEmail || sessionStorage.getItem('savedEmail')}</strong>.
                   Set a password to complete the account setup.
                 </span>
               </DialogDescription>
