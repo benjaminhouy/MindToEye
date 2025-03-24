@@ -76,6 +76,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (session?.user) {
         setUser(session.user);
         
+        // Check if this is an anonymous user session
+        if (session.user?.app_metadata?.provider === 'anonymous' || 
+            session.user?.aud === 'authenticated' && !session.user.email) {
+          console.log("Detected anonymous user session, setting demo mode");
+          setIsDemo(true);
+        }
+        
         // Register with our API
         try {
           await registerUserWithApi(session.user);
@@ -97,6 +104,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         
         if (session?.user) {
           setUser(session.user);
+          
+          // Check if this is an anonymous user session
+          if (session.user?.app_metadata?.provider === 'anonymous' || 
+              session.user?.aud === 'authenticated' && !session.user.email) {
+            console.log("Detected anonymous user session on auth state change, setting demo mode");
+            setIsDemo(true);
+          }
           
           // Register with our API on sign in or sign up
           try {
