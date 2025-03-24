@@ -19,6 +19,7 @@ export interface IStorage {
   getUserByUsername(username: string): Promise<User | undefined>;
   getUserByAuthId(authId: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
+  updateUser(id: number, user: Partial<User>): Promise<User | undefined>;
   
   // Project operations
   getProjects(userId: number): Promise<Project[]>;
@@ -76,6 +77,27 @@ export interface IStorage {
       .values(insertUser)
       .returning();
     return user;
+  }
+  
+  async updateUser(id: number, user: Partial<User>): Promise<User | undefined> {
+    if (!db) {
+      console.warn('Database not initialized. Cannot update user.');
+      return undefined;
+    }
+    
+    // Exclude id from update
+    const { id: _, ...updateValues } = user;
+    
+    if (Object.keys(updateValues).length === 0) {
+      return this.getUser(id);
+    }
+    
+    const [updatedUser] = await db
+      .update(users)
+      .set(updateValues)
+      .where(eq(users.id, id))
+      .returning();
+    return updatedUser || undefined;
   }
   
   // Project operations

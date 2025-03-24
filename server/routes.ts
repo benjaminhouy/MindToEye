@@ -89,11 +89,8 @@ async function verifyProjectOwnership(req: Request, res: Response, next: NextFun
       return res.status(404).json({ error: "Project not found" });
     }
     
-    // Check if the user owns the project or is a demo user
-    const user = await storage.getUser(userId);
-    const isDemoUser = user?.isDemo === true;
-    
-    if (project.userId !== userId && !isDemoUser) {
+    // Check if the user owns the project
+    if (project.userId !== userId) {
       return res.status(403).json({ error: "Forbidden: You don't have access to this project" });
     }
     
@@ -186,11 +183,8 @@ async function verifyConceptOwnership(req: Request, res: Response, next: NextFun
       return res.status(404).json({ error: "Project not found" });
     }
     
-    // Check if the user owns the project or is a demo user
-    const user = await storage.getUser(userId);
-    const isDemoUser = user?.isDemo === true;
-    
-    if (project.userId !== userId && !isDemoUser) {
+    // Check if the user owns the project
+    if (project.userId !== userId) {
       return res.status(403).json({ error: "Forbidden: You don't have access to this concept" });
     }
     
@@ -630,6 +624,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error registering anonymous user:", error);
       res.status(500).json({ error: "Failed to register anonymous user" });
+    }
+  });
+
+  // Route to upgrade a demo account to a regular account
+  app.post("/api/upgrade-demo-account", async (req: Request, res: Response) => {
+    try {
+      // Get the authorization token and auth ID
+      const authHeader = req.headers.authorization;
+      const authId = req.headers['x-auth-id'] as string;
+      
+      if (!authHeader && !authId) {
+        return res.status(401).json({ error: "Missing authentication details" });
+      }
+      
+      // Get the new email from the request body
+      const { email } = req.body;
+      
+      if (!email) {
+        return res.status(400).json({ error: "Email is required to upgrade account" });
+      }
+      
+      // Find the user by authId
+      let userId: number | undefined;
+      
+      if (authId) {
+        const user = await storage.getUserByAuthId(authId);
+        if (user) {
+          userId = user.id;
+        }
+      }
+      
+      if (!userId) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      // Get the user
+      const user = await storage.getUser(userId);
+      
+      if (!user) {
+        return res.status(404).json({ error: "User not found" });
+      }
+      
+      // Check if the user is actually a demo user
+      if (!user.isDemo) {
+        return res.status(400).json({ error: "Only demo accounts can be upgraded" });
+      }
+      
+      // Update the user to set isDemo to false and update the username/email
+      const updatedUser = await storage.updateUser(userId, {
+        username: email,
+        isDemo: false
+      });
+      
+      if (!updatedUser) {
+        return res.status(500).json({ error: "Failed to update user" });
+      }
+      
+      console.log(`Demo user upgraded: ID=${updatedUser.id}, Email=${email}`);
+      
+      // Return the updated user
+      res.status(200).json(updatedUser);
+    } catch (error) {
+      console.error("Error upgrading demo account:", error);
+      res.status(500).json({ error: "Failed to upgrade demo account" });
     }
   });
 
