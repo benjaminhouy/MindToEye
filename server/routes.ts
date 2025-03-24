@@ -569,30 +569,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // User registration route for Supabase Auth
   app.post("/api/register", async (req: Request, res: Response) => {
     try {
-      const { email, authId } = req.body;
+      const { email, authId, username, isAnonymous } = req.body;
       
-      if (!email) {
-        return res.status(400).json({ error: "Email is required" });
+      // First, check if user already exists by authId (most reliable method)
+      if (authId) {
+        const existingUserByAuthId = await storage.getUserByAuthId(authId);
+        if (existingUserByAuthId) {
+          console.log(`User already exists by authId in database: ID=${existingUserByAuthId.id}, AuthID=${authId}`);
+          return res.status(200).json(existingUserByAuthId);
+        }
       }
       
-      // Check if user already exists
-      const existingUser = await storage.getUserByUsername(email);
-      if (existingUser) {
-        // If user exists, just return the user
-        console.log(`User already exists in database: ID=${existingUser.id}, Email=${email}`);
-        return res.status(200).json(existingUser);
+      // For anonymous users, email can be null
+      // For regular users, email is required
+      if (!email && !isAnonymous) {
+        return res.status(400).json({ error: "Email is required for non-anonymous users" });
       }
+      
+      // If this is a regular user, also check by email as a fallback
+      if (email && !isAnonymous) {
+        const existingUserByEmail = await storage.getUserByUsername(email);
+        if (existingUserByEmail) {
+          // If user exists by email, update the authId if it's missing and return the user
+          if (authId && !existingUserByEmail.authId) {
+            const updatedUser = await storage.updateUser(existingUserByEmail.id, { authId });
+            console.log(`Updated existing user with authId: ID=${existingUserByEmail.id}, Email=${email}, AuthID=${authId}`);
+            return res.status(200).json(updatedUser || existingUserByEmail);
+          }
+          
+          console.log(`User already exists by email in database: ID=${existingUserByEmail.id}, Email=${email}`);
+          return res.status(200).json(existingUserByEmail);
+        }
+      }
+      
+      // Determine username based on inputs
+      const finalUsername = username || (email ? email : `anon-${Date.now().toString().substring(0, 10)}`);
       
       // Create user in our database
       const userData = {
-        username: email,
+        username: finalUsername,
         password: "auth-via-supabase", // Placeholder since auth is handled by Supabase
         authId: authId || null,
+        email: email || null,
+        isDemo: isAnonymous || false  // Mark as demo if anonymous
       };
       
       const user = await storage.createUser(userData);
       
-      console.log(`User created in database: ID=${user.id}, Email=${email}, AuthID=${authId || 'none'}`);
+      console.log(`User created in database: ID=${user.id}, Username=${finalUsername}, Email=${email || 'null'}, AuthID=${authId || 'none'}, isDemo=${isAnonymous || false}`);
       
       res.status(201).json(user);
     } catch (error) {

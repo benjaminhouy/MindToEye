@@ -44,6 +44,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Register a new user with our own API
   const registerUserWithApi = async (authUser: User) => {
     try {
+      // Determine if this is an anonymous user
+      const isAnonymous = authUser.app_metadata?.provider === 'anonymous';
+      
+      // Generate a username if email is not available (especially for anonymous users)
+      const username = authUser.email || `user-${authUser.id.substring(0, 8)}`;
+      
+      // For anonymous users, email can be null
+      // For registered users, we should have an email
+      const email = authUser.email || null;
+      
+      console.log("Registering user with API, isAnonymous:", isAnonymous, "email:", email, "username:", username);
+      
       // Register the user with our own API
       const response = await fetch('/api/register', {
         method: 'POST',
@@ -54,8 +66,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         },
         body: JSON.stringify({
           authId: authUser.id,
-          username: authUser.email || `user-${authUser.id.substring(0, 8)}`,
-          email: authUser.email
+          username: username,
+          email: email,
+          isAnonymous: isAnonymous
         })
       });
 

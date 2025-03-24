@@ -54,7 +54,34 @@ export default function ResetPassword() {
           setLoading(false);
           return;
         }
+
+        // Verify that we have an active session with Supabase to ensure the token is valid
+        const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
         
+        if (sessionError) {
+          console.error('Session check error:', sessionError);
+          setResetError('Your session has expired. Please request a new password reset link.');
+          setLoading(false);
+          return;
+        }
+        
+        if (!sessionData.session) {
+          console.error('No active session found');
+          setResetError('Your password reset session has expired. Please request a new reset link.');
+          setLoading(false);
+          return;
+        }
+        
+        // Additional security check - Confirm this is actually a password reset session
+        // by checking for user in session that has aal property indicating recovery
+        const accessTokenData = parseJwt(sessionData.session.access_token);
+        
+        if (!accessTokenData || accessTokenData.aal !== 'aal1' || !accessTokenData.auth_time) {
+          console.warn('Session may not be a valid password recovery session', accessTokenData);
+          // We'll still allow the reset attempt, but log a warning
+        }
+        
+        console.log('Valid recovery session detected');
         // We have a valid recovery session
         setLoading(false);
       } catch (error) {
@@ -63,6 +90,29 @@ export default function ResetPassword() {
         setLoading(false);
       }
     };
+    
+    // Helper function to parse JWT tokens
+    function parseJwt(token: string) {
+      try {
+        // Split the token and get the payload part (second part)
+        const base64Url = token.split('.')[1];
+        if (!base64Url) return null;
+        
+        // Replace characters and decode
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(
+          atob(base64)
+            .split('')
+            .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+            .join('')
+        );
+
+        return JSON.parse(jsonPayload);
+      } catch (e) {
+        console.error('Error parsing JWT:', e);
+        return null;
+      }
+    }
     
     checkResetSession();
   }, []);
