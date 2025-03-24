@@ -17,8 +17,23 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
 
   // Force reauthentication check on page load or refresh
   useEffect(() => {
+    // Detect if user just logged out (check for flag placed in storage by logout function)
+    const justLoggedOut = sessionStorage.getItem('justLoggedOut') === 'true';
+    
+    if (justLoggedOut) {
+      console.log('Just logged out flag detected, clearing and redirecting');
+      // Clear the flag
+      sessionStorage.removeItem('justLoggedOut');
+      
+      // Redirect to auth page and hard refresh to clear React state
+      setRedirecting(true);
+      window.location.href = '/auth';
+      return;
+    }
+    
     // Clear local storage items that might incorrectly indicate a logged-in state
     if (!user && !session) {
+      console.log('No user session detected, cleaning up storage');
       // These should be cleared during logout, but this is a safety net
       const storageItems = ['pendingPasswordSetup', 'savedEmail'];
       storageItems.forEach(item => {
@@ -26,8 +41,31 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
           sessionStorage.removeItem(item);
         }
       });
+      
+      // Also check for any Supabase tokens
+      const supabaseKeyPattern = /^supabase\./;
+      
+      // Clear from localStorage
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && supabaseKeyPattern.test(key)) {
+          console.log(`Removing leftover localStorage item: ${key}`);
+          localStorage.removeItem(key);
+          i = -1; // Restart iteration as indices shift
+        }
+      }
+      
+      // Clear from sessionStorage
+      for (let i = 0; i < sessionStorage.length; i++) {
+        const key = sessionStorage.key(i);
+        if (key && supabaseKeyPattern.test(key)) {
+          console.log(`Removing leftover sessionStorage item: ${key}`);
+          sessionStorage.removeItem(key);
+          i = -1; // Restart iteration as indices shift
+        }
+      }
     }
-  }, []);
+  }, [setRedirecting]);
 
   useEffect(() => {
     // Add an extra check to see if we're actually logged out after logout operation

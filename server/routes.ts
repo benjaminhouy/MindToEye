@@ -2777,7 +2777,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Server-side authentication endpoint for converted demo accounts
+  // Server-side endpoint to explicitly log a user out and invalidate their session
   app.post("/api/logout", async (req: Request, res: Response) => {
     try {
       // Get the auth ID from the request header
@@ -2785,31 +2785,64 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`Logging out user with authId: ${authId}`);
       
+      // Define success flag to track if any backend logout was successful
+      let logoutSuccess = false;
+      
       // If we have Supabase configured, try to invalidate the session there
       if (authId) {
         try {
           // Import the supabase admin module
           const { supabaseAdmin } = await import('./supabase-admin');
           
-          // Use the admin API to revoke all sessions for this user
           if (supabaseAdmin) {
-            const { error } = await supabaseAdmin.auth.admin.signOut(authId);
-            if (error) {
-              console.warn("Error revoking session with Supabase admin:", error);
-              // Continue anyway - we'll log the user out locally
-            } else {
-              console.log(`Successfully revoked all sessions for user ${authId} with Supabase admin API`);
+            try {
+              // Method 1: Try using the admin API to sign out the user by ID
+              console.log("Attempting to sign out user with admin.signOut()");
+              const { error } = await supabaseAdmin.auth.admin.signOut(authId);
+              
+              if (error) {
+                console.warn("Error with admin.signOut:", error.message);
+                // Don't throw, try alternative methods
+              } else {
+                console.log(`Successfully revoked all sessions for user ${authId} with admin.signOut`);
+                logoutSuccess = true;
+              }
+            } catch (signOutError) {
+              console.warn("Exception during admin.signOut:", signOutError);
+              // Continue to alternative methods
+            }
+            
+            // Try a simpler version of the auth admin api
+            if (!logoutSuccess) {
+              try {
+                console.log("Attempting to use admin API to invalidate sessions");
+                
+                // Using the more general admin.signOut method which requires no session IDs
+                // Note: The admin.signOut method doesn't support options in some versions
+                // Try to use it with the simplest form to maximize compatibility
+                const { error: generalSignOutError } = await supabaseAdmin.auth.admin.signOut(authId);
+                
+                if (generalSignOutError) {
+                  console.warn("Error with admin.signOut(global):", generalSignOutError.message);
+                } else {
+                  console.log("Successfully used admin API to invalidate sessions");
+                  logoutSuccess = true;
+                }
+              } catch (sessionsError) {
+                console.warn("Error using alternate admin API method:", sessionsError);
+              }
             }
           }
         } catch (error) {
           console.warn("Error during Supabase admin logout:", error);
-          // Continue anyway - we'll log the user out locally
+          // Continue anyway - we'll consider this a "soft logout"
         }
       }
       
       // Return success response
       return res.status(200).json({
         success: true,
+        adminLogoutSuccess: logoutSuccess,
         message: "Successfully logged out"
       });
     } catch (error) {

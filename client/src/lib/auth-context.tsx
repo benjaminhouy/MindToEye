@@ -251,14 +251,52 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Store auth ID before we clear the session
       const currentAuthId = user?.id;
       
-      // Immediately clear local state to prevent routing issues
+      // Immediately clear React state
       setSession(null);
       setUser(null);
       setIsDemo(false);
       
-      // Also clear any session storage items we've set
-      sessionStorage.removeItem('pendingPasswordSetup');
-      sessionStorage.removeItem('savedEmail');
+      // Clear all storage - both localStorage and sessionStorage
+      console.log('Clearing all browser storage');
+      try {
+        // Set a flag that we just logged out for ProtectedRoute to detect
+        sessionStorage.setItem('justLoggedOut', 'true');
+        
+        // Clear session storage items
+        sessionStorage.removeItem('pendingPasswordSetup');
+        sessionStorage.removeItem('savedEmail');
+        sessionStorage.removeItem('supabase.auth.token');
+        
+        // Clear local storage items related to Supabase
+        localStorage.removeItem('supabase.auth.token');
+        
+        // Try to find and remove all supabase-related items from storage
+        const supabaseKeyPattern = /^supabase\./;
+        
+        // Clear from localStorage
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (key && supabaseKeyPattern.test(key)) {
+            console.log(`Removing localStorage item: ${key}`);
+            localStorage.removeItem(key);
+            // Start over since removing items changes the indices
+            i = -1;
+          }
+        }
+        
+        // Clear from sessionStorage
+        for (let i = 0; i < sessionStorage.length; i++) {
+          const key = sessionStorage.key(i);
+          if (key && supabaseKeyPattern.test(key)) {
+            console.log(`Removing sessionStorage item: ${key}`);
+            sessionStorage.removeItem(key);
+            // Start over since removing items changes the indices
+            i = -1;
+          }
+        }
+      } catch (storageError) {
+        console.warn('Error clearing browser storage:', storageError);
+      }
       
       // Clear React Query cache
       try {
@@ -307,9 +345,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         description: "You have been signed out.",
       });
       
-      // Don't use setTimeout - redirect immediately to prevent flashing of content
-      console.log('Redirecting to auth page after logout');
+      // Force a full page reload rather than just a redirect to clear everything
+      console.log('Forcing page reload after logout');
+      // Setting location.href to /auth and then reloading ensures we end up at the auth page
       window.location.href = '/auth';
+      setTimeout(() => {
+        window.location.reload();
+      }, 100);
       
     } catch (error: any) {
       console.error('Sign out error:', error);
@@ -321,8 +363,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         variant: "destructive",
       });
       
-      // Even if there's an error, try to redirect to auth page
+      // Even if there's an error, try to redirect to auth page with a full reload
       window.location.href = '/auth';
+      setTimeout(() => {
+        window.location.reload();
+      }, 100);
     } finally {
       setLoading(false);
     }
