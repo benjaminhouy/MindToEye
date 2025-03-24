@@ -63,7 +63,7 @@ export function DemoSaveWorkDialog({ children }: DemoSaveWorkDialogProps) {
       
       toast({
         title: 'Work saved successfully!',
-        description: 'Your work is now saved and you can continue using the app. Your current session remains active.',
+        description: 'Your work is now saved to the email you provided. Your projects are accessible to you now and in the future.',
         variant: 'default',
       });
       

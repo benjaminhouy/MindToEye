@@ -77,10 +77,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(session.user);
         
         // Check if this is an anonymous user session
-        if (session.user?.app_metadata?.provider === 'anonymous' || 
-            session.user?.aud === 'authenticated' && !session.user.email) {
+        // Do not set isDemo if we've marked this user as converted
+        console.log("Checking if user is in demo mode:", {
+          converted: !!session.user?.user_metadata?.converted,
+          provider: session.user?.app_metadata?.provider,
+          hasEmail: !!session.user?.email,
+          metadata: session.user?.user_metadata,
+        });
+        
+        if (!session.user?.user_metadata?.converted && 
+            (session.user?.app_metadata?.provider === 'anonymous' || 
+             session.user?.aud === 'authenticated' && !session.user.email)) {
           console.log("Detected anonymous user session, setting demo mode");
           setIsDemo(true);
+        } else if (session.user?.user_metadata?.converted) {
+          console.log("User has been converted, not setting demo mode");
+          setIsDemo(false);
         }
         
         // Register with our API
@@ -106,10 +118,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUser(session.user);
           
           // Check if this is an anonymous user session
-          if (session.user?.app_metadata?.provider === 'anonymous' || 
-              session.user?.aud === 'authenticated' && !session.user.email) {
+          // Do not set isDemo if we've marked this user as converted
+          console.log("Auth state change - checking if user is in demo mode:", {
+            converted: !!session.user?.user_metadata?.converted,
+            provider: session.user?.app_metadata?.provider,
+            hasEmail: !!session.user?.email,
+            metadata: session.user?.user_metadata,
+          });
+          
+          if (!session.user?.user_metadata?.converted && 
+              (session.user?.app_metadata?.provider === 'anonymous' || 
+               session.user?.aud === 'authenticated' && !session.user.email)) {
             console.log("Detected anonymous user session on auth state change, setting demo mode");
             setIsDemo(true);
+          } else if (session.user?.user_metadata?.converted) {
+            console.log("Auth state change - User has been converted, not setting demo mode");
+            setIsDemo(false);
           }
           
           // Register with our API on sign in or sign up
@@ -380,6 +404,52 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       // Let the user know their work is saved and provide login instructions for the future
       console.log("Work saved successfully. User can continue to use the app with current session.");
+      
+      // Create a modified user object with isDemo=false to prevent auto-detection as demo
+      if (user) {
+        try {
+          // Update Supabase user metadata to mark as converted
+          const { data: updatedUserData, error: updateError } = await supabase.auth.updateUser({
+            data: { 
+              converted: true,
+              email: email,
+            }
+          });
+          
+          if (updateError) {
+            console.error("Failed to update user metadata:", updateError);
+          } else if (updatedUserData?.user) {
+            console.log("Successfully updated user metadata:", updatedUserData.user);
+            // Set the updated user in our state
+            setUser(updatedUserData.user);
+          } else {
+            // Fallback to manual update if Supabase update fails
+            console.log("No user returned from metadata update, using local update");
+            const updatedUser = {
+              ...user,
+              // Add a custom metadata flag to mark this as a converted user
+              user_metadata: {
+                ...user.user_metadata,
+                converted: true,
+                email: email,
+              }
+            };
+            setUser(updatedUser);
+          }
+        } catch (updateError) {
+          console.error("Error updating user metadata:", updateError);
+          // Fallback to manual update
+          const updatedUser = {
+            ...user,
+            user_metadata: {
+              ...user.user_metadata,
+              converted: true,
+              email: email,
+            }
+          };
+          setUser(updatedUser);
+        }
+      }
       
       return savedUser;
     } catch (error) {
