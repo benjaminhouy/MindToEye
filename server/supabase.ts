@@ -55,11 +55,9 @@ function logSupabaseError(operation: string, error: any) {
 // Initialize Supabase client with more debugging
 export const supabase: SupabaseClient<Database> | null = supabaseUrl && supabaseKey
   ? createClient<Database>(supabaseUrl, supabaseKey, {
-      // Always use public schema to match our table definitions
       db: {
         schema: 'public',
       },
-      // Add extra logging for debugging
       global: {
         headers: {
           'X-Client-Info': 'mindtoeye-app',
@@ -68,6 +66,8 @@ export const supabase: SupabaseClient<Database> | null = supabaseUrl && supabase
       auth: {
         autoRefreshToken: true,
         persistSession: true,
+        detectSessionInUrl: true,
+        flowType: 'implicit',
       },
     })
   : null;
