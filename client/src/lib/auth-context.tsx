@@ -40,6 +40,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Register user with our API after Supabase auth
   const registerUserWithApi = async (authUser: User) => {
     try {
+      // Skip registration if we don't have an email (anonymous users)
+      if (!authUser.email) {
+        console.log("Skipping API registration for anonymous user");
+        return null;
+      }
+      
       console.log("Registering user with API:", authUser.email);
       
       const response = await fetch('/api/register', {
