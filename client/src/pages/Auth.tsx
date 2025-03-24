@@ -12,7 +12,7 @@ import { Separator } from '@/components/ui/separator';
 
 export default function AuthPage() {
   // Get authentication context
-  const { signIn, signUp, loading, error } = useAuth();
+  const { signIn, signUp, startDemoSession, loading, error } = useAuth();
   
   // For redirecting after successful authentication
   const [, navigate] = useLocation();
@@ -20,6 +20,7 @@ export default function AuthPage() {
   // Form state
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [demoLoading, setDemoLoading] = useState(false);
 
   // Handle form submissions
   const handleSignIn = async (e: React.FormEvent) => {
@@ -44,6 +45,21 @@ export default function AuthPage() {
       // Stay on the auth page after signup to show verification message
     } catch (error) {
       console.error("Error during sign up:", error);
+    }
+  };
+  
+  // Handle demo session
+  const handleDemoClick = async () => {
+    try {
+      setDemoLoading(true);
+      console.log("Starting demo session");
+      await startDemoSession();
+      console.log("Demo session started, redirecting to dashboard");
+      navigate("/");
+    } catch (error) {
+      console.error("Error starting demo session:", error);
+    } finally {
+      setDemoLoading(false);
     }
   };
 
@@ -153,6 +169,23 @@ export default function AuthPage() {
             </Card>
           </TabsContent>
         </Tabs>
+        
+        <div className="mt-8">
+          <Separator className="my-4" />
+          <div className="text-center">
+            <p className="text-sm text-gray-500 mb-4">
+              Don't want to create an account yet?
+            </p>
+            <Button 
+              variant="outline" 
+              className="w-full" 
+              onClick={handleDemoClick} 
+              disabled={demoLoading}
+            >
+              {demoLoading ? 'Starting Demo...' : 'Try Demo Without Signup'}
+            </Button>
+          </div>
+        </div>
       </div>
     </div>
   );
