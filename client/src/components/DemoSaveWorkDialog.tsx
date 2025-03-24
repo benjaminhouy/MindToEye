@@ -71,7 +71,8 @@ export function DemoSaveWorkDialog({ children }: DemoSaveWorkDialogProps) {
       setOpen(false);
       
       // Store in session storage that we need to show the password dialog after reload
-      sessionStorage.setItem('pendingPasswordSetup', values.email);
+      sessionStorage.setItem('pendingPasswordSetup', 'true');
+      sessionStorage.setItem('savedEmail', values.email);
       
       // Refresh the page to load the updated user state
       window.location.reload();
