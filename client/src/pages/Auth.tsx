@@ -12,6 +12,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 
+// Import password reset components
+import ForgotPassword from '@/components/ForgotPassword';
+import ResetPassword from '@/components/ResetPassword';
+
 export default function AuthPage() {
   // Get authentication context
   const { user, session, signIn, signUp, startDemoSession, loading, error } = useAuth();
@@ -27,11 +31,23 @@ export default function AuthPage() {
   const [password, setPassword] = useState('');
   const [demoLoading, setDemoLoading] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [isPasswordReset, setIsPasswordReset] = useState(false);
   
   // If user is already authenticated, redirect to dashboard
   useEffect(() => {
     const checkAuth = async () => {
       try {
+        // Check if we're on a password reset flow
+        const searchParams = new URLSearchParams(window.location.search);
+        const isReset = searchParams.get('reset') === 'true' || window.location.hash.includes('type=recovery');
+        
+        if (isReset) {
+          setIsPasswordReset(true);
+          setPageLoading(false);
+          return;
+        }
+        
         // If we have a user and session, redirect to the dashboard
         if (user && session) {
           console.log("User already authenticated, redirecting to dashboard");
@@ -40,7 +56,6 @@ export default function AuthPage() {
         }
         
         // Check if we just logged out (from the URL parameter)
-        const searchParams = new URLSearchParams(window.location.search);
         const justLoggedOut = searchParams.get('just_logged_out') === 'true';
         
         if (justLoggedOut) {
@@ -142,6 +157,46 @@ export default function AuthPage() {
     );
   }
 
+  // Show password reset form if we're on a reset flow
+  if (isPasswordReset) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+        <div className="w-full max-w-md p-8">
+          <div className="text-center mb-8">
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+              MindToEye
+            </h1>
+            <p className="text-gray-600 mt-2">
+              Reset your password
+            </p>
+          </div>
+          
+          <ResetPassword />
+        </div>
+      </div>
+    );
+  }
+
+  // Show forgot password form
+  if (showForgotPassword) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+        <div className="w-full max-w-md p-8">
+          <div className="text-center mb-8">
+            <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
+              MindToEye
+            </h1>
+            <p className="text-gray-600 mt-2">
+              Reset your password
+            </p>
+          </div>
+          
+          <ForgotPassword onBack={() => setShowForgotPassword(false)} />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex items-center justify-center min-h-screen bg-gray-50">
       <div className="w-full max-w-md p-8">
@@ -196,6 +251,18 @@ export default function AuthPage() {
                       onChange={(e) => setPassword(e.target.value)}
                       required
                     />
+                    <div className="text-right">
+                      <Button 
+                        variant="link" 
+                        className="p-0 h-auto text-sm text-blue-600"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setShowForgotPassword(true);
+                        }}
+                      >
+                        Forgot password?
+                      </Button>
+                    </div>
                   </div>
                 </CardContent>
                 <CardFooter>

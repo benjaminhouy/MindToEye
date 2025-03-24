@@ -10,6 +10,7 @@ type AuthContextType = {
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
+  resetPassword: (email: string) => Promise<void>;
   startDemoSession: () => Promise<void>;
   saveDemoAccount: (email: string) => Promise<void>;
   setPassword: (password: string) => Promise<void>;
@@ -514,6 +515,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Reset password function
+  const resetPassword = async (email: string) => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Use Supabase's built-in password reset method
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/auth?reset=true`,
+      });
+      
+      if (error) {
+        throw error;
+      }
+      
+      // Success message
+      toast({
+        title: "Password reset link sent",
+        description: "Check your email for the reset link",
+      });
+      
+    } catch (error: any) {
+      console.error('Password reset error:', error);
+      setError(error.message || 'Failed to send reset link');
+      
+      toast({
+        title: "Password reset failed",
+        description: error.message || 'Please try again',
+        variant: "destructive",
+      });
+      
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+  
   // Context value
   const value = {
     session,
@@ -521,6 +559,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signIn,
     signUp,
     signOut,
+    resetPassword,
     startDemoSession,
     saveDemoAccount,
     setPassword,
