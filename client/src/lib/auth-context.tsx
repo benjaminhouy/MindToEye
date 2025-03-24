@@ -132,63 +132,68 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  // Sign in function
+  // Sign in function - following Supabase best practices
   const signIn = async (email: string, password: string) => {
     try {
       setLoading(true);
       setError(null);
       
-      // First try our custom authentication endpoint for converted accounts
-      try {
-        const response = await fetch('/api/login-with-email-password', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({ email, password })
-        });
-        
-        if (response.ok) {
-          const result = await response.json();
-          
-          // Set user and session from our server response
-          setUser(result.user);
-          setSession({
-            access_token: `local-auth-${result.user.id}`, // Simplified token
-            refresh_token: '',
-            token_type: 'bearer', // Required by Session type
-            expires_in: 86400,
-            expires_at: new Date().getTime() + 86400 * 1000,
-            user: result.user
-          });
-          
-          // Success message
-          toast({
-            title: "Signed in successfully",
-            description: "Welcome back!",
-          });
-          
-          // Successfully logged in with our custom endpoint
-          return;
-        }
-        
-        // If response wasn't ok, continue to Supabase auth
-        console.log("Custom auth failed, falling back to Supabase:", await response.text());
-      } catch (err) {
-        // If our endpoint fails, continue to try Supabase auth
-        console.log("Error in custom auth, falling back to Supabase:", err);
-      }
+      console.log("Sign in attempt with:", email);
       
-      // Fall back to Supabase auth for regular accounts
+      // Use Supabase's authentication directly as the primary method
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
       });
 
       if (error) {
-        throw error;
+        // If Supabase auth fails, try our custom endpoint as a fallback
+        // This is mainly for converted demo accounts that might have special handling
+        try {
+          const response = await fetch('/api/login-with-email-password', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ email, password })
+          });
+          
+          if (response.ok) {
+            const result = await response.json();
+            
+            // Set user and session from our server response
+            setUser(result.user);
+            setSession({
+              access_token: result.session.access_token || `local-auth-${result.user.id}`,
+              refresh_token: result.session.refresh_token || '',
+              token_type: 'bearer',
+              expires_in: 86400,
+              expires_at: new Date().getTime() + 86400 * 1000,
+              user: result.user
+            });
+            
+            console.log("Sign in completed via custom auth, redirecting user...");
+            
+            // Success message
+            toast({
+              title: "Signed in successfully",
+              description: "Welcome back!",
+            });
+            
+            return;
+          }
+          
+          // If both authentication methods fail, throw the original Supabase error
+          throw error;
+        } catch (fallbackError) {
+          console.error("Both authentication methods failed:", fallbackError);
+          throw error; // Throw the original error from Supabase
+        }
       }
-
+      
+      // If we get here, Supabase authentication succeeded
+      console.log("Sign in completed, redirecting user...");
+      
       // Success message
       toast({
         title: "Signed in successfully",
@@ -262,9 +267,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.warn('Could not clear query cache:', cacheError);
       }
       
-      // Set a simple flag for ProtectedRoute to detect the logout
-      sessionStorage.setItem('justLoggedOut', 'true');
-      
       // Clean up any app-specific items
       sessionStorage.removeItem('pendingPasswordSetup');
       sessionStorage.removeItem('savedEmail');
@@ -302,8 +304,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         description: "You have been signed out.",
       });
       
-      // Use routing rather than direct page reload
-      window.location.href = '/auth';
+      // Use routing with a param to indicate logout
+      window.location.href = '/auth?just_logged_out=true';
       
     } catch (error: any) {
       console.error('Sign out error:', error);

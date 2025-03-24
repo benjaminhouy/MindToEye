@@ -15,24 +15,10 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const [currentLocation, navigate] = useLocation();
   const [redirecting, setRedirecting] = useState(false);
 
-  // Handle logout detection
+  // We've removed the sessionStorage-based logout detection
+  // It's now handled directly in auth-context.tsx and Auth.tsx
+  // This effect now just cleans up app-specific items when no user is logged in
   useEffect(() => {
-    // Check for logout flag
-    const justLoggedOut = sessionStorage.getItem('justLoggedOut') === 'true';
-    
-    if (justLoggedOut) {
-      console.log('Logout detected, redirecting to auth page');
-      
-      // Clear the flag
-      sessionStorage.removeItem('justLoggedOut');
-      
-      // Redirect to auth page
-      setRedirecting(true);
-      navigate('/auth');
-      
-      return;
-    }
-    
     // Clean up session-specific items when no user is logged in
     if (!user && !session) {
       console.log('No user session detected, cleaning up app-specific state');
@@ -44,7 +30,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
         }
       });
     }
-  }, [setRedirecting]);
+  }, [user, session]);
 
   useEffect(() => {
     // Add an extra check to see if we're actually logged out after logout operation

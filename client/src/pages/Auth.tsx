@@ -28,22 +28,23 @@ export default function AuthPage() {
   useEffect(() => {
     const checkAuth = async () => {
       try {
-        // Add a small delay to let Supabase client initialize
-        await new Promise(resolve => setTimeout(resolve, 100));
-        
+        // If we have a user and session, redirect to the dashboard
         if (user && session) {
           console.log("User already authenticated, redirecting to dashboard");
           navigate("/");
-        } else {
-          // Check sessionStorage for any residual auth data and clear it
-          const hasInconsistentState = window.sessionStorage.getItem('supabase.auth.token') && !session;
-          if (hasInconsistentState) {
-            console.log("Detected inconsistent auth state, clearing session storage");
-            window.sessionStorage.removeItem('supabase.auth.token');
-          }
-          
-          setPageLoading(false);
+          return;
         }
+        
+        // Check if we just logged out (from the URL parameter)
+        const searchParams = new URLSearchParams(window.location.search);
+        const justLoggedOut = searchParams.get('just_logged_out') === 'true';
+        
+        if (justLoggedOut) {
+          console.log("Just logged out parameter detected, ensuring clean state");
+          // We don't need to do anything special here as auth-context already handled logout
+        }
+        
+        setPageLoading(false);
       } catch (error) {
         console.error("Error checking authentication:", error);
         setPageLoading(false);
