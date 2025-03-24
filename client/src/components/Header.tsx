@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { PlusIcon, BellIcon, UserIcon, LogOutIcon, SettingsIcon } from "lucide-react";
+import { PlusIcon, BellIcon, UserIcon, LogOutIcon, SettingsIcon, UpgradeIcon } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { DemoUpgradeDialog } from "@/components/DemoUpgradeDialog";
 
 const Header = () => {
   const [location] = useLocation();
