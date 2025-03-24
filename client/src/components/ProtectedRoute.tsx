@@ -15,13 +15,13 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const [currentLocation, navigate] = useLocation();
   const [redirecting, setRedirecting] = useState(false);
 
-  // We've removed the sessionStorage-based logout detection
-  // It's now handled directly in auth-context.tsx and Auth.tsx
-  // This effect now just cleans up app-specific items when no user is logged in
+  // Clean up session-specific items and perform auth checks
+  // This is now done with a safer pattern that won't update state during render
   useEffect(() => {
-    // Clean up session-specific items when no user is logged in
+    // Perform session cleanup if no user is logged in
     if (!user && !session) {
       console.log('No user session detected, cleaning up app-specific state');
+      
       // Only clear app-specific items that we control
       const appSpecificItems = ['pendingPasswordSetup', 'savedEmail'];
       appSpecificItems.forEach(item => {
@@ -29,21 +29,25 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
           sessionStorage.removeItem(item);
         }
       });
+      
+      // We need to use setTimeout to avoid the React setState during render warning
+      // This defers the redirection check to the next tick
+      setTimeout(() => {
+        // If we're not on the auth page and we don't have auth, redirect
+        if (typeof window !== 'undefined' && 
+            window.location.pathname !== '/auth' && 
+            !redirecting) {
+          console.log("No authenticated user detected, redirecting to login page");
+          setRedirecting(true);
+          navigate('/auth');
+        }
+      }, 0);
     }
-  }, [user, session]);
+  }, [user, session, navigate, redirecting]);
 
+  // This effect now just logs the auth status and checks for explicit logout cases
   useEffect(() => {
-    // Add an extra check to see if we're actually logged out after logout operation
-    const isActuallyLoggedOut = !user && !session && typeof window !== 'undefined' && 
-      window.location.pathname !== '/auth' && !redirecting;
-    
-    if (isActuallyLoggedOut) {
-      console.log("Logout detected, redirecting to auth page");
-      setRedirecting(true);
-      window.location.href = '/auth';
-      return;
-    }
-    
+    // Log the current authentication status for debugging
     console.log("ProtectedRoute status:", { 
       loading, 
       authenticated: !!user, 
@@ -53,20 +57,25 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
       redirecting
     });
 
-    // Check for user authentication status that includes:
-    // 1. Regular authenticated users (user exists and has session)
-    // 2. Demo users (isDemo flag is true)
-    // 3. Anonymous users who may have converted (check session storage)
-    const hasConvertedAccount = typeof window !== 'undefined' && 
-      window.sessionStorage.getItem('savedEmail') && 
-      window.sessionStorage.getItem('pendingPasswordSetup');
+    // Handle explicit logout case - forcing full page reload
+    // This is important for cases where we need to completely reset the app state
+    const justLoggedOut = !user && !session && 
+      typeof window !== 'undefined' && 
+      window.location.pathname !== '/auth' && 
+      !redirecting;
+    
+    if (justLoggedOut) {
+      console.log("Complete logout detected, forcing page reload to /auth");
       
-    if (!loading && !user && !isDemo && !hasConvertedAccount && !redirecting) {
-      console.log("No authenticated user detected, redirecting to login page");
-      setRedirecting(true);
-      navigate('/auth');
+      // Only reload if we're not already redirecting
+      if (!redirecting) {
+        setRedirecting(true);
+        
+        // Use the URL parameter to signal that we're coming from a logout
+        window.location.href = '/auth?just_logged_out=true';
+      }
     }
-  }, [user, session, loading, isDemo, navigate, currentLocation, redirecting]);
+  }, [user, session, loading, isDemo, currentLocation, redirecting]);
 
   // Show a loading spinner while checking authentication
   if (loading || redirecting) {

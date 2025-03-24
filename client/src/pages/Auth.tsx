@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { useLocation } from 'wouter';
 import { Loader2 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -17,6 +18,9 @@ export default function AuthPage() {
   
   // For redirecting after successful authentication
   const [, navigate] = useLocation();
+  
+  // For showing toast notifications
+  const { toast } = useToast();
   
   // Form state
   const [email, setEmail] = useState('');
@@ -89,8 +93,15 @@ export default function AuthPage() {
       console.log("Sign in completed, redirecting user...");
       // Manual redirection after successful login
       navigate("/");
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error during sign in:", error);
+      
+      // Make sure we show a toast for the error, especially for invalid credentials
+      toast({
+        title: "Login failed",
+        description: error?.message || "Invalid email or password. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -101,8 +112,21 @@ export default function AuthPage() {
       await signUp(email, password);
       console.log("Sign up completed successfully");
       // Stay on the auth page after signup to show verification message
-    } catch (error) {
+      
+      // Show success message
+      toast({
+        title: "Registration successful",
+        description: "Please check your email for verification instructions.",
+      });
+    } catch (error: any) {
       console.error("Error during sign up:", error);
+      
+      // Show error message
+      toast({
+        title: "Registration failed",
+        description: error?.message || "Could not create account. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
