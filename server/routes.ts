@@ -244,6 +244,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ status: "ok" });
   });
   
+  // Test endpoint for Supabase Admin API integration
+  app.get("/api/test-supabase-admin", async (_req: Request, res: Response) => {
+    try {
+      // Import the Supabase admin functions
+      const { supabaseAdmin } = await import('./supabase-admin');
+      
+      if (!supabaseAdmin) {
+        return res.status(500).json({
+          success: false,
+          message: "Supabase Admin client not initialized",
+          error: "Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY environment variables"
+        });
+      }
+      
+      // Test if we can list users (this will validate the service role key)
+      const { data, error } = await supabaseAdmin.auth.admin.listUsers({
+        page: 1,
+        perPage: 1
+      });
+      
+      if (error) {
+        return res.status(500).json({
+          success: false,
+          message: "Failed to connect to Supabase Admin API",
+          error: error.message
+        });
+      }
+      
+      return res.status(200).json({
+        success: true,
+        message: "Successfully connected to Supabase Admin API",
+        usersCount: data.users.length > 0 ? 
+          `Found at least ${data.users.length} user(s)` : 
+          "No users found, but connection successful"
+      });
+    } catch (error: any) {
+      return res.status(500).json({
+        success: false,
+        message: "Error testing Supabase Admin API",
+        error: error.message || String(error)
+      });
+    }
+  });
+  
   // Test endpoint for Supabase storage
   app.get("/api/check-storage-policies", async (req: Request, res: Response) => {
     try {
