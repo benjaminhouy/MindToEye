@@ -4,7 +4,6 @@ import { useToast } from '@/hooks/use-toast';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useLocation } from 'wouter';
 
 import {
   Dialog,
@@ -37,7 +36,6 @@ interface DemoUpgradeDialogProps {
 export function DemoUpgradeDialog({ children }: DemoUpgradeDialogProps) {
   const { upgradeDemoAccount, isDemo } = useAuth();
   const { toast } = useToast();
-  const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -66,8 +64,8 @@ export function DemoUpgradeDialog({ children }: DemoUpgradeDialogProps) {
       });
       
       setOpen(false);
-      // Redirect to dashboard or another appropriate page
-      navigate('/');
+      // No need to redirect, just refresh the current page
+      window.location.reload();
     } catch (error) {
       console.error('Error upgrading account:', error);
       toast({

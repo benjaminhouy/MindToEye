@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { PlusIcon, BellIcon, UserIcon, LogOutIcon, SettingsIcon, UpgradeIcon } from "lucide-react";
+import { PlusIcon, BellIcon, UserIcon, LogOutIcon, SettingsIcon, ZapIcon } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -11,7 +11,7 @@ const Header = () => {
   const [location] = useLocation();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  const { user, signOut } = useAuth();
+  const { user, signOut, isDemo } = useAuth();
   const { toast } = useToast();
 
   const handleSignOut = async () => {
@@ -186,9 +186,16 @@ const Header = () => {
                 >
                   <div className="px-4 py-3">
                     <p className="text-sm">Signed in as</p>
-                    <p className="text-sm font-medium truncate">
-                      {user?.email}
-                    </p>
+                    <div className="flex items-center">
+                      <p className="text-sm font-medium truncate">
+                        {user?.email || 'Anonymous User'}
+                      </p>
+                      {isDemo && (
+                        <span className="ml-2 px-1.5 py-0.5 text-xs font-medium bg-amber-100 text-amber-800 rounded-full">
+                          Demo
+                        </span>
+                      )}
+                    </div>
                   </div>
                   
                   <div className="border-t border-gray-100"></div>
@@ -234,12 +241,22 @@ const Header = () => {
               )}
             </div>
 
-            <Link href="/projects/new">
-              <Button size="sm" className="ml-4">
-                <PlusIcon className="-ml-0.5 mr-2 h-4 w-4" />
-                New Project
-              </Button>
-            </Link>
+            {/* Show the upgrade button for demo users */}
+            {isDemo ? (
+              <DemoUpgradeDialog>
+                <Button size="sm" className="ml-4" variant="secondary">
+                  <ZapIcon className="-ml-0.5 mr-2 h-4 w-4" />
+                  Upgrade Account
+                </Button>
+              </DemoUpgradeDialog>
+            ) : (
+              <Link href="/projects/new">
+                <Button size="sm" className="ml-4">
+                  <PlusIcon className="-ml-0.5 mr-2 h-4 w-4" />
+                  New Project
+                </Button>
+              </Link>
+            )}
           </div>
         </div>
       </div>
