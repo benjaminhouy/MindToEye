@@ -245,7 +245,7 @@ const Header = () => {
             <DemoUpgradeDialog>
               <Button size="sm" className="ml-4" variant="secondary">
                 <ZapIcon className="-ml-0.5 mr-2 h-4 w-4" />
-                Upgrade Account
+                Save Your Work
               </Button>
             </DemoUpgradeDialog>
             

@@ -84,10 +84,15 @@ export function DemoUpgradeDialog({ children }: DemoUpgradeDialogProps) {
       <DialogContent className="sm:max-w-[425px]">
         <form onSubmit={form.handleSubmit(onSubmit)}>
           <DialogHeader>
-            <DialogTitle>Upgrade Your Demo Account</DialogTitle>
+            <DialogTitle>Save Your Work by Upgrading</DialogTitle>
             <DialogDescription>
-              Get full access to MindToEye by upgrading your demo account to a regular account.
-              All your projects and concepts will be preserved.
+              <p className="mb-2">
+                <strong>Don't lose your creative work!</strong> Demo accounts have limited storage time.
+              </p>
+              <p>
+                Upgrade to a permanent account to save all your projects and concepts forever.
+                Everything you've created will be preserved automatically.
+              </p>
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">

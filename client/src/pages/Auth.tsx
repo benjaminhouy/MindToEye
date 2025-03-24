@@ -184,8 +184,11 @@ export default function AuthPage() {
         <div className="mt-8">
           <Separator className="my-4" />
           <div className="text-center">
-            <p className="text-sm text-gray-500 mb-4">
+            <p className="text-sm text-gray-500 mb-2">
               Don't want to create an account yet?
+            </p>
+            <p className="text-xs text-amber-600 mb-4">
+              <strong>Note:</strong> Demo content is temporary and may be removed after 14 days. Upgrade anytime to save your work.
             </p>
             <Button 
               variant="outline" 
