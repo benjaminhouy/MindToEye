@@ -15,55 +15,34 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const [currentLocation, navigate] = useLocation();
   const [redirecting, setRedirecting] = useState(false);
 
-  // Force reauthentication check on page load or refresh
+  // Handle logout detection
   useEffect(() => {
-    // Detect if user just logged out (check for flag placed in storage by logout function)
+    // Check for logout flag
     const justLoggedOut = sessionStorage.getItem('justLoggedOut') === 'true';
     
     if (justLoggedOut) {
-      console.log('Just logged out flag detected, clearing and redirecting');
+      console.log('Logout detected, redirecting to auth page');
+      
       // Clear the flag
       sessionStorage.removeItem('justLoggedOut');
       
-      // Redirect to auth page and hard refresh to clear React state
+      // Redirect to auth page
       setRedirecting(true);
-      window.location.href = '/auth';
+      navigate('/auth');
+      
       return;
     }
     
-    // Clear local storage items that might incorrectly indicate a logged-in state
+    // Clean up session-specific items when no user is logged in
     if (!user && !session) {
-      console.log('No user session detected, cleaning up storage');
-      // These should be cleared during logout, but this is a safety net
-      const storageItems = ['pendingPasswordSetup', 'savedEmail'];
-      storageItems.forEach(item => {
+      console.log('No user session detected, cleaning up app-specific state');
+      // Only clear app-specific items that we control
+      const appSpecificItems = ['pendingPasswordSetup', 'savedEmail'];
+      appSpecificItems.forEach(item => {
         if (sessionStorage.getItem(item)) {
           sessionStorage.removeItem(item);
         }
       });
-      
-      // Also check for any Supabase tokens
-      const supabaseKeyPattern = /^supabase\./;
-      
-      // Clear from localStorage
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && supabaseKeyPattern.test(key)) {
-          console.log(`Removing leftover localStorage item: ${key}`);
-          localStorage.removeItem(key);
-          i = -1; // Restart iteration as indices shift
-        }
-      }
-      
-      // Clear from sessionStorage
-      for (let i = 0; i < sessionStorage.length; i++) {
-        const key = sessionStorage.key(i);
-        if (key && supabaseKeyPattern.test(key)) {
-          console.log(`Removing leftover sessionStorage item: ${key}`);
-          sessionStorage.removeItem(key);
-          i = -1; // Restart iteration as indices shift
-        }
-      }
     }
   }, [setRedirecting]);
 

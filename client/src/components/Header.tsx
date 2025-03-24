@@ -16,15 +16,31 @@ const Header = () => {
 
   const handleSignOut = async () => {
     try {
+      console.log("Starting standard Supabase signOut process");
+      
+      // Set a flag to help with proper redirection after logout
+      // This is a safer approach than manipulating storage directly
+      sessionStorage.setItem('justLoggedOut', 'true');
+      
+      // Standard Supabase signOut - should properly clear all tokens
       await signOut();
+      
+      // Use the router for navigation instead of direct location manipulation
+      window.location.href = '/auth';
+      
       toast({
         title: "Signed out",
         description: "You have been successfully signed out.",
       });
     } catch (error) {
+      console.error("Error during logout:", error);
+      
+      // Even with an error, we still redirect to the auth page
+      window.location.href = '/auth';
+      
       toast({
-        title: "Error",
-        description: "Failed to sign out. Please try again.",
+        title: "Error during logout",
+        description: "There was a problem signing out. You've been redirected to the login page.",
         variant: "destructive",
       });
     }
