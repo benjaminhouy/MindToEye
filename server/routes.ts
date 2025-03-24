@@ -89,8 +89,11 @@ async function verifyProjectOwnership(req: Request, res: Response, next: NextFun
       return res.status(404).json({ error: "Project not found" });
     }
     
-    // Check if the user owns the project
-    if (project.userId !== userId) {
+    // Check if the user owns the project or is a demo user
+    const user = await storage.getUser(userId);
+    const isDemoUser = user?.isDemo === true;
+    
+    if (project.userId !== userId && !isDemoUser) {
       return res.status(403).json({ error: "Forbidden: You don't have access to this project" });
     }
     
@@ -183,8 +186,11 @@ async function verifyConceptOwnership(req: Request, res: Response, next: NextFun
       return res.status(404).json({ error: "Project not found" });
     }
     
-    // Check if the user owns the project
-    if (project.userId !== userId) {
+    // Check if the user owns the project or is a demo user
+    const user = await storage.getUser(userId);
+    const isDemoUser = user?.isDemo === true;
+    
+    if (project.userId !== userId && !isDemoUser) {
       return res.status(403).json({ error: "Forbidden: You don't have access to this concept" });
     }
     
