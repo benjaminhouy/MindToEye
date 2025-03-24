@@ -23,8 +23,15 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
       currentLocation 
     });
 
-    // Only redirect after we've checked if the user is logged in (or is a demo user)
-    if (!loading && !user && !isDemo) {
+    // Check for user authentication status that includes:
+    // 1. Regular authenticated users (user exists and has session)
+    // 2. Demo users (isDemo flag is true)
+    // 3. Anonymous users who may have converted (check session storage)
+    const hasConvertedAccount = typeof window !== 'undefined' && 
+      window.sessionStorage.getItem('savedEmail') && 
+      window.sessionStorage.getItem('pendingPasswordSetup');
+      
+    if (!loading && !user && !isDemo && !hasConvertedAccount) {
       console.log("No authenticated user detected, redirecting to login page");
       navigate('/auth');
     }
@@ -42,8 +49,12 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     );
   }
 
-  // If not logged in, not a demo user, and not already at the auth page, show nothing (redirection will happen)
-  if (!user && !isDemo && currentLocation !== '/auth') {
+  // If not authenticated and not already at the auth page, show nothing (redirection will happen)
+  const hasConvertedAccount = typeof window !== 'undefined' && 
+    window.sessionStorage.getItem('savedEmail') && 
+    window.sessionStorage.getItem('pendingPasswordSetup');
+    
+  if (!user && !isDemo && !hasConvertedAccount && currentLocation !== '/auth') {
     console.log("Not authenticated and not on auth page - waiting for redirect");
     return null;
   }
