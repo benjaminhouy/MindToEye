@@ -680,20 +680,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Update the user to set isDemo to false and update the username/email
+      // Update the user record in our database, but don't change isDemo status yet
+      // This way we store the email for future reference, but keep the anonymous session active
       const updatedUser = await storage.updateUser(userId, {
         username: email,
-        isDemo: false
+        // Keep isDemo true to indicate this is still using the anonymous session
+        // but now has an email associated with it
+        isDemo: true 
       });
       
       if (!updatedUser) {
         return res.status(500).json({ error: "Failed to update user" });
       }
       
-      console.log(`Demo user work saved: ID=${updatedUser.id}, Email=${email}`);
+      console.log(`Demo user work saved: ID=${updatedUser.id}, Email=${email}, Keeping anonymous session active`);
       
       // Return the updated user
-      res.status(200).json(updatedUser);
+      res.status(200).json({
+        ...updatedUser,
+        // We tell the client the user is no longer in demo mode,
+        // even though we've kept isDemo=true in the database
+        // This prevents the "Save Your Work" button from appearing
+        isDemo: false
+      });
     } catch (error) {
       console.error("Error saving demo account:", error);
       

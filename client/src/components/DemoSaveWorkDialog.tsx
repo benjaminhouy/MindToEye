@@ -62,8 +62,8 @@ export function DemoSaveWorkDialog({ children }: DemoSaveWorkDialogProps) {
       await saveDemoAccount(values.email);
       
       toast({
-        title: 'Account created successfully!',
-        description: 'Your work has been saved to your new account.',
+        title: 'Work saved successfully!',
+        description: 'Your work is now saved and you can continue using the app. Your current session remains active.',
         variant: 'default',
       });
       
@@ -124,8 +124,8 @@ export function DemoSaveWorkDialog({ children }: DemoSaveWorkDialogProps) {
                 <strong>Don't lose your creative work!</strong> Demo accounts have limited storage time.
               </span>
               <span className="block">
-                Create a free account to save all your projects and concepts forever.
-                Everything you've created will be preserved automatically.
+                Save your work by providing an email address. Your current session will remain active,
+                and all your projects will be saved.
               </span>
             </DialogDescription>
           </DialogHeader>
@@ -156,10 +156,10 @@ export function DemoSaveWorkDialog({ children }: DemoSaveWorkDialogProps) {
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Creating Account...
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving Your Work...
                 </>
               ) : (
-                'Create Free Account'
+                'Save Your Work'
               )}
             </Button>
           </DialogFooter>

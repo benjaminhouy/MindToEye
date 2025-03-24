@@ -315,18 +315,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const savedUser = await response.json();
       console.log("Demo work saved to regular account successfully:", savedUser);
       
-      // Turn off demo mode
+      // Turn off demo mode in local state
       setIsDemo(false);
       
-      // Update auth user email
-      const { error: updateError } = await supabase.auth.updateUser({
-        email: email,
-      });
+      // We are NOT updating the Supabase auth email anymore, as it requires email verification
+      // and disrupts the user experience. The email is saved in our database for future reference,
+      // but we'll keep using the anonymous auth session for the current user session.
       
-      if (updateError) {
-        console.error("Error updating Supabase user email:", updateError);
-        // Continue anyway - the backend upgrade was successful
-      }
+      // Let the user know their work is saved and provide login instructions for the future
+      console.log("Work saved successfully. User can continue to use the app with current session.");
       
       return savedUser;
     } catch (error) {
