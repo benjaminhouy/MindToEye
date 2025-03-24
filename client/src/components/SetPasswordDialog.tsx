@@ -4,7 +4,6 @@ import { useToast } from '@/hooks/use-toast';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { supabase } from '@/lib/supabase';
 
 import {
   Dialog,
@@ -17,20 +16,20 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2 } from 'lucide-react';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Loader2, CheckCircle2 } from 'lucide-react';
 
 // Form validation schema
 const passwordSchema = z.object({
   password: z
     .string()
-    .min(6, 'Password must be at least 6 characters long'),
-  confirmPassword: z
-    .string()
-    .min(1, 'Please confirm your password'),
+    .min(8, 'Password must be at least 8 characters long')
+    .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
+    .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
+    .regex(/[0-9]/, 'Password must contain at least one number'),
+  confirmPassword: z.string(),
 }).refine(data => data.password === data.confirmPassword, {
   message: "Passwords don't match",
-  path: ["confirmPassword"],
+  path: ['confirmPassword'],
 });
 
 type PasswordFormValues = z.infer<typeof passwordSchema>;
@@ -42,10 +41,10 @@ interface SetPasswordDialogProps {
 }
 
 export function SetPasswordDialog({ open, onOpenChange, email }: SetPasswordDialogProps) {
-  const { user } = useAuth();
+  const { setPassword } = useAuth();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
+  const [isCompleted, setIsCompleted] = useState(false);
 
   // Initialize form
   const form = useForm<PasswordFormValues>({
@@ -60,30 +59,18 @@ export function SetPasswordDialog({ open, onOpenChange, email }: SetPasswordDial
     try {
       setIsSubmitting(true);
       
-      // Set the password for the anonymous user in Supabase
-      const { error } = await supabase.auth.updateUser({
-        password: values.password
-      });
+      // Call the API to set the password
+      await setPassword(email, values.password);
       
-      if (error) {
-        console.error("Error setting password:", error);
-        throw new Error(error.message);
-      }
+      setIsCompleted(true);
       
-      // Show success message
-      setShowSuccess(true);
-      
-      // Reset form
-      form.reset();
-      
-      // Show toast
       toast({
         title: 'Password set successfully!',
-        description: 'You can now use your email and password to log in to your account in the future.',
+        description: 'You can now use your email and password to sign in.',
         variant: 'default',
       });
       
-      // Close dialog after a delay
+      // Close after 3 seconds of showing the success message
       setTimeout(() => {
         onOpenChange(false);
       }, 3000);
@@ -101,51 +88,62 @@ export function SetPasswordDialog({ open, onOpenChange, email }: SetPasswordDial
     }
   };
 
+  // If user decides to skip, just close the dialog
+  const handleSkip = () => {
+    toast({
+      title: 'Password setup skipped',
+      description: 'You can set a password later from your account settings.',
+      variant: 'default',
+    });
+    onOpenChange(false);
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
-        <form onSubmit={form.handleSubmit(onSubmit)}>
-          <DialogHeader>
-            <DialogTitle>Secure Your Account</DialogTitle>
-            <DialogDescription>
-              <span className="block mb-2">
-                Set a password to securely access your account in the future.
-              </span>
-              <span className="block">
-                Your work is already saved to <strong>{email}</strong>. Setting a password is optional but recommended.
-              </span>
-            </DialogDescription>
-          </DialogHeader>
-          
-          {showSuccess ? (
-            <Alert className="my-4 bg-green-50 border-green-200">
-              <AlertDescription>
-                Password set successfully! You can now use your email and password to log in in the future.
-              </AlertDescription>
-            </Alert>
-          ) : (
+        {isCompleted ? (
+          <div className="flex flex-col items-center justify-center py-6">
+            <CheckCircle2 className="h-16 w-16 text-primary mb-4" />
+            <h2 className="text-xl font-semibold mb-2">Password Set Successfully!</h2>
+            <p className="text-center text-muted-foreground mb-4">
+              Your account is now secured with a password.
+            </p>
+            <Button onClick={() => onOpenChange(false)}>
+              Continue
+            </Button>
+          </div>
+        ) : (
+          <form onSubmit={form.handleSubmit(onSubmit)}>
+            <DialogHeader>
+              <DialogTitle>Set a Password (Optional)</DialogTitle>
+              <DialogDescription>
+                <span className="block mb-2">
+                  Your work is already saved to <strong>{email}</strong>
+                </span>
+                <span className="block">
+                  Set a password now to secure your account, or skip to do it later.
+                </span>
+              </DialogDescription>
+            </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="grid gap-2">
                 <Label htmlFor="password">Password</Label>
                 <Input
                   id="password"
                   type="password"
-                  placeholder="Create a secure password"
-                  required
+                  placeholder="••••••••"
                   {...form.register('password')}
                 />
                 {form.formState.errors.password && (
                   <p className="text-sm text-destructive">{form.formState.errors.password.message}</p>
                 )}
               </div>
-              
               <div className="grid gap-2">
                 <Label htmlFor="confirmPassword">Confirm Password</Label>
                 <Input
                   id="confirmPassword"
                   type="password"
-                  placeholder="Confirm your password"
-                  required
+                  placeholder="••••••••"
                   {...form.register('confirmPassword')}
                 />
                 {form.formState.errors.confirmPassword && (
@@ -153,20 +151,21 @@ export function SetPasswordDialog({ open, onOpenChange, email }: SetPasswordDial
                 )}
               </div>
             </div>
-          )}
-          
-          <DialogFooter>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={isSubmitting}
-            >
-              {showSuccess ? 'Close' : 'Skip for Now'}
-            </Button>
-            
-            {!showSuccess && (
-              <Button type="submit" disabled={isSubmitting}>
+            <DialogFooter className="flex flex-col sm:flex-row gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleSkip}
+                disabled={isSubmitting}
+                className="w-full sm:w-auto order-1 sm:order-none"
+              >
+                Skip for Now
+              </Button>
+              <Button 
+                type="submit" 
+                disabled={isSubmitting}
+                className="w-full sm:w-auto"
+              >
                 {isSubmitting ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Setting Password...
@@ -175,9 +174,9 @@ export function SetPasswordDialog({ open, onOpenChange, email }: SetPasswordDial
                   'Set Password'
                 )}
               </Button>
-            )}
-          </DialogFooter>
-        </form>
+            </DialogFooter>
+          </form>
+        )}
       </DialogContent>
     </Dialog>
   );

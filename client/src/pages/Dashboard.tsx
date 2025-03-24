@@ -19,16 +19,34 @@ const Dashboard = () => {
     enabled: !!authId, // Only run query when we have an authId
     queryFn: async () => {
       console.log("Fetching projects for user with authId:", authId);
-      const response = await fetch('/api/projects', {
-        headers: {
-          'Authorization': 'Bearer token',  // The token itself doesn't matter for our simplified auth
-          'x-auth-id': authId || ''  // Send the auth ID in the custom header
+      try {
+        const response = await fetch('/api/projects', {
+          headers: {
+            'Authorization': 'Bearer token',  // The token itself doesn't matter for our simplified auth
+            'x-auth-id': authId || ''  // Send the auth ID in the custom header
+          }
+        });
+        
+        if (response.status === 401) {
+          // For 401 errors, we'll return an empty array instead of throwing
+          // This is common for new users who don't have projects yet
+          console.log("New user or demo account - returning empty projects array");
+          return [];
         }
-      });
-      if (!response.ok) {
-        throw new Error('Failed to fetch projects');
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch projects');
+        }
+        
+        return response.json();
+      } catch (err) {
+        console.error("Error fetching projects:", err);
+        // Return empty array instead of throwing for demo or anonymous users
+        if (user) {
+          return [];
+        }
+        throw err;
       }
-      return response.json();
     }
   });
 

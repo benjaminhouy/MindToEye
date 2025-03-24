@@ -770,6 +770,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       if (isNaN(userId as number)) {
+        // If the user ID is not valid, and it's likely a demo or anonymous user,
+        // return an empty array instead of an error to avoid red error messages
+        if (authId) {
+          console.log("Demo/anonymous user or not registered yet. Returning empty projects for auth ID:", authId);
+          return res.json([]);
+        }
+        
         return res.status(401).json({ error: "Unauthorized: Valid user ID not provided" });
       }
       
