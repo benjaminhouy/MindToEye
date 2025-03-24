@@ -20,41 +20,41 @@ import { Label } from '@/components/ui/label';
 import { Loader2 } from 'lucide-react';
 
 // Form validation schema
-const upgradeSchema = z.object({
+const accountSchema = z.object({
   email: z
     .string()
     .email('Please enter a valid email address')
     .min(5, 'Email is required'),
 });
 
-type UpgradeFormValues = z.infer<typeof upgradeSchema>;
+type AccountFormValues = z.infer<typeof accountSchema>;
 
 interface DemoUpgradeDialogProps {
   children: React.ReactNode;
 }
 
 export function DemoUpgradeDialog({ children }: DemoUpgradeDialogProps) {
-  const { upgradeDemoAccount, isDemo } = useAuth();
+  const { saveDemoAccount, isDemo } = useAuth();
   const { toast } = useToast();
   const [open, setOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Initialize form
-  const form = useForm<UpgradeFormValues>({
-    resolver: zodResolver(upgradeSchema),
+  const form = useForm<AccountFormValues>({
+    resolver: zodResolver(accountSchema),
     defaultValues: {
       email: '',
     },
   });
 
-  const onSubmit = async (values: UpgradeFormValues) => {
+  const onSubmit = async (values: AccountFormValues) => {
     try {
       setIsSubmitting(true);
-      await upgradeDemoAccount(values.email);
+      await saveDemoAccount(values.email);
       
       toast({
-        title: 'Account upgraded successfully!',
-        description: 'You can now use all features of MindToEye with your new account.',
+        title: 'Account created successfully!',
+        description: 'Your work has been saved to your new account.',
         variant: 'default',
       });
       
@@ -62,9 +62,9 @@ export function DemoUpgradeDialog({ children }: DemoUpgradeDialogProps) {
       // No need to redirect, just refresh the current page
       window.location.reload();
     } catch (error) {
-      console.error('Error upgrading account:', error);
+      console.error('Error creating account:', error);
       toast({
-        title: 'Failed to upgrade account',
+        title: 'Failed to create account',
         description: error instanceof Error ? error.message : 'An unexpected error occurred',
         variant: 'destructive',
       });

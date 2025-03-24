@@ -327,10 +327,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Continue anyway - the backend upgrade was successful
       }
       
-      return upgradedUser;
+      return savedUser;
     } catch (error) {
-      console.error('Error upgrading demo account:', error);
-      setError(error instanceof Error ? error.message : 'Failed to upgrade demo account');
+      console.error('Error saving demo account:', error);
+      setError(error instanceof Error ? error.message : 'Failed to save demo account');
       throw error;
     } finally {
       setLoading(false);
@@ -345,7 +345,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signUp,
     signOut,
     startDemoSession,
-    upgradeDemoAccount,
+    saveDemoAccount,
     loading,
     error,
     isDemo,
