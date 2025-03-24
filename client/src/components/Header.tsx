@@ -5,7 +5,7 @@ import { PlusIcon, BellIcon, UserIcon, LogOutIcon, SettingsIcon, ZapIcon } from 
 import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { DemoUpgradeDialog } from "@/components/DemoUpgradeDialog";
+import { DemoSaveWorkDialog } from "@/components/DemoSaveWorkDialog";
 
 const Header = () => {
   const [location] = useLocation();
@@ -241,13 +241,13 @@ const Header = () => {
               )}
             </div>
 
-            {/* Always render both components, but DemoUpgradeDialog will self-filter */}
-            <DemoUpgradeDialog>
+            {/* Always render both components, but DemoSaveWorkDialog will self-filter */}
+            <DemoSaveWorkDialog>
               <Button size="sm" className="ml-4" variant="secondary">
                 <ZapIcon className="-ml-0.5 mr-2 h-4 w-4" />
                 Save Your Work
               </Button>
-            </DemoUpgradeDialog>
+            </DemoSaveWorkDialog>
             
             {!isDemo && (
               <Link href="/projects/new">
