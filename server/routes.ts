@@ -247,8 +247,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Test endpoint for Supabase Admin API integration
   app.get("/api/test-supabase-admin", async (_req: Request, res: Response) => {
     try {
-      // Import the Supabase admin functions
-      const { supabaseAdmin } = await import('./supabase-admin');
+      // Import the Supabase admin client directly
+      const supabaseAdminModule = await import('./supabase-admin');
+      const { supabaseAdmin } = supabaseAdminModule;
       
       if (!supabaseAdmin) {
         return res.status(500).json({
@@ -747,7 +748,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Use Supabase Admin functions to properly create or link the user
       try {
         // Import the Supabase admin functions
-        const { linkAnonymousUser, generatePasswordResetLink } = await import('./supabase-admin');
+        const supabaseAdminModule = await import('./supabase-admin');
+        const { linkAnonymousUser, generatePasswordResetLink } = supabaseAdminModule;
         
         // Attempt to link the anonymous account to the new email in Supabase
         const supabaseUser = await linkAnonymousUser(authId, email);
