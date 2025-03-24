@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 250" width="500" height="250">
+  <defs>
+    <linearGradient id="bg-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F0F8FF" />
+      <stop offset="100%" stop-color="#E6E6FA" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="500" height="250" fill="url(#bg-gradient)" rx="10" ry="10" />
+  
+  <!-- Logo Diamond -->
+  <path d="M150,125 L180,95 L210,125 L180,155 Z" fill="#1E90FF" />
+  
+  <!-- Company Name -->
+  <text x="220" y="135" font-family="Montserrat, Arial" font-size="36" font-weight="700" fill="#333">
+    Skylark Tech
+  </text>
+  
+  <!-- Tagline -->
+  <text x="220" y="165" font-family="Open Sans, Arial" font-size="16" fill="#666">
+    Innovate. Connect. Transform.
+  </text>
+  
+  <!-- Color Swatches -->
+  <g transform="translate(380, 90)">
+    <rect x="0" y="0" width="30" height="30" fill="#1E90FF" rx="5" ry="5" />
+    <rect x="0" y="35" width="30" height="30" fill="#4682B4" rx="5" ry="5" />
+    <rect x="0" y="70" width="30" height="30" fill="#F0F8FF" rx="5" ry="5" stroke="#ddd" stroke-width="1" />
+  </g>
+</svg>

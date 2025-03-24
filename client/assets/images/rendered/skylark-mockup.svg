@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 400" width="600" height="400">
+  <defs>
+    <linearGradient id="bg-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1E90FF" stop-opacity="0.1" />
+      <stop offset="100%" stop-color="#4682B4" stop-opacity="0.2" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="600" height="400" fill="#ffffff" />
+  
+  <!-- Website Mockup -->
+  <rect x="40" y="40" width="520" height="320" rx="8" ry="8" fill="#fff" stroke="#eee" stroke-width="1" />
+  
+  <!-- Header -->
+  <rect x="40" y="40" width="520" height="60" rx="8" ry="8" fill="#1E90FF" />
+  
+  <!-- Logo -->
+  <rect x="60" y="55" width="30" height="30" fill="#fff" />
+  <text x="100" y="75" font-family="Montserrat, Arial" font-size="18" font-weight="700" fill="#fff">Skylark Tech</text>
+  
+  <!-- Navigation -->
+  <text x="380" y="75" font-family="Open Sans, Arial" font-size="14" fill="#fff">Products</text>
+  <text x="450" y="75" font-family="Open Sans, Arial" font-size="14" fill="#fff">Solutions</text>
+  <text x="520" y="75" font-family="Open Sans, Arial" font-size="14" fill="#fff">About</text>
+  
+  <!-- Hero Section -->
+  <rect x="40" y="100" width="520" height="200" fill="url(#bg-gradient)" />
+  
+  <!-- Hero Content -->
+  <text x="80" y="160" font-family="Montserrat, Arial" font-size="28" font-weight="800" fill="#333">Innovative Solutions</text>
+  <text x="80" y="190" font-family="Montserrat, Arial" font-size="28" font-weight="800" fill="#333">for Tomorrow's Tech</text>
+  
+  <text x="80" y="220" font-family="Open Sans, Arial" font-size="14" fill="#555" width="300">
+    Empowering businesses with cutting-edge technology solutions
+    that drive growth and innovation.
+  </text>
+  
+  <!-- CTA Button -->
+  <rect x="80" y="240" width="120" height="40" rx="20" ry="20" fill="#1E90FF" />
+  <text x="105" y="265" font-family="Open Sans, Arial" font-size="14" font-weight="600" fill="#fff">Get Started</text>
+  
+  <!-- Logo Diamond -->
+  <g transform="translate(400, 180)">
+    <path d="M0,0 L30,-30 L60,0 L30,30 Z" fill="#1E90FF" opacity="0.8" />
+  </g>
+  
+  <!-- Feature Section -->
+  <rect x="40" y="300" width="160" height="60" rx="4" ry="4" fill="#F0F8FF" />
+  <rect x="220" y="300" width="160" height="60" rx="4" ry="4" fill="#F0F8FF" />
+  <rect x="400" y="300" width="160" height="60" rx="4" ry="4" fill="#F0F8FF" />
+  
+  <!-- Feature Icons -->
+  <circle cx="60" cy="330" r="10" fill="#1E90FF" />
+  <circle cx="240" cy="330" r="10" fill="#1E90FF" />
+  <circle cx="420" cy="330" r="10" fill="#1E90FF" />
+  
+  <!-- Feature Text -->
+  <text x="80" y="325" font-family="Montserrat, Arial" font-size="12" font-weight="600" fill="#333">Cloud Solutions</text>
+  <text x="80" y="345" font-family="Open Sans, Arial" font-size="10" fill="#666">Secure, scalable infrastructure</text>
+  
+  <text x="260" y="325" font-family="Montserrat, Arial" font-size="12" font-weight="600" fill="#333">Data Analytics</text>
+  <text x="260" y="345" font-family="Open Sans, Arial" font-size="10" fill="#666">Insights that drive decisions</text>
+  
+  <text x="440" y="325" font-family="Montserrat, Arial" font-size="12" font-weight="600" fill="#333">AI Integration</text>
+  <text x="440" y="345" font-family="Open Sans, Arial" font-size="10" fill="#666">Smart automation solutions</text>
+</svg>

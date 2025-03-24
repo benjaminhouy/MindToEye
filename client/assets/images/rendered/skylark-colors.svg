@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 200" width="600" height="200">
+  <!-- Background -->
+  <rect width="600" height="200" fill="#ffffff" rx="10" ry="10" />
+  
+  <!-- Title -->
+  <text x="20" y="40" font-family="Montserrat, Arial" font-size="18" font-weight="700" fill="#333">
+    Skylark Tech Color Palette
+  </text>
+  
+  <!-- Primary Color -->
+  <g transform="translate(20, 60)">
+    <rect width="120" height="120" rx="8" ry="8" fill="#1E90FF" />
+    <text x="10" y="140" font-family="Open Sans, Arial" font-size="14" fill="#333">Primary</text>
+    <text x="10" y="158" font-family="Open Sans, Arial" font-size="12" fill="#666">#1E90FF</text>
+  </g>
+  
+  <!-- Secondary Color -->
+  <g transform="translate(160, 60)">
+    <rect width="120" height="120" rx="8" ry="8" fill="#F0F8FF" stroke="#eee" stroke-width="1" />
+    <text x="10" y="140" font-family="Open Sans, Arial" font-size="14" fill="#333">Secondary</text>
+    <text x="10" y="158" font-family="Open Sans, Arial" font-size="12" fill="#666">#F0F8FF</text>
+  </g>
+  
+  <!-- Accent Color -->
+  <g transform="translate(300, 60)">
+    <rect width="120" height="120" rx="8" ry="8" fill="#4682B4" />
+    <text x="10" y="140" font-family="Open Sans, Arial" font-size="14" fill="#333">Accent</text>
+    <text x="10" y="158" font-family="Open Sans, Arial" font-size="12" fill="#666">#4682B4</text>
+  </g>
+  
+  <!-- Neutral Color -->
+  <g transform="translate(440, 60)">
+    <rect width="120" height="120" rx="8" ry="8" fill="#E6E6FA" stroke="#eee" stroke-width="1" />
+    <text x="10" y="140" font-family="Open Sans, Arial" font-size="14" fill="#333">Neutral</text>
+    <text x="10" y="158" font-family="Open Sans, Arial" font-size="12" fill="#666">#E6E6FA</text>
+  </g>
+</svg>
