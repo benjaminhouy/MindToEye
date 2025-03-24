@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { useLocation } from 'wouter';
 
@@ -21,6 +21,32 @@ export default function AuthPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [demoLoading, setDemoLoading] = useState(false);
+  
+  // Handle demo session
+  const handleDemoClick = async () => {
+    try {
+      setDemoLoading(true);
+      console.log("Starting demo session");
+      await startDemoSession();
+      console.log("Demo session started, redirecting to dashboard");
+      navigate("/");
+    } catch (error) {
+      console.error("Error starting demo session:", error);
+    } finally {
+      setDemoLoading(false);
+    }
+  };
+
+  // Check for demo=true in URL parameters when component mounts
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const demoParam = searchParams.get('demo');
+    
+    if (demoParam === 'true') {
+      console.log("Demo parameter detected in URL, starting demo session automatically");
+      handleDemoClick();
+    }
+  }, [handleDemoClick]);
 
   // Handle form submissions
   const handleSignIn = async (e: React.FormEvent) => {
