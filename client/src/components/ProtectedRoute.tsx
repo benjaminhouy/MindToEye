@@ -1,4 +1,4 @@
-import { ReactNode, useEffect } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
 import { useAuth } from '@/lib/auth-context';
 
@@ -13,14 +13,41 @@ interface ProtectedRouteProps {
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { user, session, loading, isDemo } = useAuth();
   const [currentLocation, navigate] = useLocation();
+  const [redirecting, setRedirecting] = useState(false);
+
+  // Force reauthentication check on page load or refresh
+  useEffect(() => {
+    // Clear local storage items that might incorrectly indicate a logged-in state
+    if (!user && !session) {
+      // These should be cleared during logout, but this is a safety net
+      const storageItems = ['pendingPasswordSetup', 'savedEmail'];
+      storageItems.forEach(item => {
+        if (sessionStorage.getItem(item)) {
+          sessionStorage.removeItem(item);
+        }
+      });
+    }
+  }, []);
 
   useEffect(() => {
+    // Add an extra check to see if we're actually logged out after logout operation
+    const isActuallyLoggedOut = !user && !session && typeof window !== 'undefined' && 
+      window.location.pathname !== '/auth' && !redirecting;
+    
+    if (isActuallyLoggedOut) {
+      console.log("Logout detected, redirecting to auth page");
+      setRedirecting(true);
+      window.location.href = '/auth';
+      return;
+    }
+    
     console.log("ProtectedRoute status:", { 
       loading, 
       authenticated: !!user, 
       sessionExists: !!session,
       isDemo,
-      currentLocation 
+      currentLocation,
+      redirecting
     });
 
     // Check for user authentication status that includes:
@@ -31,19 +58,22 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
       window.sessionStorage.getItem('savedEmail') && 
       window.sessionStorage.getItem('pendingPasswordSetup');
       
-    if (!loading && !user && !isDemo && !hasConvertedAccount) {
+    if (!loading && !user && !isDemo && !hasConvertedAccount && !redirecting) {
       console.log("No authenticated user detected, redirecting to login page");
+      setRedirecting(true);
       navigate('/auth');
     }
-  }, [user, session, loading, isDemo, navigate, currentLocation]);
+  }, [user, session, loading, isDemo, navigate, currentLocation, redirecting]);
 
   // Show a loading spinner while checking authentication
-  if (loading) {
+  if (loading || redirecting) {
     return (
       <div className="flex items-center justify-center h-screen">
         <div className="flex flex-col items-center">
           <div className="w-10 h-10 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-          <p className="mt-4 text-gray-600">Checking authentication...</p>
+          <p className="mt-4 text-gray-600">
+            {redirecting ? "Redirecting to login..." : "Checking authentication..."}
+          </p>
         </div>
       </div>
     );
@@ -55,7 +85,9 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     window.sessionStorage.getItem('pendingPasswordSetup');
     
   if (!user && !isDemo && !hasConvertedAccount && currentLocation !== '/auth') {
-    console.log("Not authenticated and not on auth page - waiting for redirect");
+    console.log("Not authenticated and not on auth page - redirecting");
+    // Don't just wait for the effect to run - redirect immediately
+    navigate('/auth');
     return null;
   }
 

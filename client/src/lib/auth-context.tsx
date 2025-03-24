@@ -251,22 +251,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Store auth ID before we clear the session
       const currentAuthId = user?.id;
       
+      // Immediately clear local state to prevent routing issues
+      setSession(null);
+      setUser(null);
+      setIsDemo(false);
+      
+      // Also clear any session storage items we've set
+      sessionStorage.removeItem('pendingPasswordSetup');
+      sessionStorage.removeItem('savedEmail');
+      
+      // Clear React Query cache
       try {
-        // Try to sign out with Supabase
-        const { error } = await supabase.auth.signOut();
-        
-        if (error) {
-          // If it's an AuthSessionMissingError, we can ignore it and continue
-          if (error.name !== 'AuthSessionMissingError') {
-            console.warn('Non-critical sign out error:', error);
-          }
+        // Get access to the query client
+        const { queryClient } = await import('../lib/queryClient');
+        if (queryClient) {
+          // Clear all queries from the cache to prevent stale data
+          queryClient.clear();
+          console.log('Query cache cleared');
         }
-      } catch (signOutError) {
-        // Log but don't rethrow - we want to clear local state regardless
-        console.warn('Error during Supabase sign out:', signOutError);
+      } catch (cacheError) {
+        console.warn('Could not clear query cache:', cacheError);
       }
       
-      // Also call our server API to log out (to handle revocation of tokens)
+      // Use our API to revoke tokens on the server side
       if (currentAuthId) {
         try {
           await fetch('/api/logout', {
@@ -278,19 +285,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           });
           console.log('Server-side logout completed');
         } catch (serverLogoutError) {
-          // Log but continue - client-side logout is more important
           console.warn('Error during server-side logout:', serverLogoutError);
         }
       }
       
-      // Always clear local state, even if the Supabase sign out fails
-      setSession(null);
-      setUser(null);
-      setIsDemo(false);
-      
-      // Also clear any session storage items we've set
-      sessionStorage.removeItem('pendingPasswordSetup');
-      sessionStorage.removeItem('savedEmail');
+      // After server-side logout, also call Supabase client-side logout
+      try {
+        const { error } = await supabase.auth.signOut();
+        if (error) {
+          if (error.name !== 'AuthSessionMissingError') {
+            console.warn('Non-critical Supabase sign out error:', error);
+          }
+        }
+      } catch (signOutError) {
+        console.warn('Error during Supabase sign out:', signOutError);
+      }
       
       // Success message
       toast({
@@ -298,10 +307,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         description: "You have been signed out.",
       });
       
-      // Force reload to clear all app state
-      setTimeout(() => {
-        window.location.href = '/auth';
-      }, 500);
+      // Don't use setTimeout - redirect immediately to prevent flashing of content
+      console.log('Redirecting to auth page after logout');
+      window.location.href = '/auth';
       
     } catch (error: any) {
       console.error('Sign out error:', error);
@@ -312,6 +320,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         description: error.message || 'Please try again',
         variant: "destructive",
       });
+      
+      // Even if there's an error, try to redirect to auth page
+      window.location.href = '/auth';
     } finally {
       setLoading(false);
     }

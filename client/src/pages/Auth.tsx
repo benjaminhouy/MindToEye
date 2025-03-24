@@ -26,12 +26,31 @@ export default function AuthPage() {
   
   // If user is already authenticated, redirect to dashboard
   useEffect(() => {
-    if (user && session) {
-      console.log("User already authenticated, redirecting to dashboard");
-      navigate("/");
-    } else {
-      setPageLoading(false);
-    }
+    const checkAuth = async () => {
+      try {
+        // Add a small delay to let Supabase client initialize
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
+        if (user && session) {
+          console.log("User already authenticated, redirecting to dashboard");
+          navigate("/");
+        } else {
+          // Check sessionStorage for any residual auth data and clear it
+          const hasInconsistentState = window.sessionStorage.getItem('supabase.auth.token') && !session;
+          if (hasInconsistentState) {
+            console.log("Detected inconsistent auth state, clearing session storage");
+            window.sessionStorage.removeItem('supabase.auth.token');
+          }
+          
+          setPageLoading(false);
+        }
+      } catch (error) {
+        console.error("Error checking authentication:", error);
+        setPageLoading(false);
+      }
+    };
+    
+    checkAuth();
   }, [user, session, navigate]);
   
   // Handle demo session
