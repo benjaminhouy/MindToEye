@@ -188,7 +188,7 @@ const Header = () => {
                     <p className="text-sm">Signed in as</p>
                     <div className="flex items-center">
                       <p className="text-sm font-medium truncate">
-                        {user?.email || 'Anonymous User'}
+                        {user?.email || user?.user_metadata?.email || 'Anonymous User'}
                       </p>
                       {isDemo && (
                         <span className="ml-2 px-1.5 py-0.5 text-xs font-medium bg-amber-100 text-amber-800 rounded-full">
