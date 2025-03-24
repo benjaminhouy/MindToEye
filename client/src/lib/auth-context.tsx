@@ -223,49 +223,55 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
   
-  // Start a demo session without authentication
+  // Start a demo session using Supabase anonymous authentication
   const startDemoSession = async () => {
     try {
-      console.log("Starting demo session");
+      console.log("Starting demo session with Supabase anonymous auth");
       setLoading(true);
       setError(null);
       
-      // Call our demo user creation endpoint
-      const response = await fetch('/api/demo-user', {
+      // Sign in anonymously with Supabase
+      const { data, error } = await supabase.auth.signInAnonymously();
+      
+      if (error) {
+        console.error("Anonymous auth error:", error.message);
+        throw error;
+      }
+      
+      if (!data?.user || !data?.session) {
+        throw new Error('Failed to create anonymous session');
+      }
+      
+      console.log("Anonymous auth successful:", data.user.id);
+      
+      // Register the anonymous user with our API
+      const response = await fetch('/api/register-anonymous', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${data.session.access_token}`
         },
+        body: JSON.stringify({
+          authId: data.user.id,
+        }),
       });
       
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to create demo user');
+        throw new Error(errorData.error || 'Failed to register anonymous user');
       }
       
-      const demoUser = await response.json();
-      console.log("Demo user created:", demoUser);
+      const apiUser = await response.json();
+      console.log("Anonymous user registered with API:", apiUser);
       
-      // Create a fake user and session for the demo
-      const fakeUser = {
-        id: demoUser.authId,
-        email: demoUser.username,
-        app_metadata: { provider: 'demo' },
-        user_metadata: { is_demo: true },
-      } as unknown as User;
-      
-      // Set the demo user state
+      // Set demo flag in state
       setIsDemo(true);
-      setUser(fakeUser);
       
-      // Create a fake session with the auth ID that will be used in API calls
-      const fakeSession = {
-        access_token: `demo-token-${demoUser.authId}`,
-        expires_at: Date.now() + 24 * 60 * 60 * 1000, // 1 day in the future
-        user: fakeUser,
-      } as unknown as Session;
+      // Use the real Supabase user and session
+      setUser(data.user);
+      setSession(data.session);
       
-      setSession(fakeSession);
+      console.log("Demo session started, redirecting to dashboard");
       
     } catch (error) {
       console.error('Error starting demo session:', error);
