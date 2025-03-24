@@ -59,12 +59,24 @@ const NewProject = () => {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/projects"] });
+      
+      // Navigate to the dashboard first for safety
+      setLocation("/");
+      
+      // Show toast with action to navigate to project
       toast({
         title: "Project created",
         description: "Your new project has been created successfully.",
+        action: (
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => setLocation(`/projects/${data.id}`)}
+          >
+            View Project
+          </Button>
+        )
       });
-      // Navigate to the new project
-      setLocation(`/projects/${data.id}`);
     },
     onError: () => {
       toast({

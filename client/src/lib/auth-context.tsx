@@ -237,11 +237,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(true);
       setError(null);
       
-      // Sign in anonymously with Supabase
-      const { data, error } = await supabase.auth.signInAnonymously();
+      // Check if we already have an anonymous session to prevent duplicates
+      if (session?.user?.app_metadata?.provider === 'anonymous') {
+        console.log("Already have an anonymous session, reusing it");
+        setIsDemo(true);
+        setLoading(false);
+        return;
+      }
+      
+      // Use a retry mechanism to handle rate limits
+      let retryCount = 0;
+      const maxRetries = 3;
+      let data, error;
+      
+      while (retryCount < maxRetries) {
+        try {
+          // Sign in anonymously with Supabase
+          const result = await supabase.auth.signInAnonymously();
+          data = result.data;
+          error = result.error;
+          
+          // Break if successful or if error is not rate limiting
+          if (!error || error.status !== 429) break;
+          
+          // Wait before retrying (exponential backoff)
+          const waitTime = Math.pow(2, retryCount) * 1000;
+          console.log(`Rate limited, retrying in ${waitTime}ms...`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+          retryCount++;
+        } catch (e) {
+          console.error("Error during anonymous auth:", e);
+          error = e;
+          break;
+        }
+      }
       
       if (error) {
-        console.error("Anonymous auth error:", error.message);
+        console.error("Anonymous auth error:", error instanceof Error ? error.message : JSON.stringify(error));
         throw error;
       }
       
@@ -251,32 +283,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
       console.log("Anonymous auth successful:", data.user.id);
       
-      // Register the anonymous user with our API
-      const response = await fetch('/api/register-anonymous', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${data.session.access_token}`
-        },
-        body: JSON.stringify({
-          authId: data.user.id,
-        }),
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to register anonymous user');
-      }
-      
-      const apiUser = await response.json();
-      console.log("Anonymous user registered with API:", apiUser);
-      
-      // Set demo flag in state
-      setIsDemo(true);
-      
-      // Use the real Supabase user and session
+      // Ensure client side state is set first to prevent race conditions
       setUser(data.user);
       setSession(data.session);
+      setIsDemo(true);
+      
+      // Register the anonymous user with our API
+      try {
+        const response = await fetch('/api/register-anonymous', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${data.session.access_token}`
+          },
+          body: JSON.stringify({
+            authId: data.user.id,
+          }),
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          console.error("Error registering anonymous user:", errorData);
+          // We continue anyway since auth is already done
+        } else {
+          const apiUser = await response.json();
+          console.log("Anonymous user registered with API:", apiUser);
+        }
+      } catch (apiError) {
+        console.error("Error registering with API:", apiError);
+        // Continue anyway since the auth is done
+      }
       
       console.log("Demo session started, redirecting to dashboard");
       
