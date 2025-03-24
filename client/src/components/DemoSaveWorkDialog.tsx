@@ -23,8 +23,8 @@ import { Loader2 } from 'lucide-react';
 const accountSchema = z.object({
   email: z
     .string()
-    .email('Please enter a valid email address')
-    .min(5, 'Email is required'),
+    .min(1, 'Email is required')
+    .email('Please enter a valid email address'),
 });
 
 type AccountFormValues = z.infer<typeof accountSchema>;
@@ -49,6 +49,15 @@ export function DemoSaveWorkDialog({ children }: DemoSaveWorkDialogProps) {
 
   const onSubmit = async (values: AccountFormValues) => {
     try {
+      // Additional client-side validation to ensure email is provided
+      if (!values.email || values.email.trim() === '') {
+        form.setError('email', { 
+          type: 'required', 
+          message: 'Please enter your email address' 
+        });
+        return;
+      }
+
       setIsSubmitting(true);
       await saveDemoAccount(values.email);
       
@@ -102,7 +111,8 @@ export function DemoSaveWorkDialog({ children }: DemoSaveWorkDialogProps) {
                 id="email"
                 type="email"
                 placeholder="you@example.com"
-                {...form.register('email')}
+                required
+                {...form.register('email', { required: 'Email is required' })}
               />
               {form.formState.errors.email && (
                 <p className="text-sm text-destructive">{form.formState.errors.email.message}</p>
