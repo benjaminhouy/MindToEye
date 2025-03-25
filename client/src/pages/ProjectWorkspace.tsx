@@ -50,9 +50,26 @@ const ProjectWorkspace = ({ id }: ProjectWorkspaceProps) => {
   // Create a reusable auth header object
   const authHeaders = authId ? { 'x-auth-id': authId } : {};
 
+  // Create a custom query function that includes auth headers
+  const projectQueryFn = async ({ queryKey }: { queryKey: string[] }) => {
+    const url = queryKey[0];
+    // Important: Pass our auth headers directly to ensure the server gets them
+    const res = await fetch(url, {
+      headers: authHeaders,
+      credentials: "include"
+    });
+    
+    if (!res.ok) {
+      throw new Error(`${res.status}: ${res.statusText}`);
+    }
+    
+    return res.json();
+  };
+
   const { data: project, isLoading: projectLoading, error: projectError } = useQuery<Project>({
     queryKey: [`/api/projects/${projectId}`],
-    enabled: !!projectId,
+    enabled: !!projectId && !!authId, // Only fetch when we have both projectId and authId
+    queryFn: projectQueryFn, // Use our custom query function with auth headers
     retry: false
   });
   
@@ -71,7 +88,8 @@ const ProjectWorkspace = ({ id }: ProjectWorkspaceProps) => {
 
   const { data: concepts, isLoading: conceptsLoading, refetch: refetchConcepts, error: conceptsError } = useQuery<BrandConcept[]>({
     queryKey: [`/api/projects/${projectId}/concepts`],
-    enabled: !!projectId && !accessError,
+    enabled: !!projectId && !!authId && !accessError, // Only fetch when we have both projectId and authId
+    queryFn: projectQueryFn, // Use our custom query function with auth headers
     retry: false
   });
 

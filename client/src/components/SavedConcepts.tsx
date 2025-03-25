@@ -1,4 +1,4 @@
-import { useMutation } from "@tanstack/react-query";
+import { useState, useEffect, useMutation } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { BrandConcept } from "@shared/schema";
 import { CheckIcon } from "lucide-react";
 import { format } from "date-fns";
+import { supabase } from "@/lib/supabase";
 
 interface SavedConceptsProps {
   concepts: BrandConcept[];
@@ -15,10 +16,40 @@ interface SavedConceptsProps {
 
 const SavedConcepts = ({ concepts, activeConcept, onSelect }: SavedConceptsProps) => {
   const { toast } = useToast();
+  const [authId, setAuthId] = useState<string | null>(null);
+
+  // Get auth ID for API requests
+  useEffect(() => {
+    const getAuthUser = async () => {
+      try {
+        const { data } = await supabase.auth.getUser();
+        if (data?.user?.id) {
+          setAuthId(data.user.id);
+          console.log("SavedConcepts: Auth ID retrieved for API requests:", data.user.id);
+        }
+      } catch (error) {
+        console.error("Error fetching auth user in SavedConcepts:", error);
+      }
+    };
+    
+    getAuthUser();
+  }, []);
 
   const setActiveMutation = useMutation({
     mutationFn: async (conceptId: number) => {
-      const response = await apiRequest("PATCH", `/api/concepts/${conceptId}/set-active`, {});
+      // Create auth headers
+      const headers: Record<string, string> = {};
+      if (authId) {
+        headers['x-auth-id'] = authId;
+        console.log("Including auth ID in set-active request:", authId);
+      }
+      
+      const response = await apiRequest(
+        "PATCH", 
+        `/api/concepts/${conceptId}/set-active`, 
+        {},
+        headers // Pass auth headers to ensure server gets them
+      );
       return response.json();
     },
     onSuccess: (data) => {
@@ -28,7 +59,8 @@ const SavedConcepts = ({ concepts, activeConcept, onSelect }: SavedConceptsProps
         description: "This brand concept is now active.",
       });
     },
-    onError: () => {
+    onError: (error) => {
+      console.error("Error activating concept:", error);
       toast({
         title: "Activation failed",
         description: "There was a problem activating this concept.",
