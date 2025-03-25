@@ -387,6 +387,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ status: "ok" });
   });
   
+  // Get currently authenticated user or user by ID
+  app.get("/api/user", async (req: Request, res: Response) => {
+    try {
+      // Check if a userId query parameter was provided
+      const userId = req.query.userId?.toString();
+      const authId = req.headers['x-auth-id']?.toString();
+      
+      // Log the request details for debugging
+      console.log(`/api/user endpoint called with userId=${userId}, authId=${authId}`);
+      
+      // Direct user ID lookup - either from query param or auth header
+      if (userId) {
+        // Try both formats - authId (UUID) or numeric ID
+        let user = await storage.getUserByAuthId(userId);
+        if (!user && !isNaN(Number(userId))) {
+          user = await storage.getUser(Number(userId));
+        }
+        
+        if (!user) {
+          return res.status(404).json({ error: "User not found" });
+        }
+        
+        // Return minimal user data for UI display
+        return res.json({
+          id: user.id,
+          authId: user.authId,
+          username: user.username,
+          email: user.email
+        });
+      }
+      
+      // Look up by auth header if no userId specified
+      if (authId) {
+        // Try both formats - authId (UUID) or numeric ID
+        let user = await storage.getUserByAuthId(authId);
+        if (!user && !isNaN(Number(authId))) {
+          user = await storage.getUser(Number(authId));
+        }
+        
+        if (!user) {
+          return res.status(404).json({ error: "User not found" });
+        }
+        
+        // Return minimal user data for UI display
+        return res.json({
+          id: user.id,
+          authId: user.authId,
+          username: user.username,
+          email: user.email
+        });
+      }
+      
+      // If no userId or authId provided, return 401
+      return res.status(401).json({ error: "Authentication required" });
+    } catch (error) {
+      console.error("Error in /api/user endpoint:", error);
+      res.status(500).json({ error: "Failed to retrieve user data" });
+    }
+  });
+  
   // Test endpoint for Supabase Admin API integration
   app.get("/api/test-supabase-admin", async (_req: Request, res: Response) => {
     try {

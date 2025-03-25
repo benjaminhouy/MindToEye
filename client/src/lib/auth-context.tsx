@@ -88,6 +88,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const isAnonymous = initialSession.user.app_metadata.provider === 'anonymous';
           const isConverted = initialSession.user.user_metadata.converted === true;
           setIsDemo(isAnonymous && !isConverted);
+          
+          // Store email in localStorage for persistence across the app
+          const userEmail = initialSession.user.email || 
+                          initialSession.user.user_metadata?.email;
+          
+          if (userEmail) {
+            localStorage.setItem('userEmail', userEmail);
+            console.log('Stored user email in localStorage:', userEmail);
+          }
         }
       } catch (error) {
         console.error('Error getting initial session:', error);
