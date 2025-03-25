@@ -16,10 +16,12 @@ const Header = () => {
   const { toast } = useToast();
   
   // Fetch user data from our API endpoint
-  const { data: userData } = useQuery({
+  const { data: userData, isLoading: isUserDataLoading, error: userDataError } = useQuery({
     queryKey: ['/api/user'],
     queryFn: async () => {
       if (!session || !user) return null;
+      
+      console.log("Fetching user data from API with auth ID:", user.id);
       
       const response = await fetch('/api/user', {
         headers: {
@@ -29,15 +31,28 @@ const Header = () => {
       });
       
       if (!response.ok) {
+        console.error("Error fetching user data:", await response.text());
         throw new Error('Failed to fetch user data');
       }
       
-      return response.json();
+      const data = await response.json();
+      console.log("User data fetched successfully:", data);
+      return data;
     },
     enabled: !!session && !!user,
     refetchOnWindowFocus: false,
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
+  
+  // Log user data for debugging
+  useEffect(() => {
+    if (userData) {
+      console.log("User data in Header:", userData);
+    }
+    if (userDataError) {
+      console.error("Error fetching user data:", userDataError);
+    }
+  }, [userData, userDataError]);
 
   const handleSignOut = async () => {
     try {

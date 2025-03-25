@@ -396,6 +396,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Log the request details for debugging
       console.log(`/api/user endpoint called with userId=${userId}, authId=${authId}`);
+      console.log("Headers:", JSON.stringify(req.headers, null, 2));
       
       // Direct user ID lookup - either from query param or auth header
       if (userId) {
