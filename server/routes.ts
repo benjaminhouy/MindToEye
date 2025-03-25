@@ -98,13 +98,56 @@ async function verifyProjectOwnership(req: Request, res: Response, next: NextFun
       }
     }
     
+    // Get userId from params directly
+    if (!userId && req.params.id) {
+      // Try to get the project first to extract owner ID
+      try {
+        const projectId = parseInt(req.params.id || req.params.projectId);
+        if (!isNaN(projectId)) {
+          console.log("Attempting to get project details to extract owner:", projectId);
+          const project = await storage.getProject(projectId);
+          if (project) {
+            console.log("Found project with ID", projectId, "owned by user", project.userId);
+            
+            // Check if the current authenticated user matches the authId in Supabase
+            if (req.headers.authorization) {
+              const token = req.headers.authorization.replace('Bearer ', '');
+              try {
+                // Import on demand to prevent circular dependencies
+                const { createSupabaseClientWithToken } = await import('./storage-utils');
+                const client = createSupabaseClientWithToken(token);
+                if (client) {
+                  const { data } = await client.auth.getUser();
+                  if (data?.user) {
+                    const user = await storage.getUserByAuthId(data.user.id);
+                    if (user && user.id === project.userId) {
+                      userId = user.id;
+                      console.log("Verified user ownership via Supabase token, userId:", userId);
+                    }
+                  }
+                }
+              } catch (err) {
+                console.error("Error verifying token:", err);
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Error getting project:", err);
+      }
+    }
+
     // Fallback to query params or body for development if userId is not set
     if (!userId) {
-      userId = parseInt(req.query.userId as string || req.body.userId);
+      userId = req.query.userId ? parseInt(req.query.userId as string) : 
+               (req.body.userId ? parseInt(req.body.userId) : undefined);
       console.log("Using fallback userId from query/body:", userId);
     }
     
-    if (isNaN(userId as number)) {
+    if (isNaN(userId as number) || !userId) {
+      // Log headers for debugging 
+      console.log("Access denied. Headers:", Object.keys(req.headers));
+      console.log("x-auth-id header:", req.headers['x-auth-id'] || 'not present');
       return res.status(401).json({ error: "Unauthorized: Valid user ID not provided" });
     }
     
@@ -191,13 +234,59 @@ async function verifyConceptOwnership(req: Request, res: Response, next: NextFun
       }
     }
     
+    // Get userId from params directly
+    if (!userId && req.params.id) {
+      // Try to get the concept first to extract owner info
+      try {
+        const conceptId = parseInt(req.params.id);
+        if (!isNaN(conceptId)) {
+          console.log("Attempting to get concept details to extract owner:", conceptId);
+          const concept = await storage.getBrandConcept(conceptId);
+          if (concept) {
+            const project = await storage.getProject(concept.projectId);
+            if (project) {
+              console.log("Found concept with ID", conceptId, "in project", concept.projectId, "owned by user", project.userId);
+              
+              // Check if the current authenticated user matches the authId in Supabase
+              if (req.headers.authorization) {
+                const token = req.headers.authorization.replace('Bearer ', '');
+                try {
+                  // Import on demand to prevent circular dependencies
+                  const { createSupabaseClientWithToken } = await import('./storage-utils');
+                  const client = createSupabaseClientWithToken(token);
+                  if (client) {
+                    const { data } = await client.auth.getUser();
+                    if (data?.user) {
+                      const user = await storage.getUserByAuthId(data.user.id);
+                      if (user && user.id === project.userId) {
+                        userId = user.id;
+                        console.log("Verified user ownership via Supabase token in concept middleware, userId:", userId);
+                      }
+                    }
+                  }
+                } catch (err) {
+                  console.error("Error verifying token in concept middleware:", err);
+                }
+              }
+            }
+          }
+        }
+      } catch (err) {
+        console.error("Error getting concept:", err);
+      }
+    }
+
     // Fallback to query params or body for development if userId is not set
     if (!userId) {
-      userId = parseInt(req.query.userId as string || req.body.userId);
+      userId = req.query.userId ? parseInt(req.query.userId as string) : 
+               (req.body.userId ? parseInt(req.body.userId) : undefined);
       console.log("Using fallback userId from query/body:", userId);
     }
     
-    if (isNaN(userId as number)) {
+    if (isNaN(userId as number) || !userId) {
+      // Log headers for debugging
+      console.log("Access denied in concept middleware. Headers:", Object.keys(req.headers));
+      console.log("x-auth-id header in concept middleware:", req.headers['x-auth-id'] || 'not present');
       return res.status(401).json({ error: "Unauthorized: Valid user ID not provided" });
     }
     
