@@ -8,7 +8,7 @@ type AuthContextType = {
   session: Session | null;
   user: User | null;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (email: string, password: string) => Promise<void>;
+  signUp: (email: string, password: string, turnstileToken?: string) => Promise<void>;
   signOut: () => Promise<void>;
   startDemoSession: () => Promise<void>;
   saveDemoAccount: (email: string) => Promise<void>;
