@@ -365,22 +365,10 @@ async function verifyConceptOwnership(req: Request, res: Response, next: NextFun
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Serve the landing page for both root and /landing paths
-  app.get(["/", "/landing"], (req: Request, res: Response) => {
-    // Check if the user has a valid auth token/session
-    const authHeader = req.headers.authorization;
-    const authId = req.headers['x-auth-id'] as string;
-    
-    // If user has valid auth credentials, the React app will handle routing
-    // Otherwise serve the landing page directly
-    if (authHeader || authId) {
-      // For authenticated users, serve the React app (index.html)
-      res.sendFile("index.html", { root: "./client/dist" });
-    } else {
-      // For unauthenticated visitors, serve the landing page
-      res.sendFile("landing-page.html", { root: "./client" });
-    }
-  });
+  // Let the Vite middleware handle all root-level routes
+  // Vite will serve the React application and React router will handle navigation
+  // These routes are intentionally left empty so they'll fall through
+  // to the Vite middleware defined in server/vite.ts
 
   // API health check
   app.get("/api/health", (_req: Request, res: Response) => {

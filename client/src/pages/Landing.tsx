@@ -6,9 +6,9 @@ import { ArrowRight, LayoutDashboard, Sparkles, PenTool, Monitor, Globe, Image }
 import { motion } from 'framer-motion';
 
 // Mockup Components
-import { BrandConceptMockup } from '@/components/mockups/BrandConceptMockup';
-import { DashboardMockup } from '@/components/mockups/DashboardMockup';
-import { LogoGenerationMockup } from '@/components/mockups/LogoGenerationMockup';
+import { BrandConceptMockup } from '../components/mockups/BrandConceptMockup';
+import { DashboardMockup } from '../components/mockups/DashboardMockup';
+import { LogoGenerationMockup } from '../components/mockups/LogoGenerationMockup';
 
 export default function LandingPage() {
   const { user, startDemoSession } = useAuth();
