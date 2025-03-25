@@ -22,17 +22,7 @@ function Router() {
       
       <Switch>
         <Route path="/auth" component={AuthPage} />
-        <Route path="/landing" component={LandingPage} />
-        <Route path="/">
-          <ProtectedRoute>
-            <div className="min-h-screen flex flex-col">
-              <Header />
-              <div className="flex-grow">
-                <Dashboard />
-              </div>
-            </div>
-          </ProtectedRoute>
-        </Route>
+        <Route path="/" component={LandingPage} />
         <Route path="/dashboard">
           <ProtectedRoute>
             <div className="min-h-screen flex flex-col">

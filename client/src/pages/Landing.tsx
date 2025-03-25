@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useLocation } from 'wouter';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/auth-context';
-import { ArrowRight, LayoutDashboard, Sparkles, PenTool, Monitor, Globe, Image } from 'lucide-react';
+import { ArrowRight, PenTool, Timer, DollarSign, Palette, Users2, Lightbulb } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 // Mockup Components
@@ -26,7 +26,7 @@ export default function LandingPage() {
 
   // If already logged in, redirect to dashboard
   if (user) {
-    navigate('/');
+    navigate('/dashboard');
     return null;
   }
 
@@ -61,9 +61,9 @@ export default function LandingPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
           >
-            Transform your brand ideas into{' '}
+            End the{' '}
             <span className="bg-gradient-to-r from-violet-600 to-indigo-600 bg-clip-text text-transparent">
-              visual reality
+              speculative work cycle
             </span>
           </motion.h1>
           <motion.p 
@@ -72,8 +72,8 @@ export default function LandingPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 0.1 }}
           >
-            MindToEye is an AI-powered platform that helps branding agencies and designers
-            quickly visualize brand concepts, generate stunning logos, and create cohesive brand identities.
+            MindToEye helps branding agencies eliminate hours of unpaid design work. Stop wasting time on concepts 
+            clients might reject - instantly visualize professional brand identities your clients will approve on the first try.
           </motion.p>
           <motion.div 
             className="flex flex-col sm:flex-row gap-4 pt-4"
@@ -135,42 +135,42 @@ export default function LandingPage() {
       {/* Features Section */}
       <section className="container mx-auto py-20 px-4">
         <div className="text-center mb-16">
-          <h2 className="text-3xl md:text-4xl font-bold mb-4">Powerful Features</h2>
+          <h2 className="text-3xl md:text-4xl font-bold mb-4">Stop Losing Money on Speculative Work</h2>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            MindToEye combines cutting-edge AI with intuitive design tools to streamline your branding workflow.
+            MindToEye saves branding agencies up to 80% of the time spent on creating initial client concepts.
           </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           <FeatureCard 
-            icon={<Sparkles className="h-8 w-8 text-violet-600" />}
-            title="AI-Powered Generation"
-            description="Create brand concepts in seconds using advanced AI models including Claude 3.7 Sonnet and FLUX 1.1 Pro."
+            icon={<Timer className="h-8 w-8 text-violet-600" />}
+            title="Faster Client Approvals"
+            description="Present multiple cohesive brand concepts in your first client meeting instead of spending days on initial designs."
+          />
+          <FeatureCard 
+            icon={<DollarSign className="h-8 w-8 text-violet-600" />}
+            title="Higher Conversion Rates"
+            description="Convert more prospects to paying clients by showing professional concepts in the first meeting."
           />
           <FeatureCard 
             icon={<PenTool className="h-8 w-8 text-violet-600" />}
-            title="Logo Creation"
-            description="Generate professional logos that capture your brand's essence with customizable styles and variations."
+            title="AI-Powered Logo Creation"
+            description="Generate distinctive logos that would take hours to create manually - in just seconds."
           />
           <FeatureCard 
-            icon={<LayoutDashboard className="h-8 w-8 text-violet-600" />}
-            title="Brand Management"
-            description="Organize and manage multiple brand projects in one centralized dashboard."
+            icon={<Palette className="h-8 w-8 text-violet-600" />}
+            title="Complete Brand Systems"
+            description="Deliver more than just logos - provide full color palettes, typography, and brand applications from day one."
           />
           <FeatureCard 
-            icon={<Monitor className="h-8 w-8 text-violet-600" />}
-            title="Visual Previews"
-            description="See how your brand elements will look in real-world applications like websites and marketing materials."
+            icon={<Users2 className="h-8 w-8 text-violet-600" />}
+            title="Client Collaboration"
+            description="Easily share concepts with clients and collect feedback in one place, eliminating endless revision emails."
           />
           <FeatureCard 
-            icon={<Globe className="h-8 w-8 text-violet-600" />}
-            title="Landing Page Generation"
-            description="Automatically create hero sections for your brand's landing page with matching typography and colors."
-          />
-          <FeatureCard 
-            icon={<Image className="h-8 w-8 text-violet-600" />}
-            title="Asset Management"
-            description="Export and manage all your brand assets in one place, with different formats for various use cases."
+            icon={<Lightbulb className="h-8 w-8 text-violet-600" />}
+            title="Creative Inspiration"
+            description="Break through creative blocks with AI-generated concepts that spark new design directions."
           />
         </div>
       </section>
