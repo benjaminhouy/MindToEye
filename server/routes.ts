@@ -7,7 +7,7 @@ import {
   brandInputSchema, 
   insertBrandConceptSchema,
   insertProjectSchema,
-  User, Project, BrandConcept
+  User, Project, BrandConcept, UserWithEmail
 } from "@shared/schema";
 import { generateBrandConcept, generateLogo } from "./openai";
 import { log } from "./vite";

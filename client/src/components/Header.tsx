@@ -6,6 +6,7 @@ import { useAuth } from "@/lib/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { DemoSaveWorkDialog } from "@/components/DemoSaveWorkDialog";
+import { useQuery } from "@tanstack/react-query";
 
 const Header = () => {
   const [location] = useLocation();
@@ -13,6 +14,30 @@ const Header = () => {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { user, session, signOut, isDemo } = useAuth();
   const { toast } = useToast();
+  
+  // Fetch user data from our API endpoint
+  const { data: userData } = useQuery({
+    queryKey: ['/api/user'],
+    queryFn: async () => {
+      if (!session || !user) return null;
+      
+      const response = await fetch('/api/user', {
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'x-auth-id': user.id
+        }
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch user data');
+      }
+      
+      return response.json();
+    },
+    enabled: !!session && !!user,
+    refetchOnWindowFocus: false,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  });
 
   const handleSignOut = async () => {
     try {
@@ -195,8 +220,10 @@ const Header = () => {
                     <p className="text-sm">Signed in as</p>
                     <div className="flex items-center">
                       <p className="text-sm font-medium truncate">
-                        {/* Check for saved email first from user_metadata.email */}
-                        {user?.user_metadata?.email || 
+                        {/* First check if we have user data from our API */}
+                        {userData?.email ||
+                         /* Then check saved email from user_metadata.email */
+                         user?.user_metadata?.email || 
                          /* Then check for user_metadata.converted flag with sessionStorage savedEmail */
                          (user?.user_metadata?.converted && typeof window !== 'undefined' && window.sessionStorage.getItem('savedEmail')) || 
                          /* Then check regular email field */
