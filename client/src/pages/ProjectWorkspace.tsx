@@ -33,11 +33,24 @@ const ProjectWorkspace = ({ id }: ProjectWorkspaceProps) => {
 
   // Retrieve the auth ID for API requests
   useEffect(() => {
+    let isMounted = true;
     const getAuthUser = async () => {
       try {
+        // First try to get auth from the session
+        const { data: sessionData } = await supabase.auth.getSession();
+        if (sessionData?.session?.user?.id && isMounted) {
+          console.log("Got auth ID from session:", sessionData.session.user.id);
+          setAuthId(sessionData.session.user.id);
+          return;
+        }
+        
+        // Fallback to getting user directly
         const { data } = await supabase.auth.getUser();
-        if (data?.user?.id) {
+        if (data?.user?.id && isMounted) {
+          console.log("Got auth ID from getUser:", data.user.id);
           setAuthId(data.user.id);
+        } else {
+          console.warn("No auth ID found in session or user data");
         }
       } catch (error) {
         console.error("Error fetching auth user:", error);
@@ -45,6 +58,22 @@ const ProjectWorkspace = ({ id }: ProjectWorkspaceProps) => {
     };
     
     getAuthUser();
+    
+    // Set up a subscription to auth state changes
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log("Auth state changed:", event);
+      if (session?.user?.id && isMounted) {
+        console.log("Setting auth ID from auth state change:", session.user.id);
+        setAuthId(session.user.id);
+      }
+    });
+    
+    return () => {
+      isMounted = false;
+      if (authListener?.subscription) {
+        authListener.subscription.unsubscribe();
+      }
+    };
   }, []);
 
   // Create a reusable auth header object
@@ -52,7 +81,42 @@ const ProjectWorkspace = ({ id }: ProjectWorkspaceProps) => {
 
   const { data: project, isLoading: projectLoading, error: projectError } = useQuery<Project>({
     queryKey: [`/api/projects/${projectId}`],
-    enabled: !!projectId,
+    enabled: !!projectId && !!authId,
+    queryFn: async ({ queryKey }) => {
+      console.log(`Fetching project with ID ${projectId} using auth ID: ${authId}`);
+      const headers: Record<string, string> = {};
+      
+      // Add auth headers manually to ensure they're included
+      if (authId) {
+        headers['x-auth-id'] = authId;
+        
+        // Also try to get session token for Authorization header
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.access_token) {
+            headers['Authorization'] = `Bearer ${session.access_token}`;
+          }
+        } catch (err) {
+          console.error("Error getting session token:", err);
+        }
+      }
+      
+      // Make the request with explicit headers
+      const response = await fetch(queryKey[0] as string, {
+        headers,
+        credentials: 'include'
+      });
+      
+      // Log the response status for debugging
+      console.log(`Project fetch response status: ${response.status}`);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`${response.status}: ${errorText}`);
+      }
+      
+      return response.json();
+    },
     retry: false
   });
   
@@ -71,7 +135,42 @@ const ProjectWorkspace = ({ id }: ProjectWorkspaceProps) => {
 
   const { data: concepts, isLoading: conceptsLoading, refetch: refetchConcepts, error: conceptsError } = useQuery<BrandConcept[]>({
     queryKey: [`/api/projects/${projectId}/concepts`],
-    enabled: !!projectId && !accessError,
+    enabled: !!projectId && !!authId && !accessError,
+    queryFn: async ({ queryKey }) => {
+      console.log(`Fetching concepts for project ID ${projectId} using auth ID: ${authId}`);
+      const headers: Record<string, string> = {};
+      
+      // Add auth headers manually to ensure they're included
+      if (authId) {
+        headers['x-auth-id'] = authId;
+        
+        // Also try to get session token for Authorization header
+        try {
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session?.access_token) {
+            headers['Authorization'] = `Bearer ${session.access_token}`;
+          }
+        } catch (err) {
+          console.error("Error getting session token:", err);
+        }
+      }
+      
+      // Make the request with explicit headers
+      const response = await fetch(queryKey[0] as string, {
+        headers,
+        credentials: 'include'
+      });
+      
+      // Log the response status for debugging
+      console.log(`Concepts fetch response status: ${response.status}`);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`${response.status}: ${errorText}`);
+      }
+      
+      return response.json();
+    },
     retry: false
   });
 

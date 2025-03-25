@@ -93,6 +93,26 @@ async function verifyProjectOwnership(req: Request, res: Response, next: NextFun
         if (headers.length > 0) {
           console.log("Available auth headers:", headers);
         }
+        
+        // Try to decode token to get Supabase user ID
+        try {
+          // Import the Supabase client to verify the token
+          const { createSupabaseClientWithToken } = await import('./storage-utils');
+          const userClient = createSupabaseClientWithToken(token);
+          if (userClient) {
+            const { data: userData } = await userClient.auth.getUser();
+            if (userData?.user) {
+              // Look up the user by Supabase authId (UUID)
+              const user = await storage.getUserByAuthId(userData.user.id);
+              if (user) {
+                userId = user.id;
+                console.log("Found user by auth token in verifyProjectOwnership:", userId);
+              }
+            }
+          }
+        } catch (tokenErr) {
+          console.error("Error decoding auth token:", tokenErr);
+        }
       } catch (err) {
         console.error("Error processing authorization:", err);
       }
@@ -228,6 +248,26 @@ async function verifyConceptOwnership(req: Request, res: Response, next: NextFun
         const headers = Object.keys(req.headers).filter(h => h.toLowerCase().includes('auth'));
         if (headers.length > 0) {
           console.log("Available auth headers:", headers);
+        }
+        
+        // Try to decode token to get Supabase user ID
+        try {
+          // Import the Supabase client to verify the token
+          const { createSupabaseClientWithToken } = await import('./storage-utils');
+          const userClient = createSupabaseClientWithToken(token);
+          if (userClient) {
+            const { data: userData } = await userClient.auth.getUser();
+            if (userData?.user) {
+              // Look up the user by Supabase authId (UUID)
+              const user = await storage.getUserByAuthId(userData.user.id);
+              if (user) {
+                userId = user.id;
+                console.log("Found user by auth token in verifyConceptOwnership:", userId);
+              }
+            }
+          }
+        } catch (tokenErr) {
+          console.error("Error decoding auth token in concept middleware:", tokenErr);
         }
       } catch (err) {
         console.error("Error processing authorization:", err);
