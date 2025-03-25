@@ -12,6 +12,7 @@ import UserProfile from "@/pages/UserProfile";
 import { AuthProvider } from "@/lib/auth-context";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { PendingPasswordSetup } from "@/components/PendingPasswordSetup";
+import LandingPage from "@/pages/Landing";
 
 function Router() {
   return (
@@ -21,6 +22,7 @@ function Router() {
       
       <Switch>
         <Route path="/auth" component={AuthPage} />
+        <Route path="/landing" component={LandingPage} />
         <Route path="/">
           <ProtectedRoute>
             <div className="min-h-screen flex flex-col">
