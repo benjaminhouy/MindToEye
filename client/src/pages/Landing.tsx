@@ -4,8 +4,7 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/auth-context';
 import { 
   ArrowRight, PenTool, Timer, DollarSign, Palette, Users2, Lightbulb,
-  Building2, UserCircle2, Briefcase, Building, Pen, Megaphone, Store,
-  Clock
+  Building2, UserCircle2, Briefcase, Building, Pen, Megaphone, Clock
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -340,11 +339,11 @@ export default function LandingPage() {
             
             <div className="text-center p-6">
               <div className="bg-violet-100 text-violet-600 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Store className="h-8 w-8" />
+                <Briefcase className="h-8 w-8" />
               </div>
-              <h3 className="font-bold text-lg mb-2">Small Business Owners</h3>
+              <h3 className="font-bold text-lg mb-2">Agency Project Managers</h3>
               <p className="text-muted-foreground text-sm">
-                Get professional-quality branding without the expense of hiring a full-service agency.
+                Strengthen client proposals with preliminary concepts before kicking off the full design process.
               </p>
             </div>
           </div>
