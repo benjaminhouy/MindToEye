@@ -16,50 +16,26 @@ const Header = () => {
 
   const handleSignOut = async () => {
     try {
-      console.log("Starting standard Supabase signOut process");
-      
-      // Set a flag to help with proper redirection after logout
-      // This is a safer approach than manipulating storage directly
-      sessionStorage.setItem('justLoggedOut', 'true');
-      
-      // Standard Supabase signOut - should properly clear all tokens
       await signOut();
-      
-      // Use the router for navigation instead of direct location manipulation
-      window.location.href = '/auth';
-      
       toast({
         title: "Signed out",
         description: "You have been successfully signed out.",
       });
     } catch (error) {
-      console.error("Error during logout:", error);
-      
-      // Even with an error, we still redirect to the auth page
-      window.location.href = '/auth';
-      
       toast({
-        title: "Error during logout",
-        description: "There was a problem signing out. You've been redirected to the login page.",
+        title: "Error",
+        description: "Failed to sign out. Please try again.",
         variant: "destructive",
       });
     }
   };
 
   const getUserInitials = () => {
-    // Look for a name or email from various sources with improved order of precedence
+    // Look for a name or email from various sources
     const savedEmail = typeof window !== 'undefined' ? window.sessionStorage.getItem('savedEmail') : null;
-    const dbUserEmail = typeof window !== 'undefined' ? window.sessionStorage.getItem('db_user_email') : null;
-    
-    // Check in this specific order:
-    // 1. Database user email (from custom auth)
-    // 2. Session storage saved email (for converted users)
-    // 3. User metadata from Supabase
-    // 4. Standard Supabase email field
-    const name = dbUserEmail ||
-                 savedEmail || 
-                 user?.user_metadata?.name || 
+    const name = user?.user_metadata?.name || 
                  user?.user_metadata?.email || 
+                 savedEmail || 
                  user?.email || 
                  "";
                  
@@ -219,16 +195,13 @@ const Header = () => {
                     <p className="text-sm">Signed in as</p>
                     <div className="flex items-center">
                       <p className="text-sm font-medium truncate">
-                        {/* Use specific order of precedence to determine display name:
-                            1. Session storage saved email (for just-converted users)
-                            2. Database user email (from custom auth handler - handles database-authenticated users)
-                            3. Supabase user metadata email
-                            4. Supabase email field  
-                            5. Anonymous fallback */}
-                        {(typeof window !== 'undefined' && window.sessionStorage.getItem('savedEmail')) || 
-                         (typeof window !== 'undefined' && window.sessionStorage.getItem('db_user_email')) ||
-                         user?.user_metadata?.email || 
+                        {/* Check for saved email first from user_metadata.email */}
+                        {user?.user_metadata?.email || 
+                         /* Then check for user_metadata.converted flag with sessionStorage savedEmail */
+                         (user?.user_metadata?.converted && typeof window !== 'undefined' && window.sessionStorage.getItem('savedEmail')) || 
+                         /* Then check regular email field */
                          user?.email || 
+                         /* Fallback to anonymous label */
                          'Anonymous User'}
                       </p>
                       {isDemo && (
@@ -292,24 +265,14 @@ const Header = () => {
               )}
             </div>
 
-            {/* For demo users - with more robust checking */}
-            {(isDemo || (!user?.email && user?.app_metadata?.provider === 'anonymous')) && (
+            {/* For demo users */}
+            {isDemo && (
               <DemoSaveWorkDialog>
                 <Button size="sm" className="ml-4" variant="secondary">
                   <ZapIcon className="-ml-0.5 mr-2 h-4 w-4" />
                   Save Your Work
                 </Button>
               </DemoSaveWorkDialog>
-            )}
-            
-            {/* Debug info - only shown in development */}
-            {process.env.NODE_ENV === 'development' && (
-              <div className="hidden">
-                Demo: {String(isDemo)}, 
-                Provider: {String(user?.app_metadata?.provider)},
-                Email: {String(user?.email)},
-                Converted: {String(user?.user_metadata?.converted)}
-              </div>
             )}
             
             {/* For anonymous users who have saved email but not set password yet */}

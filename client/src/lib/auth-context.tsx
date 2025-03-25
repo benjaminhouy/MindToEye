@@ -10,7 +10,6 @@ type AuthContextType = {
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
-  resetPassword: (email: string) => Promise<void>;
   startDemoSession: () => Promise<void>;
   saveDemoAccount: (email: string) => Promise<void>;
   setPassword: (password: string) => Promise<void>;
@@ -44,18 +43,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Register a new user with our own API
   const registerUserWithApi = async (authUser: User) => {
     try {
-      // Determine if this is an anonymous user
-      const isAnonymous = authUser.app_metadata?.provider === 'anonymous';
-      
-      // Generate a username if email is not available (especially for anonymous users)
-      const username = authUser.email || `user-${authUser.id.substring(0, 8)}`;
-      
-      // For anonymous users, email can be null
-      // For registered users, we should have an email
-      const email = authUser.email || null;
-      
-      console.log("Registering user with API, isAnonymous:", isAnonymous, "email:", email, "username:", username);
-      
       // Register the user with our own API
       const response = await fetch('/api/register', {
         method: 'POST',
@@ -66,9 +53,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         },
         body: JSON.stringify({
           authId: authUser.id,
-          username: username,
-          email: email,
-          isAnonymous: isAnonymous
+          username: authUser.email || `user-${authUser.id.substring(0, 8)}`,
+          email: authUser.email
         })
       });
 
@@ -98,33 +84,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (initialSession?.user) {
           setUser(initialSession.user);
           
-          // Check if this is a demo user - with improved logging and more robust checks
-          console.log("Auth metadata check:", 
-            "UID:", initialSession.user.id,
-            "Provider:", initialSession.user.app_metadata?.provider,
-            "Email:", initialSession.user.email,
-            "Converted:", initialSession.user.user_metadata?.converted
-          );
-          
-          // More robust check for anonymous users - handle undefined metadata cases
-          const isAnonymous = initialSession.user.app_metadata?.provider === 'anonymous' ||
-                             (!initialSession.user.email && initialSession.user.app_metadata?.provider !== 'email');
-          
-          // Check for converted flag - handle undefined metadata cases
-          const isConverted = initialSession.user.user_metadata?.converted === true;
-          
-          // For anonymous users with no metadata, check the database to confirm status
-          if (isAnonymous) {
-            // Clear any incorrect flags that might exist in sessionStorage
-            if (typeof window !== 'undefined' && !isConverted) {
-              window.sessionStorage.removeItem('pendingPasswordSetup');
-            }
-          }
-          
-          // Set isDemo flag based on our checks
-          const newDemoState = isAnonymous && !isConverted;
-          console.log(`Demo user status: ${newDemoState ? 'IS DEMO' : 'NOT DEMO'}`);
-          setIsDemo(newDemoState);
+          // Check if this is a demo user
+          const isAnonymous = initialSession.user.app_metadata.provider === 'anonymous';
+          const isConverted = initialSession.user.user_metadata.converted === true;
+          setIsDemo(isAnonymous && !isConverted);
         }
       } catch (error) {
         console.error('Error getting initial session:', error);
@@ -141,34 +104,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(session?.user ?? null);
         setLoading(false);
         
-        // Handle demo detection on auth state change using the same enhanced logic
+        // Handle demo detection on auth state change
         if (session?.user) {
-          console.log("Auth state change metadata check:", 
-            "UID:", session.user.id,
-            "Provider:", session.user.app_metadata?.provider,
-            "Email:", session.user.email,
-            "Converted:", session.user.user_metadata?.converted
-          );
-          
-          // More robust check for anonymous users - handle undefined metadata cases
-          const isAnonymous = session.user.app_metadata?.provider === 'anonymous' ||
-                             (!session.user.email && session.user.app_metadata?.provider !== 'email');
-          
-          // Check for converted flag - handle undefined metadata cases
-          const isConverted = session.user.user_metadata?.converted === true;
-          
-          // For anonymous users with no metadata, check the database to confirm status
-          if (isAnonymous) {
-            // Clear any incorrect flags that might exist in sessionStorage
-            if (typeof window !== 'undefined' && !isConverted) {
-              window.sessionStorage.removeItem('pendingPasswordSetup');
-            }
-          }
-          
-          // Set isDemo flag based on our checks
-          const newDemoState = isAnonymous && !isConverted;
-          console.log(`Auth change: Demo user status: ${newDemoState ? 'IS DEMO' : 'NOT DEMO'}`);
-          setIsDemo(newDemoState);
+          const isAnonymous = session.user.app_metadata.provider === 'anonymous';
+          const isConverted = session.user.user_metadata.converted === true;
+          setIsDemo(isAnonymous && !isConverted);
           
           // If this is a new user, register them with our API
           if (event === 'SIGNED_IN') {
@@ -192,96 +132,63 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  // Sign in function - following Supabase best practices
+  // Sign in function
   const signIn = async (email: string, password: string) => {
     try {
       setLoading(true);
       setError(null);
       
-      console.log("Sign in attempt with:", email);
+      // First try our custom authentication endpoint for converted accounts
+      try {
+        const response = await fetch('/api/login-with-email-password', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ email, password })
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
+          
+          // Set user and session from our server response
+          setUser(result.user);
+          setSession({
+            access_token: `local-auth-${result.user.id}`, // Simplified token
+            refresh_token: '',
+            token_type: 'bearer', // Required by Session type
+            expires_in: 86400,
+            expires_at: new Date().getTime() + 86400 * 1000,
+            user: result.user
+          });
+          
+          // Success message
+          toast({
+            title: "Signed in successfully",
+            description: "Welcome back!",
+          });
+          
+          // Successfully logged in with our custom endpoint
+          return;
+        }
+        
+        // If response wasn't ok, continue to Supabase auth
+        console.log("Custom auth failed, falling back to Supabase:", await response.text());
+      } catch (err) {
+        // If our endpoint fails, continue to try Supabase auth
+        console.log("Error in custom auth, falling back to Supabase:", err);
+      }
       
-      // Use Supabase's authentication directly as the primary method
+      // Fall back to Supabase auth for regular accounts
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
       });
 
       if (error) {
-        console.warn("Supabase auth failed, trying database auth:", error.message);
-        
-        // Create a more user-friendly error message for common Supabase errors
-        let userFriendlyError = error.message;
-        
-        if (error.message.includes('Email not confirmed')) {
-          userFriendlyError = 'Please verify your email address before logging in';
-        } else if (error.message.includes('Invalid login credentials')) {
-          userFriendlyError = 'Invalid email or password';
-        }
-        
-        // If Supabase auth fails, try our custom endpoint as a fallback
-        // This is mainly for converted demo accounts that might have special handling
-        try {
-          const response = await fetch('/api/login-with-email-password', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ email, password })
-          });
-          
-          if (response.ok) {
-            const result = await response.json();
-            
-            // Set user and session from our server response
-            setUser(result.user);
-            setSession({
-              access_token: result.session.access_token || `local-auth-${result.user.id}`,
-              refresh_token: result.session.refresh_token || '',
-              token_type: 'bearer',
-              expires_in: 86400,
-              expires_at: new Date().getTime() + 86400 * 1000,
-              user: result.user
-            });
-
-            // Store the numeric user ID in sessionStorage for components that need it
-            // This is crucial for handling converted users correctly
-            if (result.user.id) {
-              sessionStorage.setItem('user_id', String(result.user.id));
-              console.log("Stored numeric user ID in sessionStorage:", result.user.id);
-            }
-            
-            // Also store the user's email for display in the UI
-            if (result.user.email) {
-              sessionStorage.setItem('db_user_email', result.user.email);
-              console.log("Stored user email in sessionStorage:", result.user.email);
-            }
-            
-            console.log("Sign in completed via custom auth, redirecting user...");
-            
-            // Success message
-            toast({
-              title: "Signed in successfully",
-              description: "Welcome back!",
-            });
-            
-            return;
-          }
-          
-          // If both authentication methods fail, throw a user-friendly error
-          console.error("Both authentication methods failed:", error);
-          const errorWithBetterMessage = new Error(userFriendlyError);
-          throw errorWithBetterMessage;
-        } catch (fallbackError) {
-          console.error("Both authentication methods failed:", fallbackError);
-          // Throw the user-friendly error instead of the technical one
-          const errorWithBetterMessage = new Error(userFriendlyError);
-          throw errorWithBetterMessage;
-        }
+        throw error;
       }
-      
-      // If we get here, Supabase authentication succeeded
-      console.log("Sign in completed, redirecting user...");
-      
+
       // Success message
       toast({
         title: "Signed in successfully",
@@ -335,33 +242,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Sign out function - following Supabase best practices
+  // Sign out function
   const signOut = async () => {
     try {
       setLoading(true);
       setError(null);
       
-      // Track the current auth ID for server-side logout
+      // Store auth ID before we clear the session
       const currentAuthId = user?.id;
       
-      // Clear React Query cache to prevent stale data
       try {
-        const { queryClient } = await import('../lib/queryClient');
-        if (queryClient) {
-          queryClient.clear();
-          console.log('Query cache cleared');
+        // Try to sign out with Supabase
+        const { error } = await supabase.auth.signOut();
+        
+        if (error) {
+          // If it's an AuthSessionMissingError, we can ignore it and continue
+          if (error.name !== 'AuthSessionMissingError') {
+            console.warn('Non-critical sign out error:', error);
+          }
         }
-      } catch (cacheError) {
-        console.warn('Could not clear query cache:', cacheError);
+      } catch (signOutError) {
+        // Log but don't rethrow - we want to clear local state regardless
+        console.warn('Error during Supabase sign out:', signOutError);
       }
       
-      // Clean up any app-specific items
-      sessionStorage.removeItem('pendingPasswordSetup');
-      sessionStorage.removeItem('savedEmail');
-      sessionStorage.removeItem('user_id'); // Clear the stored numeric user ID
-      sessionStorage.removeItem('db_user_email'); // Clear the stored database user email
-      
-      // Call server-side logout to invalidate sessions
+      // Also call our server API to log out (to handle revocation of tokens)
       if (currentAuthId) {
         try {
           await fetch('/api/logout', {
@@ -371,22 +276,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               'x-auth-id': currentAuthId
             }
           });
-          console.log('Server-side session invalidation completed');
+          console.log('Server-side logout completed');
         } catch (serverLogoutError) {
+          // Log but continue - client-side logout is more important
           console.warn('Error during server-side logout:', serverLogoutError);
         }
       }
       
-      // Use the standard Supabase signOut method - let it handle token clearing
-      const { error } = await supabase.auth.signOut();
-      if (error) {
-        console.warn('Supabase sign out warning:', error);
-      }
-      
-      // Only after Supabase signOut completes successfully, update state
+      // Always clear local state, even if the Supabase sign out fails
       setSession(null);
       setUser(null);
       setIsDemo(false);
+      
+      // Also clear any session storage items we've set
+      sessionStorage.removeItem('pendingPasswordSetup');
+      sessionStorage.removeItem('savedEmail');
       
       // Success message
       toast({
@@ -394,8 +298,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         description: "You have been signed out.",
       });
       
-      // Use routing with a param to indicate logout
-      window.location.href = '/auth?just_logged_out=true';
+      // Force reload to clear all app state
+      setTimeout(() => {
+        window.location.href = '/auth';
+      }, 500);
       
     } catch (error: any) {
       console.error('Sign out error:', error);
@@ -406,9 +312,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         description: error.message || 'Please try again',
         variant: "destructive",
       });
-      
-      // Even if there's an error, redirect to the auth page
-      window.location.href = '/auth';
     } finally {
       setLoading(false);
     }
@@ -589,78 +492,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  // Enhanced reset password function with better diagnostics
-  const resetPassword = async (email: string) => {
-    try {
-      setLoading(true);
-      setError(null);
-      
-      console.log(`Attempting password reset for email: ${email}`);
-      
-      // Use Supabase's built-in password reset method
-      const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth?reset=true`,
-      });
-      
-      // Log the response for diagnostic purposes
-      console.log('Password reset response:', { data, error });
-      
-      if (error) {
-        throw error;
-      }
-      
-      // Even if there's no error, double-check that Supabase accepted the request
-      if (!data || (Array.isArray(data) && data.length === 0)) {
-        console.warn('Password reset returned empty data, but no error');
-      }
-      
-      // Try to use our admin API as a fallback method to send a reset link
-      try {
-        // This endpoint would need to be created server-side to use Supabase admin API
-        const response = await fetch('/api/admin-password-reset', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({ email }),
-        });
-        
-        const adminResetResult = await response.json();
-        console.log('Admin password reset result:', adminResetResult);
-        
-        if (adminResetResult.success) {
-          console.log('Admin password reset successful');
-        }
-      } catch (adminError) {
-        // Just log this error, don't let it affect the user experience
-        console.warn('Failed to use admin reset fallback:', adminError);
-      }
-      
-      // Success message with additional guidance
-      toast({
-        title: "Password reset link sent",
-        description: "Please check your email inbox and spam folder for the reset link. It may take a few minutes to arrive.",
-        duration: 6000, // Show for longer (6 seconds)
-      });
-      
-    } catch (error: any) {
-      console.error('Password reset error:', error);
-      setError(error.message || 'Failed to send reset link');
-      
-      // Provide a more helpful error message with troubleshooting steps
-      toast({
-        title: "Password reset request issue",
-        description: `${error.message || 'Issue sending reset link'}. Please check that your email address is correct and try again.`,
-        variant: "destructive",
-        duration: 8000, // Show for even longer (8 seconds)
-      });
-      
-      throw error;
-    } finally {
-      setLoading(false);
-    }
-  };
-  
   // Context value
   const value = {
     session,
@@ -668,7 +499,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signIn,
     signUp,
     signOut,
-    resetPassword,
     startDemoSession,
     saveDemoAccount,
     setPassword,

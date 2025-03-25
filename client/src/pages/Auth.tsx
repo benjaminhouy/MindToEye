@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { useLocation } from 'wouter';
 import { Loader2 } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,10 +11,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 
-// Import password reset components
-import ForgotPassword from '@/components/ForgotPassword';
-import ResetPassword from '@/components/ResetPassword';
-
 export default function AuthPage() {
   // Get authentication context
   const { user, session, signIn, signUp, startDemoSession, loading, error } = useAuth();
@@ -23,54 +18,20 @@ export default function AuthPage() {
   // For redirecting after successful authentication
   const [, navigate] = useLocation();
   
-  // For showing toast notifications
-  const { toast } = useToast();
-  
   // Form state
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [demoLoading, setDemoLoading] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
-  const [showForgotPassword, setShowForgotPassword] = useState(false);
-  const [isPasswordReset, setIsPasswordReset] = useState(false);
   
   // If user is already authenticated, redirect to dashboard
   useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        // Check if we're on a password reset flow
-        const searchParams = new URLSearchParams(window.location.search);
-        const isReset = searchParams.get('reset') === 'true' || window.location.hash.includes('type=recovery');
-        
-        if (isReset) {
-          setIsPasswordReset(true);
-          setPageLoading(false);
-          return;
-        }
-        
-        // If we have a user and session, redirect to the dashboard
-        if (user && session) {
-          console.log("User already authenticated, redirecting to dashboard");
-          navigate("/");
-          return;
-        }
-        
-        // Check if we just logged out (from the URL parameter)
-        const justLoggedOut = searchParams.get('just_logged_out') === 'true';
-        
-        if (justLoggedOut) {
-          console.log("Just logged out parameter detected, ensuring clean state");
-          // We don't need to do anything special here as auth-context already handled logout
-        }
-        
-        setPageLoading(false);
-      } catch (error) {
-        console.error("Error checking authentication:", error);
-        setPageLoading(false);
-      }
-    };
-    
-    checkAuth();
+    if (user && session) {
+      console.log("User already authenticated, redirecting to dashboard");
+      navigate("/");
+    } else {
+      setPageLoading(false);
+    }
   }, [user, session, navigate]);
   
   // Handle demo session
@@ -108,15 +69,8 @@ export default function AuthPage() {
       console.log("Sign in completed, redirecting user...");
       // Manual redirection after successful login
       navigate("/");
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error during sign in:", error);
-      
-      // Make sure we show a toast for the error, especially for invalid credentials
-      toast({
-        title: "Login failed",
-        description: error?.message || "Invalid email or password. Please try again.",
-        variant: "destructive",
-      });
     }
   };
 
@@ -127,21 +81,8 @@ export default function AuthPage() {
       await signUp(email, password);
       console.log("Sign up completed successfully");
       // Stay on the auth page after signup to show verification message
-      
-      // Show success message
-      toast({
-        title: "Registration successful",
-        description: "Please check your email for verification instructions.",
-      });
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error during sign up:", error);
-      
-      // Show error message
-      toast({
-        title: "Registration failed",
-        description: error?.message || "Could not create account. Please try again.",
-        variant: "destructive",
-      });
     }
   };
 
@@ -152,46 +93,6 @@ export default function AuthPage() {
         <div className="text-center">
           <Loader2 className="h-12 w-12 animate-spin text-primary mx-auto" />
           <p className="mt-4 text-gray-600">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Show password reset form if we're on a reset flow
-  if (isPasswordReset) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
-        <div className="w-full max-w-md p-8">
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-              MindToEye
-            </h1>
-            <p className="text-gray-600 mt-2">
-              Reset your password
-            </p>
-          </div>
-          
-          <ResetPassword />
-        </div>
-      </div>
-    );
-  }
-
-  // Show forgot password form
-  if (showForgotPassword) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
-        <div className="w-full max-w-md p-8">
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 bg-clip-text text-transparent">
-              MindToEye
-            </h1>
-            <p className="text-gray-600 mt-2">
-              Reset your password
-            </p>
-          </div>
-          
-          <ForgotPassword onBack={() => setShowForgotPassword(false)} />
         </div>
       </div>
     );
@@ -251,18 +152,6 @@ export default function AuthPage() {
                       onChange={(e) => setPassword(e.target.value)}
                       required
                     />
-                    <div className="text-right">
-                      <Button 
-                        variant="link" 
-                        className="p-0 h-auto text-sm text-blue-600"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          setShowForgotPassword(true);
-                        }}
-                      >
-                        Forgot password?
-                      </Button>
-                    </div>
                   </div>
                 </CardContent>
                 <CardFooter>

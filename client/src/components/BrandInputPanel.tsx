@@ -55,19 +55,11 @@ const BrandInputPanel = ({ onGenerate, savedConcepts, activeConcept, onConceptSe
   useEffect(() => {
     const getAuthUser = async () => {
       try {
-        // First check if we're using direct DB authentication (numeric ID)
-        // This is for converted users that are being handled by our custom login endpoint
-        const storedAuthId = sessionStorage.getItem('user_id');
-        if (storedAuthId) {
-          console.log("BrandInputPanel: Using stored numeric ID from sessionStorage:", storedAuthId);
-          setAuthId(storedAuthId);
-        } else {
-          // Get the user ID
-          const { data: userData } = await supabase.auth.getUser();
-          if (userData?.user?.id) {
-            setAuthId(userData.user.id);
-            console.log("BrandInputPanel: Auth ID retrieved:", userData.user.id);
-          }
+        // Get the user ID
+        const { data: userData } = await supabase.auth.getUser();
+        if (userData?.user?.id) {
+          setAuthId(userData.user.id);
+          console.log("BrandInputPanel: Auth ID retrieved:", userData.user.id);
         }
         
         // Get the JWT token from the session

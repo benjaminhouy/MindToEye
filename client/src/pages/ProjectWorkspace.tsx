@@ -35,22 +35,9 @@ const ProjectWorkspace = ({ id }: ProjectWorkspaceProps) => {
   useEffect(() => {
     const getAuthUser = async () => {
       try {
-        // First check if we're using direct DB authentication (numeric ID)
-        // This is for converted users that are being handled by our custom login endpoint
-        const storedAuthId = sessionStorage.getItem('user_id');
-        if (storedAuthId) {
-          console.log("Using stored numeric ID from sessionStorage:", storedAuthId);
-          setAuthId(storedAuthId);
-          return;
-        }
-
-        // Otherwise use Supabase auth
         const { data } = await supabase.auth.getUser();
         if (data?.user?.id) {
-          console.log("Using Supabase auth ID:", data.user.id);
           setAuthId(data.user.id);
-        } else {
-          console.error("No user ID found in auth data");
         }
       } catch (error) {
         console.error("Error fetching auth user:", error);
@@ -63,31 +50,9 @@ const ProjectWorkspace = ({ id }: ProjectWorkspaceProps) => {
   // Create a reusable auth header object
   const authHeaders = authId ? { 'x-auth-id': authId } : {};
 
-  // Create a custom query function that includes auth headers
-  const projectQueryFn = async ({ queryKey }: { queryKey: string[] | readonly unknown[] }) => {
-    const url = queryKey[0] as string;
-    // Important: Pass our auth headers directly to ensure the server gets them
-    const headers: Record<string, string> = {};
-    if (authId) {
-      headers['x-auth-id'] = authId;
-    }
-    
-    const res = await fetch(url, {
-      headers: headers,
-      credentials: "include"
-    });
-    
-    if (!res.ok) {
-      throw new Error(`${res.status}: ${res.statusText}`);
-    }
-    
-    return res.json();
-  };
-
   const { data: project, isLoading: projectLoading, error: projectError } = useQuery<Project>({
     queryKey: [`/api/projects/${projectId}`],
-    enabled: !!projectId && !!authId, // Only fetch when we have both projectId and authId
-    queryFn: projectQueryFn as any, // Type assertion to work around TypeScript issues
+    enabled: !!projectId,
     retry: false
   });
   
@@ -104,10 +69,9 @@ const ProjectWorkspace = ({ id }: ProjectWorkspaceProps) => {
     }
   }, [projectError]);
 
-  const { data: concepts = [], isLoading: conceptsLoading, refetch: refetchConcepts, error: conceptsError } = useQuery<BrandConcept[]>({
+  const { data: concepts, isLoading: conceptsLoading, refetch: refetchConcepts, error: conceptsError } = useQuery<BrandConcept[]>({
     queryKey: [`/api/projects/${projectId}/concepts`],
-    enabled: !!projectId && !!authId && !accessError, // Only fetch when we have both projectId and authId
-    queryFn: projectQueryFn as any, // Type assertion to work around TypeScript issues
+    enabled: !!projectId && !accessError,
     retry: false
   });
 

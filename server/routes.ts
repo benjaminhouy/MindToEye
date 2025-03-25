@@ -59,48 +59,18 @@ async function verifyProjectOwnership(req: Request, res: Response, next: NextFun
       authId = req.headers['x-auth-id'] as string;
       console.log("Auth ID from header in verifyProjectOwnership:", authId);
       
-      // Check if this might be a numeric ID that's actually a string representation
-      // of a UUID - this happens after account conversion with our updated /login endpoint
-      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-      const isNumericString = !isNaN(Number(authId));
-      const couldBeNumber = isNumericString && !uuidRegex.test(authId);
-      
-      if (couldBeNumber) {
-        console.log("Auth ID appears to be a numeric ID in verifyProjectOwnership, but we'll try both methods");
-        // We'll try both methods of lookup below
-      }
-      
       // Look up the user by authId
       if (authId) {
         try {
-          // First try direct authId lookup (the normal case)
-          let user = await storage.getUserByAuthId(authId);
-          
-          // If that fails and it looks like a number, try looking up by numeric ID as well
-          if (!user && couldBeNumber) {
-            console.log("Trying to look up by numeric ID as fallback in verifyProjectOwnership:", authId);
-            const numericId = parseInt(authId);
-            if (!isNaN(numericId)) {
-              user = await storage.getUser(numericId);
-              if (user) {
-                console.log("Found user by numeric ID fallback in verifyProjectOwnership:", user.id);
-                // If we found by numeric ID, use the authId from the user record for queries
-                if (user.authId) {
-                  authId = user.authId;
-                  console.log("Using authId from user record instead in verifyProjectOwnership:", authId);
-                }
-              }
-            }
-          }
-          
+          const user = await storage.getUserByAuthId(authId);
           if (user) {
             userId = user.id;
-            console.log("Found user in verifyProjectOwnership:", userId, "with authId:", user.authId);
+            console.log("Found user by authId in verifyProjectOwnership:", userId);
           } else {
-            console.log("User not found for authId or numeric ID in verifyProjectOwnership:", authId);
+            console.log("User not found for authId:", authId);
           }
         } catch (err) {
-          console.error("Error looking up user by identifiers in verifyProjectOwnership:", err);
+          console.error("Error looking up user by authId:", err);
         }
       }
     }
@@ -175,48 +145,18 @@ async function verifyConceptOwnership(req: Request, res: Response, next: NextFun
       authId = req.headers['x-auth-id'] as string;
       console.log("Auth ID from header in verifyConceptOwnership:", authId);
       
-      // Check if this might be a numeric ID that's actually a string representation
-      // of a UUID - this happens after account conversion with our updated /login endpoint
-      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-      const isNumericString = !isNaN(Number(authId));
-      const couldBeNumber = isNumericString && !uuidRegex.test(authId);
-      
-      if (couldBeNumber) {
-        console.log("Auth ID appears to be a numeric ID in verifyConceptOwnership, but we'll try both methods");
-        // We'll try both methods of lookup below
-      }
-      
       // Look up the user by authId
       if (authId) {
         try {
-          // First try direct authId lookup (the normal case)
-          let user = await storage.getUserByAuthId(authId);
-          
-          // If that fails and it looks like a number, try looking up by numeric ID as well
-          if (!user && couldBeNumber) {
-            console.log("Trying to look up by numeric ID as fallback in verifyConceptOwnership:", authId);
-            const numericId = parseInt(authId);
-            if (!isNaN(numericId)) {
-              user = await storage.getUser(numericId);
-              if (user) {
-                console.log("Found user by numeric ID fallback in verifyConceptOwnership:", user.id);
-                // If we found by numeric ID, use the authId from the user record for queries
-                if (user.authId) {
-                  authId = user.authId;
-                  console.log("Using authId from user record instead in verifyConceptOwnership:", authId);
-                }
-              }
-            }
-          }
-          
+          const user = await storage.getUserByAuthId(authId);
           if (user) {
             userId = user.id;
-            console.log("Found user in verifyConceptOwnership:", userId, "with authId:", user.authId);
+            console.log("Found user by authId in verifyConceptOwnership:", userId);
           } else {
-            console.log("User not found for authId or numeric ID in verifyConceptOwnership:", authId);
+            console.log("User not found for authId:", authId);
           }
         } catch (err) {
-          console.error("Error looking up user by identifiers in verifyConceptOwnership:", err);
+          console.error("Error looking up user by authId:", err);
         }
       }
     }
@@ -629,54 +569,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // User registration route for Supabase Auth
   app.post("/api/register", async (req: Request, res: Response) => {
     try {
-      const { email, authId, username, isAnonymous } = req.body;
+      const { email, authId } = req.body;
       
-      // First, check if user already exists by authId (most reliable method)
-      if (authId) {
-        const existingUserByAuthId = await storage.getUserByAuthId(authId);
-        if (existingUserByAuthId) {
-          console.log(`User already exists by authId in database: ID=${existingUserByAuthId.id}, AuthID=${authId}`);
-          return res.status(200).json(existingUserByAuthId);
-        }
+      if (!email) {
+        return res.status(400).json({ error: "Email is required" });
       }
       
-      // For anonymous users, email can be null
-      // For regular users, email is required
-      if (!email && !isAnonymous) {
-        return res.status(400).json({ error: "Email is required for non-anonymous users" });
+      // Check if user already exists
+      const existingUser = await storage.getUserByUsername(email);
+      if (existingUser) {
+        // If user exists, just return the user
+        console.log(`User already exists in database: ID=${existingUser.id}, Email=${email}`);
+        return res.status(200).json(existingUser);
       }
-      
-      // If this is a regular user, also check by email as a fallback
-      if (email && !isAnonymous) {
-        const existingUserByEmail = await storage.getUserByUsername(email);
-        if (existingUserByEmail) {
-          // If user exists by email, update the authId if it's missing and return the user
-          if (authId && !existingUserByEmail.authId) {
-            const updatedUser = await storage.updateUser(existingUserByEmail.id, { authId });
-            console.log(`Updated existing user with authId: ID=${existingUserByEmail.id}, Email=${email}, AuthID=${authId}`);
-            return res.status(200).json(updatedUser || existingUserByEmail);
-          }
-          
-          console.log(`User already exists by email in database: ID=${existingUserByEmail.id}, Email=${email}`);
-          return res.status(200).json(existingUserByEmail);
-        }
-      }
-      
-      // Determine username based on inputs
-      const finalUsername = username || (email ? email : `anon-${Date.now().toString().substring(0, 10)}`);
       
       // Create user in our database
       const userData = {
-        username: finalUsername,
+        username: email,
         password: "auth-via-supabase", // Placeholder since auth is handled by Supabase
         authId: authId || null,
-        email: email || null,
-        isDemo: isAnonymous || false  // Mark as demo if anonymous
       };
       
       const user = await storage.createUser(userData);
       
-      console.log(`User created in database: ID=${user.id}, Username=${finalUsername}, Email=${email || 'null'}, AuthID=${authId || 'none'}, isDemo=${isAnonymous || false}`);
+      console.log(`User created in database: ID=${user.id}, Email=${email}, AuthID=${authId || 'none'}`);
       
       res.status(201).json(user);
     } catch (error) {
@@ -926,48 +842,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         authId = req.headers['x-auth-id'] as string;
         console.log("Auth ID from header in GET projects:", authId);
         
-        // Check if this might be a numeric ID that's actually a string representation
-        // of a UUID - this happens after account conversion with our updated /login endpoint
-        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-        const isNumericString = !isNaN(Number(authId));
-        const couldBeNumber = isNumericString && !uuidRegex.test(authId);
-        
-        if (couldBeNumber) {
-          console.log("Auth ID appears to be a numeric ID, but we'll try both methods");
-          // We'll try both methods of lookup below
-        }
-        
         // Look up the user by authId
         if (authId) {
           try {
-            // First try direct authId lookup (the normal case)
-            let user = await storage.getUserByAuthId(authId);
-            
-            // If that fails and it looks like a number, try looking up by numeric ID as well
-            if (!user && couldBeNumber) {
-              console.log("Trying to look up by numeric ID as fallback:", authId);
-              const numericId = parseInt(authId);
-              if (!isNaN(numericId)) {
-                user = await storage.getUser(numericId);
-                if (user) {
-                  console.log("Found user by numeric ID fallback:", user.id);
-                  // If we found by numeric ID, use the authId from the user record for queries
-                  if (user.authId) {
-                    authId = user.authId;
-                    console.log("Using authId from user record instead:", authId);
-                  }
-                }
-              }
-            }
-            
+            const user = await storage.getUserByAuthId(authId);
             if (user) {
               userId = user.id;
-              console.log("Found user by lookup in GET projects:", userId, "with authId:", user.authId);
+              console.log("Found user by authId in GET projects:", userId);
             } else {
-              console.log("User not found for authId or numeric ID:", authId);
+              console.log("User not found for authId:", authId);
             }
           } catch (err) {
-            console.error("Error looking up user by identifiers:", err);
+            console.error("Error looking up user by authId:", err);
           }
         }
       }
@@ -1036,48 +922,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         authId = req.headers['x-auth-id'] as string;
         console.log("Auth ID from header:", authId);
         
-        // Check if this might be a numeric ID that's actually a string representation
-        // of a UUID - this happens after account conversion with our updated /login endpoint
-        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-        const isNumericString = !isNaN(Number(authId));
-        const couldBeNumber = isNumericString && !uuidRegex.test(authId);
-        
-        if (couldBeNumber) {
-          console.log("Auth ID appears to be a numeric ID in project creation, but we'll try both methods");
-          // We'll try both methods of lookup below
-        }
-        
         // Look up the user by authId
         if (authId) {
           try {
-            // First try direct authId lookup (the normal case)
-            let user = await storage.getUserByAuthId(authId);
-            
-            // If that fails and it looks like a number, try looking up by numeric ID as well
-            if (!user && couldBeNumber) {
-              console.log("Trying to look up by numeric ID as fallback in project creation:", authId);
-              const numericId = parseInt(authId);
-              if (!isNaN(numericId)) {
-                user = await storage.getUser(numericId);
-                if (user) {
-                  console.log("Found user by numeric ID fallback in project creation:", user.id);
-                  // If we found by numeric ID, use the authId from the user record for queries
-                  if (user.authId) {
-                    authId = user.authId;
-                    console.log("Using authId from user record instead in project creation:", authId);
-                  }
-                }
-              }
-            }
-            
+            const user = await storage.getUserByAuthId(authId);
             if (user) {
               userId = user.id;
-              console.log("Found user for project creation:", userId, "with authId:", user.authId);
+              console.log("Found user by authId for project creation:", userId);
             } else {
-              console.log("User not found for authId or numeric ID in project creation:", authId);
+              console.log("User not found for authId:", authId);
             }
           } catch (err) {
-            console.error("Error looking up user by identifiers in project creation:", err);
+            console.error("Error looking up user by authId:", err);
           }
         }
       } 
@@ -2921,7 +2777,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // Server-side endpoint to explicitly log a user out and invalidate their session
+  // Server-side authentication endpoint for converted demo accounts
   app.post("/api/logout", async (req: Request, res: Response) => {
     try {
       // Get the auth ID from the request header
@@ -2929,117 +2785,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       console.log(`Logging out user with authId: ${authId}`);
       
-      // Track server-side logout success
-      let serverLogoutSuccess = false;
-      let logoutMessage = "Logout request processed";
-      
-      // Only proceed with server-side logout if authId is present
+      // If we have Supabase configured, try to invalidate the session there
       if (authId) {
         try {
-          // Import the supabase admin module with our enhanced logout function
-          const { safelySignOutUser } = await import('./supabase-admin');
+          // Import the supabase admin module
+          const { supabaseAdmin } = await import('./supabase-admin');
           
-          // Use our enhanced safe logout function that properly handles various auth ID formats
-          const logoutResult = await safelySignOutUser(authId);
-          
-          if (!logoutResult.success) {
-            console.warn(`Supabase logout warning: ${logoutResult.message}`);
-            logoutMessage = `Logout processed (client-side only): ${logoutResult.message}`;
-          } else {
-            console.log(logoutResult.message);
-            serverLogoutSuccess = true;
-            logoutMessage = "Logout successful (server-side sessions revoked)";
+          // Use the admin API to revoke all sessions for this user
+          if (supabaseAdmin) {
+            const { error } = await supabaseAdmin.auth.admin.signOut(authId);
+            if (error) {
+              console.warn("Error revoking session with Supabase admin:", error);
+              // Continue anyway - we'll log the user out locally
+            } else {
+              console.log(`Successfully revoked all sessions for user ${authId} with Supabase admin API`);
+            }
           }
         } catch (error) {
-          // This should rarely happen since safelySignOutUser handles most errors internally
-          console.warn("Unexpected error during Supabase admin logout:", 
-            error instanceof Error ? error.message : String(error));
+          console.warn("Error during Supabase admin logout:", error);
+          // Continue anyway - we'll log the user out locally
         }
-      } else {
-        logoutMessage = "Logout processed (client-side only, no auth ID provided)";
       }
       
-      // Return success response - we consider it a success even if server-side logout fails
-      // since the client-side logout will still happen
+      // Return success response
       return res.status(200).json({
         success: true,
-        serverLogoutSuccess,
-        message: logoutMessage
+        message: "Successfully logged out"
       });
     } catch (error) {
-      console.error("Error processing logout request:", 
-        error instanceof Error ? error.message : String(error));
-      
-      // Even with an error, we return success to the client
-      // since client-side logout can proceed independently
-      res.status(200).json({ 
-        success: true,
-        serverLogoutSuccess: false,
-        message: "Logout processed with server-side warnings"
+      console.error("Error during logout:", error);
+      res.status(500).json({ 
+        success: false,
+        error: "Failed to log out"
       });
     }
   });
 
-  // Admin password reset endpoint as a fallback for Supabase's built-in method
-  app.post("/api/admin-password-reset", async (req: Request, res: Response) => {
-    try {
-      const { email } = req.body;
-      
-      if (!email) {
-        return res.status(400).json({ 
-          success: false,
-          error: "Email is required" 
-        });
-      }
-      
-      console.log(`Admin password reset request for email: ${email}`);
-      
-      // Import the Supabase admin module
-      const { generatePasswordResetLink } = await import('./supabase-admin');
-      
-      // Generate a password reset link using the admin API
-      try {
-        const resetLinkData = await generatePasswordResetLink(email);
-        
-        console.log(`Password reset link generated for ${email}`);
-        
-        // Success - we don't send the actual link for security reasons
-        return res.status(200).json({
-          success: true,
-          message: "Password reset link generated successfully"
-        });
-      } catch (resetError) {
-        console.error(`Error generating password reset link: ${resetError instanceof Error ? resetError.message : String(resetError)}`);
-        
-        // Check if this is a user not found error - we return success anyway
-        // to avoid leaking information about which emails exist
-        if (resetError instanceof Error && resetError.message.includes('User not found')) {
-          console.log(`User not found for ${email}, but returning success response for security`);
-          return res.status(200).json({
-            success: true,
-            message: "If this email exists in our system, a reset link has been sent"
-          });
-        }
-        
-        // Otherwise return a generic error
-        return res.status(500).json({
-          success: false,
-          error: "Failed to generate password reset link",
-          message: resetError instanceof Error ? resetError.message : String(resetError)
-        });
-      }
-    } catch (error) {
-      console.error("Admin password reset error:", 
-        error instanceof Error ? error.message : String(error));
-      
-      // Return generic error
-      return res.status(500).json({
-        success: false,
-        error: "Failed to process password reset request"
-      });
-    }
-  });
-  
   app.post("/api/login-with-email-password", async (req: Request, res: Response) => {
     try {
       const { email, password } = req.body;
@@ -3092,23 +2873,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
             
             // Return user and session data
-            // Critical fix: Always use authId (Supabase UUID) as primary identifier
-            console.log(`User authenticated via Supabase Auth: ID=${user.id}, AuthID=${user.authId}, Email=${user.username}`);
-            
             return res.status(200).json({
               success: true,
               user: {
                 ...user,
-                password: undefined, // Never return password to client
-                // Add a special field to indicate this was authenticated via Supabase
-                auth_method: "supabase"
+                password: undefined // Never return password to client
               },
               session: {
                 ...data.session,
-                // Always use the Supabase UUID as the primary identifier for API requests
-                user_id: user.authId, // This is the critical fix - use authId not database ID
-                auth_id: user.authId, // Redundant but consistent with our API
-                database_id: user.id // Include database ID as secondary identifier
+                user_id: user.id
               }
             });
           }
@@ -3144,23 +2917,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`User authenticated via database: ID=${user.id}, Email=${user.username}, AuthID=${user.authId}`);
       
       // Return the user data including authId needed for API requests
-      // Always prioritize authId (Supabase UUID) over database ID
-      // This ensures consistent identification after account conversion
       res.status(200).json({
         success: true,
         user: {
           ...user,
-          password: undefined, // Never return password to client
-          // Add a special field to indicate this was authenticated via database
-          // This helps client know which ID to use
-          auth_method: "database"
+          password: undefined // Never return password to client
         },
         session: {
-          // Critical change: use authId for primary identity, not numeric ID
-          // This ensures API calls will use the correct identifier
-          user_id: user.authId, // Use authId as the primary user_id for API calls
-          auth_id: user.authId,
-          database_id: user.id // Still include database ID as a secondary identifier
+          // We're creating a simplified session here
+          // In a real implementation, you'd use JWT tokens
+          user_id: user.id,
+          auth_id: user.authId
         }
       });
     } catch (error) {

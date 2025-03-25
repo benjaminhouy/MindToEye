@@ -184,30 +184,10 @@ export function DemoSaveWorkDialog({ children }: DemoSaveWorkDialogProps) {
     }
   };
 
-  // More robust check for anonymous users
-  const isAnonymousUser = !isDemo && user?.app_metadata?.provider === 'anonymous' && !user?.email;
-  
-  // Enhanced logic that shows the dialog for both explicitly detected demo users
-  // and for anonymous users that might not have been correctly identified as demos
-  if (!isDemo && !isPendingPasswordSetup && !isAnonymousUser) {
-    console.log('DemoSaveWorkDialog not showing, user state:', {
-      isDemo, 
-      isPendingPasswordSetup,
-      isAnonymousUser,
-      provider: user?.app_metadata?.provider,
-      hasEmail: !!user?.email
-    });
+  // Don't render anything if neither in demo mode nor pending password setup
+  if (!isDemo && !isPendingPasswordSetup) {
     return null;
   }
-  
-  // Debug info
-  console.log('DemoSaveWorkDialog showing, user state:', {
-    isDemo, 
-    isPendingPasswordSetup,
-    isAnonymousUser,
-    provider: user?.app_metadata?.provider,
-    hasEmail: !!user?.email
-  });
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
