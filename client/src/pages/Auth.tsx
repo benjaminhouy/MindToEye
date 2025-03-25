@@ -88,7 +88,7 @@ export default function AuthPage() {
           console.log('Rendering Turnstile widget...');
           
           const widgetId = windowWithTurnstile.turnstile.render(turnstileRef.current, {
-            sitekey: '0x4AAAAAAAFQxxhlRF-GG8qb',
+            sitekey: '0x4AAAAAABBzjlCfk4zosWil',
             theme: 'light',
             callback: (token: string) => {
               console.log('Turnstile token received:', token.substring(0, 20) + '...(truncated)');
