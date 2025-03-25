@@ -250,6 +250,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               console.log("Stored numeric user ID in sessionStorage:", result.user.id);
             }
             
+            // Also store the user's email for display in the UI
+            if (result.user.email) {
+              sessionStorage.setItem('db_user_email', result.user.email);
+              console.log("Stored user email in sessionStorage:", result.user.email);
+            }
+            
             console.log("Sign in completed via custom auth, redirecting user...");
             
             // Success message
@@ -353,6 +359,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       sessionStorage.removeItem('pendingPasswordSetup');
       sessionStorage.removeItem('savedEmail');
       sessionStorage.removeItem('user_id'); // Clear the stored numeric user ID
+      sessionStorage.removeItem('db_user_email'); // Clear the stored database user email
       
       // Call server-side logout to invalidate sessions
       if (currentAuthId) {

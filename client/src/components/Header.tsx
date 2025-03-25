@@ -47,11 +47,19 @@ const Header = () => {
   };
 
   const getUserInitials = () => {
-    // Look for a name or email from various sources
+    // Look for a name or email from various sources with improved order of precedence
     const savedEmail = typeof window !== 'undefined' ? window.sessionStorage.getItem('savedEmail') : null;
-    const name = user?.user_metadata?.name || 
-                 user?.user_metadata?.email || 
+    const dbUserEmail = typeof window !== 'undefined' ? window.sessionStorage.getItem('db_user_email') : null;
+    
+    // Check in this specific order:
+    // 1. Database user email (from custom auth)
+    // 2. Session storage saved email (for converted users)
+    // 3. User metadata from Supabase
+    // 4. Standard Supabase email field
+    const name = dbUserEmail ||
                  savedEmail || 
+                 user?.user_metadata?.name || 
+                 user?.user_metadata?.email || 
                  user?.email || 
                  "";
                  
@@ -211,13 +219,16 @@ const Header = () => {
                     <p className="text-sm">Signed in as</p>
                     <div className="flex items-center">
                       <p className="text-sm font-medium truncate">
-                        {/* Check for saved email first from user_metadata.email */}
-                        {user?.user_metadata?.email || 
-                         /* Then check for user_metadata.converted flag with sessionStorage savedEmail */
-                         (user?.user_metadata?.converted && typeof window !== 'undefined' && window.sessionStorage.getItem('savedEmail')) || 
-                         /* Then check regular email field */
+                        {/* Use specific order of precedence to determine display name:
+                            1. Session storage saved email (for just-converted users)
+                            2. Database user email (from custom auth handler - handles database-authenticated users)
+                            3. Supabase user metadata email
+                            4. Supabase email field  
+                            5. Anonymous fallback */}
+                        {(typeof window !== 'undefined' && window.sessionStorage.getItem('savedEmail')) || 
+                         (typeof window !== 'undefined' && window.sessionStorage.getItem('db_user_email')) ||
+                         user?.user_metadata?.email || 
                          user?.email || 
-                         /* Fallback to anonymous label */
                          'Anonymous User'}
                       </p>
                       {isDemo && (
