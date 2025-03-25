@@ -1036,18 +1036,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
         authId = req.headers['x-auth-id'] as string;
         console.log("Auth ID from header:", authId);
         
+        // Check if this might be a numeric ID that's actually a string representation
+        // of a UUID - this happens after account conversion with our updated /login endpoint
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        const isNumericString = !isNaN(Number(authId));
+        const couldBeNumber = isNumericString && !uuidRegex.test(authId);
+        
+        if (couldBeNumber) {
+          console.log("Auth ID appears to be a numeric ID in project creation, but we'll try both methods");
+          // We'll try both methods of lookup below
+        }
+        
         // Look up the user by authId
         if (authId) {
           try {
-            const user = await storage.getUserByAuthId(authId);
+            // First try direct authId lookup (the normal case)
+            let user = await storage.getUserByAuthId(authId);
+            
+            // If that fails and it looks like a number, try looking up by numeric ID as well
+            if (!user && couldBeNumber) {
+              console.log("Trying to look up by numeric ID as fallback in project creation:", authId);
+              const numericId = parseInt(authId);
+              if (!isNaN(numericId)) {
+                user = await storage.getUser(numericId);
+                if (user) {
+                  console.log("Found user by numeric ID fallback in project creation:", user.id);
+                  // If we found by numeric ID, use the authId from the user record for queries
+                  if (user.authId) {
+                    authId = user.authId;
+                    console.log("Using authId from user record instead in project creation:", authId);
+                  }
+                }
+              }
+            }
+            
             if (user) {
               userId = user.id;
-              console.log("Found user by authId for project creation:", userId);
+              console.log("Found user for project creation:", userId, "with authId:", user.authId);
             } else {
-              console.log("User not found for authId:", authId);
+              console.log("User not found for authId or numeric ID in project creation:", authId);
             }
           } catch (err) {
-            console.error("Error looking up user by authId:", err);
+            console.error("Error looking up user by identifiers in project creation:", err);
           }
         }
       } 
