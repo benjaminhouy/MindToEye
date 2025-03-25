@@ -152,15 +152,22 @@ async function verifyConceptOwnership(req: Request, res: Response, next: NextFun
       authId = req.headers['x-auth-id'] as string;
       console.log("Auth ID from header in verifyConceptOwnership:", authId);
       
-      // Look up the user by authId
-      if (authId) {
+      // Try to parse as numeric ID first (for backward compatibility)
+      const numericId = parseInt(authId);
+      
+      if (!isNaN(numericId)) {
+        // If authId is a valid number, use it directly as userId
+        userId = numericId;
+        console.log("Using numeric authId directly as userId in verifyConceptOwnership:", userId);
+      } else {
+        // Otherwise, look up the user by Supabase authId (UUID)
         try {
           const user = await storage.getUserByAuthId(authId);
           if (user) {
             userId = user.id;
-            console.log("Found user by authId in verifyConceptOwnership:", userId);
+            console.log("Found user by Supabase authId in verifyConceptOwnership:", userId);
           } else {
-            console.log("User not found for authId:", authId);
+            console.log("User not found for Supabase authId:", authId);
           }
         } catch (err) {
           console.error("Error looking up user by authId:", err);
