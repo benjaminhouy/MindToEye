@@ -442,14 +442,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   // Sign up function
-  const signUp = async (email: string, password: string) => {
+  const signUp = async (email: string, password: string, turnstileToken?: string) => {
     try {
       setLoading(true);
       setError(null);
 
       const { data, error } = await supabase.auth.signUp({
         email,
-        password
+        password,
+        options: turnstileToken ? {
+          captchaToken: turnstileToken
+        } : undefined
       });
 
       if (error) {
