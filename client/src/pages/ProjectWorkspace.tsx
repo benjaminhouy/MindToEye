@@ -51,11 +51,16 @@ const ProjectWorkspace = ({ id }: ProjectWorkspaceProps) => {
   const authHeaders = authId ? { 'x-auth-id': authId } : {};
 
   // Create a custom query function that includes auth headers
-  const projectQueryFn = async ({ queryKey }: { queryKey: string[] }) => {
-    const url = queryKey[0];
+  const projectQueryFn = async ({ queryKey }: { queryKey: string[] | readonly unknown[] }) => {
+    const url = queryKey[0] as string;
     // Important: Pass our auth headers directly to ensure the server gets them
+    const headers: Record<string, string> = {};
+    if (authId) {
+      headers['x-auth-id'] = authId;
+    }
+    
     const res = await fetch(url, {
-      headers: authHeaders,
+      headers: headers,
       credentials: "include"
     });
     
@@ -69,7 +74,7 @@ const ProjectWorkspace = ({ id }: ProjectWorkspaceProps) => {
   const { data: project, isLoading: projectLoading, error: projectError } = useQuery<Project>({
     queryKey: [`/api/projects/${projectId}`],
     enabled: !!projectId && !!authId, // Only fetch when we have both projectId and authId
-    queryFn: projectQueryFn, // Use our custom query function with auth headers
+    queryFn: projectQueryFn as any, // Type assertion to work around TypeScript issues
     retry: false
   });
   
@@ -86,10 +91,10 @@ const ProjectWorkspace = ({ id }: ProjectWorkspaceProps) => {
     }
   }, [projectError]);
 
-  const { data: concepts, isLoading: conceptsLoading, refetch: refetchConcepts, error: conceptsError } = useQuery<BrandConcept[]>({
+  const { data: concepts = [], isLoading: conceptsLoading, refetch: refetchConcepts, error: conceptsError } = useQuery<BrandConcept[]>({
     queryKey: [`/api/projects/${projectId}/concepts`],
     enabled: !!projectId && !!authId && !accessError, // Only fetch when we have both projectId and authId
-    queryFn: projectQueryFn, // Use our custom query function with auth headers
+    queryFn: projectQueryFn as any, // Type assertion to work around TypeScript issues
     retry: false
   });
 
