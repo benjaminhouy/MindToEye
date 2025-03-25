@@ -6,7 +6,7 @@ MindToEye is a powerful brand concept visualization platform that empowers creat
 
 The application is built with a modern full-stack JavaScript architecture:
 
-**Express Server** (Port 5000): A Node.js backend that serves both the React frontend and API endpoints from a single server
+**Express Server** (Port 5000): A Node.js backend that serves both the React frontend and API endpoints from a single server, with PostgreSQL for data persistence and Supabase for authentication
 
 ## Setup and Development
 
@@ -23,10 +23,23 @@ npm run dev
 The following environment variables need to be set:
 
 - `ANTHROPIC_API_KEY` - API key for Claude (3.7 Sonnet)
-- `OPENAI_API_KEY` - API key for OpenAI
+- `OPENAI_API_KEY` - API key for OpenAI (optional)
 - `REPLICATE_API_TOKEN` - API token for Replicate (FLUX 1.1 Pro)
 - `SUPABASE_URL` - URL for your Supabase project
 - `SUPABASE_ANON_KEY` - Anon/Public key for Supabase authentication
+- `SUPABASE_SERVICE_ROLE_KEY` - Service role key for Supabase admin operations
+- `DATABASE_URL` - PostgreSQL connection string
+- `SESSION_SECRET` - Secret for securing user sessions
+
+## Authentication
+
+MindToEye uses a robust authentication system with multiple layers of fallback:
+
+1. **Supabase Authentication** - Primary authentication provider with JWT token support
+2. **Token Refresh** - Automatic refresh mechanism for expired tokens
+3. **Session Persistence** - LocalStorage fallback for maintaining sessions during API disruptions
+4. **Anonymous Sessions** - Support for demo users with secure account conversion
+5. **Header Authentication** - All API requests include proper authentication headers
 
 ## Key Features
 
@@ -37,6 +50,9 @@ The following environment variables need to be set:
 - Selective regeneration of design elements
 - Advanced error handling and keyword-based AI fallbacks
 - Dynamic element regeneration with contextual AI support
+- Demo account conversion with persistent project data
+- Robust authentication with multiple fallback mechanisms
+- Supabase storage integration for asset management
 
 ## Key Technologies
 
@@ -44,7 +60,8 @@ The following environment variables need to be set:
 - Node.js/Express backend
 - Claude 3.7 Sonnet for brand concept generation
 - Black Forest Labs FLUX 1.1 Pro for logo generation
-- Supabase database for persistent storage
-- RESTful API with JSON output
+- PostgreSQL database for persistent storage
+- Supabase for authentication and storage
+- RESTful API with authenticated endpoints
 - TanStack Query for data fetching
 - Shadcn UI components
