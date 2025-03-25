@@ -365,11 +365,10 @@ async function verifyConceptOwnership(req: Request, res: Response, next: NextFun
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Empty handlers for root and landing routes to let Vite handle them
-  app.get(["/", "/landing"], (req: Request, res: Response, next: NextFunction) => {
-    // Let Vite middleware handle these routes in development mode
-    next();
-  });
+  // Let the Vite middleware handle all root-level routes
+  // Vite will serve the React application and React router will handle navigation
+  // These routes are intentionally left empty so they'll fall through
+  // to the Vite middleware defined in server/vite.ts
 
   // API health check
   app.get("/api/health", (_req: Request, res: Response) => {

@@ -31,7 +31,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
       window.sessionStorage.getItem('savedEmail') && 
       window.sessionStorage.getItem('pendingPasswordSetup');
       
-    if (!loading && !user && !isDemo && !hasConvertedAccount && currentLocation !== '/landing') {
+    if (!loading && !user && !isDemo && !hasConvertedAccount) {
       console.log("No authenticated user detected, redirecting to login page");
       navigate('/auth');
     }
@@ -54,7 +54,7 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     window.sessionStorage.getItem('savedEmail') && 
     window.sessionStorage.getItem('pendingPasswordSetup');
     
-  if (!user && !isDemo && !hasConvertedAccount && currentLocation !== '/auth' && currentLocation !== '/landing') {
+  if (!user && !isDemo && !hasConvertedAccount && currentLocation !== '/auth') {
     console.log("Not authenticated and not on auth page - waiting for redirect");
     return null;
   }

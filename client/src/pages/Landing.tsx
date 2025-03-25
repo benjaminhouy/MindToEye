@@ -24,12 +24,11 @@ export default function LandingPage() {
     navigate('/auth');
   };
 
-  // Commenting out for now to ensure landing page is always accessible
   // If already logged in, redirect to dashboard
-  /*if (user) {
+  if (user) {
     navigate('/');
     return null;
-  }*/
+  }
 
   return (
     <div className="flex flex-col min-h-screen bg-gradient-to-b from-background to-gray-50 dark:from-background dark:to-background">
