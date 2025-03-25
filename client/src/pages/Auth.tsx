@@ -38,20 +38,39 @@ export default function AuthPage() {
   
   // Initialize Turnstile when component mounts
   useEffect(() => {
+    // Add debugging to check if Turnstile script is loaded
+    console.log('Turnstile initialization check:', {
+      turnstileExists: typeof window.turnstile !== 'undefined',
+      turnstileRefExists: turnstileRef.current !== null
+    });
+    
+    // Attempt to render Turnstile only if it's loaded and the ref element exists
     // @ts-ignore - Turnstile is loaded from external script
     if (window.turnstile && turnstileRef.current) {
-      // @ts-ignore - Turnstile is loaded from external script
-      window.turnstile.render(turnstileRef.current, {
-        sitekey: '0x4AAAAAAAFQxxhlRF-GG8qb', // Replace with your actual Cloudflare Turnstile site key
-        callback: (token: string) => {
-          console.log('Turnstile token received:', token);
-          setTurnstileToken(token);
-        },
-        'expired-callback': () => {
-          console.log('Turnstile token expired');
-          setTurnstileToken(null);
-        }
-      });
+      console.log('Rendering Turnstile widget...');
+      
+      try {
+        // @ts-ignore - Turnstile is loaded from external script
+        window.turnstile.render(turnstileRef.current, {
+          // This is Cloudflare's test site key - must be replaced with your actual Supabase site key
+          sitekey: '1x00000000000000000000AA',
+          callback: (token: string) => {
+            console.log('Turnstile token received:', token);
+            setTurnstileToken(token);
+          },
+          'expired-callback': () => {
+            console.log('Turnstile token expired');
+            setTurnstileToken(null);
+          },
+          'error-callback': (error: any) => {
+            console.error('Turnstile error:', error);
+          }
+        });
+      } catch (error) {
+        console.error('Error rendering Turnstile widget:', error);
+      }
+    } else {
+      console.warn('Turnstile was not initialized because either the script is not loaded or the reference element does not exist yet.');
     }
   }, []);
   
