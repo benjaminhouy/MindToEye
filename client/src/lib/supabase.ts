@@ -69,10 +69,13 @@ export const auth = {
     
     console.log('Signing up with Supabase, using captcha:', !!captchaToken);
 
+    // Ensure proper logging for debugging
+    console.log('SignUp options:', options);
+    
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: Object.keys(options).length > 0 ? options : undefined
+      options: captchaToken ? { captchaToken } : undefined
     });
     
     if (error) {

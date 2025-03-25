@@ -44,34 +44,83 @@ export default function AuthPage() {
       turnstileRefExists: turnstileRef.current !== null
     });
     
-    // Attempt to render Turnstile only if it's loaded and the ref element exists
-    // @ts-ignore - Turnstile is loaded from external script
-    if (window.turnstile && turnstileRef.current) {
-      console.log('Rendering Turnstile widget...');
-      
-      try {
-        // @ts-ignore - Turnstile is loaded from external script
-        window.turnstile.render(turnstileRef.current, {
-          // This is Cloudflare's test site key - must be replaced with your actual Supabase site key
-          sitekey: '1x00000000000000000000AA',
-          callback: (token: string) => {
-            console.log('Turnstile token received:', token);
-            setTurnstileToken(token);
-          },
-          'expired-callback': () => {
-            console.log('Turnstile token expired');
-            setTurnstileToken(null);
-          },
-          'error-callback': (error: any) => {
-            console.error('Turnstile error:', error);
+    let turnstileInterval: RetryInterval | null = null;
+    
+    function initTurnstile() {
+      // Attempt to render Turnstile only if it's loaded and the ref element exists
+      // @ts-ignore - Turnstile is loaded from external script
+      if (window.turnstile && turnstileRef.current) {
+        console.log('Rendering Turnstile widget...');
+        
+        try {
+          // @ts-ignore - Turnstile is loaded from external script
+          const widgetId = window.turnstile.render(turnstileRef.current, {
+            // Supabase's Turnstile site key for our application
+            sitekey: '0x4AAAAAAAFQxxhlRF-GG8qb',
+            theme: 'light',
+            callback: (token: string) => {
+              console.log('Turnstile token received:', token.substring(0, 20) + '...(truncated)');
+              setTurnstileToken(token);
+            },
+            'expired-callback': () => {
+              console.log('Turnstile token expired');
+              setTurnstileToken(null);
+            },
+            'error-callback': (error: any) => {
+              console.error('Turnstile error:', error);
+            }
+          });
+          
+          console.log('Turnstile widget initialized with ID:', widgetId);
+          
+          // Clear the interval if we successfully initialized
+          if (turnstileInterval) {
+            clearInterval(turnstileInterval.id);
+            turnstileInterval = null;
           }
-        });
-      } catch (error) {
-        console.error('Error rendering Turnstile widget:', error);
+        } catch (error) {
+          console.error('Error rendering Turnstile widget:', error);
+        }
+      } else {
+        console.warn('Turnstile not ready yet, will retry...');
       }
-    } else {
-      console.warn('Turnstile was not initialized because either the script is not loaded or the reference element does not exist yet.');
     }
+    
+    // Try immediately
+    initTurnstile();
+    
+    // If not successful, retry a few times
+    let attempts = 0;
+    const MAX_ATTEMPTS = 5;
+    
+    type RetryInterval = {
+      id: NodeJS.Timeout;
+      attempts: number;
+    };
+    
+    turnstileInterval = {
+      id: setInterval(() => {
+        attempts++;
+        console.log(`Turnstile initialization attempt ${attempts}`);
+        
+        if (attempts >= MAX_ATTEMPTS) {
+          console.warn(`Failed to initialize Turnstile after ${MAX_ATTEMPTS} attempts`);
+          clearInterval(turnstileInterval!.id);
+          turnstileInterval = null;
+          return;
+        }
+        
+        initTurnstile();
+      }, 1000),
+      attempts
+    };
+    
+    // Cleanup on unmount
+    return () => {
+      if (turnstileInterval) {
+        clearInterval(turnstileInterval.id);
+      }
+    };
   }, []);
   
   // Handle demo session
@@ -124,6 +173,7 @@ export default function AuthPage() {
     }
     
     try {
+      console.log("Attempting signup with token:", turnstileToken?.substring(0, 20) + "...(truncated)");
       await signUp(email, password, turnstileToken);
       console.log("Sign up completed successfully");
       // Stay on the auth page after signup to show verification message
@@ -132,9 +182,11 @@ export default function AuthPage() {
       
       // Reset Turnstile widget if there was an error
       // @ts-ignore - Turnstile is loaded from external script
-      if (window.turnstile) {
+      if (window.turnstile && turnstileRef.current) {
+        console.log("Resetting Turnstile widget after error");
         // @ts-ignore - Turnstile is loaded from external script
-        window.turnstile.reset();
+        window.turnstile.reset(turnstileRef.current);
+        setTurnstileToken(null);
       }
     }
   };
