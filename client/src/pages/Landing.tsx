@@ -179,33 +179,33 @@ export default function LandingPage() {
       <section className="bg-muted py-20">
         <div className="container mx-auto px-4">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">How It Works</h2>
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">From Client Brief to Presentation in Minutes</h2>
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              MindToEye simplifies the brand creation process in just a few steps.
+              MindToEye transforms your agency's workflow and eliminates hours of speculative design work.
             </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
             <StepCard 
               number={1}
-              title="Input Brand Details"
-              description="Enter your brand name, industry, values, and design preferences."
+              title="Enter Client Brief"
+              description="Add the client name, industry, brand values and target audience from your intake form."
             />
             <StepCard 
               number={2}
-              title="AI Visualization"
-              description="Our AI generates multiple brand concepts with logos, colors, typography, and applications."
+              title="Generate Multiple Concepts"
+              description="Our AI creates multiple cohesive brand identities complete with logos, colors, and typography in seconds."
             />
             <StepCard 
               number={3}
-              title="Refine & Export"
-              description="Iterate on your favorite concepts, make adjustments, and export the final assets."
+              title="Present to Clients"
+              description="Export premium-quality presentations to wow clients in your first meeting, without days of design time."
             />
           </div>
 
           <div className="text-center mt-12">
             <Button size="lg" onClick={handleStartDemo}>
-              Try It Yourself <ArrowRight className="ml-2 h-4 w-4" />
+              Try It For Your Next Client <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </div>
         </div>
@@ -215,9 +215,10 @@ export default function LandingPage() {
       <section className="container mx-auto py-20 px-4">
         <div className="bg-gradient-to-r from-violet-600 to-indigo-600 rounded-xl p-8 md:p-12">
           <div className="max-w-3xl mx-auto text-center text-white">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">Ready to transform your brand ideas?</h2>
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">Stop losing revenue on speculative work</h2>
             <p className="text-lg mb-8 opacity-90">
-              Start your free demo today and see how MindToEye can revolutionize your branding process.
+              Your agency's time is valuable. Try MindToEye free and win more clients with less design time.
+              Present professional brand concepts in your first client meeting.
             </p>
             <Button size="lg" variant="secondary" onClick={handleStartDemo}>
               Start Free Demo <ArrowRight className="ml-2 h-4 w-4" />
