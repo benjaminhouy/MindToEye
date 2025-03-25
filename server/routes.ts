@@ -409,13 +409,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(404).json({ error: "User not found" });
         }
         
-        // Return minimal user data for UI display
-        return res.json({
-          id: user.id,
-          authId: user.authId,
-          username: user.username,
-          email: user.email
-        });
+        // Return minimal user data for UI display with email derived from username
+        const userWithEmail: UserWithEmail = {
+          ...user,
+          email: user.username // Use username as email since our schema doesn't have a separate email field
+        };
+        
+        return res.json(userWithEmail);
       }
       
       // Look up by auth header if no userId specified
@@ -430,13 +430,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(404).json({ error: "User not found" });
         }
         
-        // Return minimal user data for UI display
-        return res.json({
-          id: user.id,
-          authId: user.authId,
-          username: user.username,
-          email: user.email
-        });
+        // Return minimal user data for UI display with email derived from username
+        const userWithEmail: UserWithEmail = {
+          ...user,
+          email: user.username // Use username as email since our schema doesn't have a separate email field
+        };
+        
+        return res.json(userWithEmail);
       }
       
       // If no userId or authId provided, return 401

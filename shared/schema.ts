@@ -21,6 +21,11 @@ export const insertUserSchema = createInsertSchema(users).pick({
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 
+// Extend the User type with email for API responses
+export interface UserWithEmail extends User {
+  email: string;
+}
+
 // Projects schema
 export const projects = pgTable("projects", {
   id: serial("id").primaryKey(),
