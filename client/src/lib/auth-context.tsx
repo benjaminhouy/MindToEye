@@ -242,6 +242,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               expires_at: new Date().getTime() + 86400 * 1000,
               user: result.user
             });
+
+            // Store the numeric user ID in sessionStorage for components that need it
+            // This is crucial for handling converted users correctly
+            if (result.user.id) {
+              sessionStorage.setItem('user_id', String(result.user.id));
+              console.log("Stored numeric user ID in sessionStorage:", result.user.id);
+            }
             
             console.log("Sign in completed via custom auth, redirecting user...");
             
@@ -345,6 +352,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Clean up any app-specific items
       sessionStorage.removeItem('pendingPasswordSetup');
       sessionStorage.removeItem('savedEmail');
+      sessionStorage.removeItem('user_id'); // Clear the stored numeric user ID
       
       // Call server-side logout to invalidate sessions
       if (currentAuthId) {

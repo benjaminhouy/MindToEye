@@ -23,10 +23,22 @@ const SavedConcepts = ({ concepts, activeConcept, onSelect }: SavedConceptsProps
   useEffect(() => {
     const getAuthUser = async () => {
       try {
+        // First check if we're using direct DB authentication (numeric ID)
+        // This is for converted users that are being handled by our custom login endpoint
+        const storedAuthId = sessionStorage.getItem('user_id');
+        if (storedAuthId) {
+          console.log("SavedConcepts: Using stored numeric ID from sessionStorage:", storedAuthId);
+          setAuthId(storedAuthId);
+          return;
+        }
+
+        // Otherwise use Supabase auth
         const { data } = await supabase.auth.getUser();
         if (data?.user?.id) {
           setAuthId(data.user.id);
           console.log("SavedConcepts: Auth ID retrieved for API requests:", data.user.id);
+        } else {
+          console.error("SavedConcepts: No user ID found in auth data");
         }
       } catch (error) {
         console.error("Error fetching auth user in SavedConcepts:", error);
