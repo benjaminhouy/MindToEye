@@ -59,18 +59,48 @@ async function verifyProjectOwnership(req: Request, res: Response, next: NextFun
       authId = req.headers['x-auth-id'] as string;
       console.log("Auth ID from header in verifyProjectOwnership:", authId);
       
+      // Check if this might be a numeric ID that's actually a string representation
+      // of a UUID - this happens after account conversion with our updated /login endpoint
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      const isNumericString = !isNaN(Number(authId));
+      const couldBeNumber = isNumericString && !uuidRegex.test(authId);
+      
+      if (couldBeNumber) {
+        console.log("Auth ID appears to be a numeric ID in verifyProjectOwnership, but we'll try both methods");
+        // We'll try both methods of lookup below
+      }
+      
       // Look up the user by authId
       if (authId) {
         try {
-          const user = await storage.getUserByAuthId(authId);
+          // First try direct authId lookup (the normal case)
+          let user = await storage.getUserByAuthId(authId);
+          
+          // If that fails and it looks like a number, try looking up by numeric ID as well
+          if (!user && couldBeNumber) {
+            console.log("Trying to look up by numeric ID as fallback in verifyProjectOwnership:", authId);
+            const numericId = parseInt(authId);
+            if (!isNaN(numericId)) {
+              user = await storage.getUser(numericId);
+              if (user) {
+                console.log("Found user by numeric ID fallback in verifyProjectOwnership:", user.id);
+                // If we found by numeric ID, use the authId from the user record for queries
+                if (user.authId) {
+                  authId = user.authId;
+                  console.log("Using authId from user record instead in verifyProjectOwnership:", authId);
+                }
+              }
+            }
+          }
+          
           if (user) {
             userId = user.id;
-            console.log("Found user by authId in verifyProjectOwnership:", userId);
+            console.log("Found user in verifyProjectOwnership:", userId, "with authId:", user.authId);
           } else {
-            console.log("User not found for authId:", authId);
+            console.log("User not found for authId or numeric ID in verifyProjectOwnership:", authId);
           }
         } catch (err) {
-          console.error("Error looking up user by authId:", err);
+          console.error("Error looking up user by identifiers in verifyProjectOwnership:", err);
         }
       }
     }
@@ -145,18 +175,48 @@ async function verifyConceptOwnership(req: Request, res: Response, next: NextFun
       authId = req.headers['x-auth-id'] as string;
       console.log("Auth ID from header in verifyConceptOwnership:", authId);
       
+      // Check if this might be a numeric ID that's actually a string representation
+      // of a UUID - this happens after account conversion with our updated /login endpoint
+      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+      const isNumericString = !isNaN(Number(authId));
+      const couldBeNumber = isNumericString && !uuidRegex.test(authId);
+      
+      if (couldBeNumber) {
+        console.log("Auth ID appears to be a numeric ID in verifyConceptOwnership, but we'll try both methods");
+        // We'll try both methods of lookup below
+      }
+      
       // Look up the user by authId
       if (authId) {
         try {
-          const user = await storage.getUserByAuthId(authId);
+          // First try direct authId lookup (the normal case)
+          let user = await storage.getUserByAuthId(authId);
+          
+          // If that fails and it looks like a number, try looking up by numeric ID as well
+          if (!user && couldBeNumber) {
+            console.log("Trying to look up by numeric ID as fallback in verifyConceptOwnership:", authId);
+            const numericId = parseInt(authId);
+            if (!isNaN(numericId)) {
+              user = await storage.getUser(numericId);
+              if (user) {
+                console.log("Found user by numeric ID fallback in verifyConceptOwnership:", user.id);
+                // If we found by numeric ID, use the authId from the user record for queries
+                if (user.authId) {
+                  authId = user.authId;
+                  console.log("Using authId from user record instead in verifyConceptOwnership:", authId);
+                }
+              }
+            }
+          }
+          
           if (user) {
             userId = user.id;
-            console.log("Found user by authId in verifyConceptOwnership:", userId);
+            console.log("Found user in verifyConceptOwnership:", userId, "with authId:", user.authId);
           } else {
-            console.log("User not found for authId:", authId);
+            console.log("User not found for authId or numeric ID in verifyConceptOwnership:", authId);
           }
         } catch (err) {
-          console.error("Error looking up user by authId:", err);
+          console.error("Error looking up user by identifiers in verifyConceptOwnership:", err);
         }
       }
     }
@@ -866,18 +926,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
         authId = req.headers['x-auth-id'] as string;
         console.log("Auth ID from header in GET projects:", authId);
         
+        // Check if this might be a numeric ID that's actually a string representation
+        // of a UUID - this happens after account conversion with our updated /login endpoint
+        const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+        const isNumericString = !isNaN(Number(authId));
+        const couldBeNumber = isNumericString && !uuidRegex.test(authId);
+        
+        if (couldBeNumber) {
+          console.log("Auth ID appears to be a numeric ID, but we'll try both methods");
+          // We'll try both methods of lookup below
+        }
+        
         // Look up the user by authId
         if (authId) {
           try {
-            const user = await storage.getUserByAuthId(authId);
+            // First try direct authId lookup (the normal case)
+            let user = await storage.getUserByAuthId(authId);
+            
+            // If that fails and it looks like a number, try looking up by numeric ID as well
+            if (!user && couldBeNumber) {
+              console.log("Trying to look up by numeric ID as fallback:", authId);
+              const numericId = parseInt(authId);
+              if (!isNaN(numericId)) {
+                user = await storage.getUser(numericId);
+                if (user) {
+                  console.log("Found user by numeric ID fallback:", user.id);
+                  // If we found by numeric ID, use the authId from the user record for queries
+                  if (user.authId) {
+                    authId = user.authId;
+                    console.log("Using authId from user record instead:", authId);
+                  }
+                }
+              }
+            }
+            
             if (user) {
               userId = user.id;
-              console.log("Found user by authId in GET projects:", userId);
+              console.log("Found user by lookup in GET projects:", userId, "with authId:", user.authId);
             } else {
-              console.log("User not found for authId:", authId);
+              console.log("User not found for authId or numeric ID:", authId);
             }
           } catch (err) {
-            console.error("Error looking up user by authId:", err);
+            console.error("Error looking up user by identifiers:", err);
           }
         }
       }
@@ -2972,15 +3062,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
             
             // Return user and session data
+            // Critical fix: Always use authId (Supabase UUID) as primary identifier
+            console.log(`User authenticated via Supabase Auth: ID=${user.id}, AuthID=${user.authId}, Email=${user.username}`);
+            
             return res.status(200).json({
               success: true,
               user: {
                 ...user,
-                password: undefined // Never return password to client
+                password: undefined, // Never return password to client
+                // Add a special field to indicate this was authenticated via Supabase
+                auth_method: "supabase"
               },
               session: {
                 ...data.session,
-                user_id: user.id
+                // Always use the Supabase UUID as the primary identifier for API requests
+                user_id: user.authId, // This is the critical fix - use authId not database ID
+                auth_id: user.authId, // Redundant but consistent with our API
+                database_id: user.id // Include database ID as secondary identifier
               }
             });
           }
@@ -3016,17 +3114,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`User authenticated via database: ID=${user.id}, Email=${user.username}, AuthID=${user.authId}`);
       
       // Return the user data including authId needed for API requests
+      // Always prioritize authId (Supabase UUID) over database ID
+      // This ensures consistent identification after account conversion
       res.status(200).json({
         success: true,
         user: {
           ...user,
-          password: undefined // Never return password to client
+          password: undefined, // Never return password to client
+          // Add a special field to indicate this was authenticated via database
+          // This helps client know which ID to use
+          auth_method: "database"
         },
         session: {
-          // We're creating a simplified session here
-          // In a real implementation, you'd use JWT tokens
-          user_id: user.id,
-          auth_id: user.authId
+          // Critical change: use authId for primary identity, not numeric ID
+          // This ensures API calls will use the correct identifier
+          user_id: user.authId, // Use authId as the primary user_id for API calls
+          auth_id: user.authId,
+          database_id: user.id // Still include database ID as a secondary identifier
         }
       });
     } catch (error) {
