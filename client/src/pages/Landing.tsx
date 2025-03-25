@@ -4,7 +4,8 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/lib/auth-context';
 import { 
   ArrowRight, PenTool, Timer, DollarSign, Palette, Users2, Lightbulb,
-  Building2, UserCircle2, Briefcase, Clock4, Building, Pen, Megaphone, Store 
+  Building2, UserCircle2, Briefcase, Building, Pen, Megaphone, Store,
+  Clock
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
@@ -242,7 +243,7 @@ export default function LandingPage() {
               distinct directions in under an hour, letting us present more options and win more clients."
             </p>
             <p className="text-sm font-medium">
-              <Clock4 className="inline-block h-4 w-4 mr-1 text-violet-600" /> 
+              <Clock className="inline-block h-4 w-4 mr-1 text-violet-600" /> 
               Time saved: 15-20 hours per pitch
             </p>
           </div>
@@ -265,7 +266,7 @@ export default function LandingPage() {
               I start with better concepts and typically only need 1-2 rounds of refinement. I can take on more clients."
             </p>
             <p className="text-sm font-medium">
-              <Clock4 className="inline-block h-4 w-4 mr-1 text-violet-600" /> 
+              <Clock className="inline-block h-4 w-4 mr-1 text-violet-600" /> 
               Time saved: 8-10 hours per client
             </p>
           </div>
@@ -288,7 +289,7 @@ export default function LandingPage() {
               80% of the process, letting our team focus on high-value refinement and strategic applications."
             </p>
             <p className="text-sm font-medium">
-              <Clock4 className="inline-block h-4 w-4 mr-1 text-violet-600" /> 
+              <Clock className="inline-block h-4 w-4 mr-1 text-violet-600" /> 
               Time saved: 30+ hours per month
             </p>
           </div>
