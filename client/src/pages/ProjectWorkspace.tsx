@@ -93,8 +93,22 @@ const ProjectWorkspace = ({ id }: ProjectWorkspaceProps) => {
           
           // Try to use the auth context as a last resort
           try {
-            // This uses fetch directly to avoid circular dependencies
-            const response = await fetch('/api/user');
+            // Get any available session token
+            const { data: { session } } = await supabase.auth.getSession();
+            const headers: Record<string, string> = {};
+            
+            if (session?.access_token) {
+              headers['Authorization'] = `Bearer ${session.access_token}`;
+              
+              // If we have user.id from the session, use it as x-auth-id
+              if (session?.user?.id) {
+                headers['x-auth-id'] = session.user.id;
+              }
+            }
+            
+            // This uses fetch directly with auth headers
+            console.log("Trying last resort fetch with headers:", headers);
+            const response = await fetch('/api/user', { headers });
             if (response.ok) {
               const userData = await response.json();
               if (userData?.id && isMounted) {
@@ -102,6 +116,8 @@ const ProjectWorkspace = ({ id }: ProjectWorkspaceProps) => {
                 setAuthId(String(userData.id));
                 localStorage.setItem('authId', String(userData.id));
               }
+            } else {
+              console.warn("Failed to fetch user data:", await response.text());
             }
           } catch (apiError) {
             console.error("Error fetching user from API:", apiError);
