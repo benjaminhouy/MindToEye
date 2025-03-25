@@ -447,6 +447,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(true);
       setError(null);
 
+      // Call our supabase helper function with the turnstile token
+      console.log('Signing up with token:', turnstileToken ? 'Token provided' : 'No token');
       const { data, error } = await supabase.auth.signUp({
         email,
         password,

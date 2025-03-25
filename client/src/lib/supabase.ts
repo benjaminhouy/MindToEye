@@ -56,13 +56,29 @@ if (typeof window !== 'undefined') {
 // Authentication helper functions
 export const auth = {
   /**
-   * Sign up a new user with email and password
+   * Sign up a new user with email and password and optional captcha token
    */
-  signUp: async (email: string, password: string) => {
+  signUp: async (email: string, password: string, captchaToken?: string) => {
+    const options: any = {};
+    
+    // Add captcha token if provided - Supabase expects this as captchaToken
+    if (captchaToken) {
+      options.captchaToken = captchaToken;
+      console.log('CAPTCHA token added to signup options');
+    }
+    
+    console.log('Signing up with Supabase, using captcha:', !!captchaToken);
+
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
+      options: Object.keys(options).length > 0 ? options : undefined
     });
+    
+    if (error) {
+      console.error('Supabase signup error:', error);
+    }
+    
     return { data, error };
   },
 
