@@ -97,31 +97,31 @@ export default function LandingPage() {
           transition={{ duration: 0.5, delay: 0.3 }}
         >
           <div className="relative">
-            <div className="absolute -top-5 -left-5 w-full h-full bg-gradient-to-br from-violet-600/20 to-indigo-600/20 rounded-lg"></div>
+            <div className="absolute -top-8 -left-8 w-full h-full bg-gradient-to-br from-violet-600/20 to-indigo-600/20 rounded-lg"></div>
             <div className="relative bg-card border border-border shadow-xl rounded-lg overflow-hidden">
               {/* Mockup Display Section */}
-              <div className="aspect-[16/9] bg-card p-2 overflow-hidden">
+              <div className="aspect-[4/3] bg-card p-4 overflow-hidden">
                 {showingMockup === 'dashboard' && <DashboardMockup />}
                 {showingMockup === 'concept' && <BrandConceptMockup />}
                 {showingMockup === 'logo' && <LogoGenerationMockup />}
               </div>
 
               {/* Mockup Navigation */}
-              <div className="flex justify-between bg-muted p-2 border-t">
+              <div className="flex justify-between bg-muted p-3 border-t">
                 <button
-                  className={`px-3 py-2 rounded-md ${showingMockup === 'dashboard' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted-foreground/10'}`}
+                  className={`px-4 py-2 rounded-md font-medium text-sm transition-all ${showingMockup === 'dashboard' ? 'bg-primary text-primary-foreground shadow-sm' : 'hover:bg-muted-foreground/10'}`}
                   onClick={() => setShowingMockup('dashboard')}
                 >
                   Dashboard
                 </button>
                 <button
-                  className={`px-3 py-2 rounded-md ${showingMockup === 'concept' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted-foreground/10'}`}
+                  className={`px-4 py-2 rounded-md font-medium text-sm transition-all ${showingMockup === 'concept' ? 'bg-primary text-primary-foreground shadow-sm' : 'hover:bg-muted-foreground/10'}`}
                   onClick={() => setShowingMockup('concept')}
                 >
                   Brand Concept
                 </button>
                 <button
-                  className={`px-3 py-2 rounded-md ${showingMockup === 'logo' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted-foreground/10'}`}
+                  className={`px-4 py-2 rounded-md font-medium text-sm transition-all ${showingMockup === 'logo' ? 'bg-primary text-primary-foreground shadow-sm' : 'hover:bg-muted-foreground/10'}`}
                   onClick={() => setShowingMockup('logo')}
                 >
                   Logo Generation
