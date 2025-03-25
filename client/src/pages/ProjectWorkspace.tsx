@@ -36,11 +36,47 @@ const ProjectWorkspace = ({ id }: ProjectWorkspaceProps) => {
     let isMounted = true;
     const getAuthUser = async () => {
       try {
-        // First try to get auth from the session
+        // First check the query parameters for a numeric user ID (from legacy routes)
+        const params = new URLSearchParams(window.location.search);
+        const queryUserId = params.get('userId');
+        if (queryUserId && isMounted) {
+          console.log("Using numeric user ID from query parameter:", queryUserId);
+          setAuthId(queryUserId);
+          return;
+        }
+        
+        // Next try to get auth from the session
         const { data: sessionData } = await supabase.auth.getSession();
         if (sessionData?.session?.user?.id && isMounted) {
           console.log("Got auth ID from session:", sessionData.session.user.id);
           setAuthId(sessionData.session.user.id);
+          return;
+        }
+        
+        // Also try getting auth from localStorage (for persistence)
+        // Many apps store the current user ID in localStorage
+        const storedAuthId = localStorage.getItem('authId');
+        if (storedAuthId && isMounted) {
+          console.log("Using stored auth ID from localStorage:", storedAuthId);
+          setAuthId(storedAuthId);
+          
+          // If we have a stored email, make sure it's accessible to other components
+          const storedEmail = localStorage.getItem('userEmail');
+          if (!storedEmail) {
+            // Try to get user details from our backend to populate email
+            fetch(`/api/user?userId=${storedAuthId}`, {
+              headers: { 'x-auth-id': storedAuthId }
+            })
+              .then(res => res.json())
+              .then(userData => {
+                if (userData.email) {
+                  localStorage.setItem('userEmail', userData.email);
+                  console.log("Stored user email in localStorage:", userData.email);
+                }
+              })
+              .catch(err => console.error("Error fetching user data:", err));
+          }
+          
           return;
         }
         
@@ -49,8 +85,27 @@ const ProjectWorkspace = ({ id }: ProjectWorkspaceProps) => {
         if (data?.user?.id && isMounted) {
           console.log("Got auth ID from getUser:", data.user.id);
           setAuthId(data.user.id);
+          
+          // Save to localStorage for better persistence
+          localStorage.setItem('authId', data.user.id);
         } else {
           console.warn("No auth ID found in session or user data");
+          
+          // Try to use the auth context as a last resort
+          try {
+            // This uses fetch directly to avoid circular dependencies
+            const response = await fetch('/api/user');
+            if (response.ok) {
+              const userData = await response.json();
+              if (userData?.id && isMounted) {
+                console.log("Using user ID from /api/user endpoint:", userData.id);
+                setAuthId(String(userData.id));
+                localStorage.setItem('authId', String(userData.id));
+              }
+            }
+          } catch (apiError) {
+            console.error("Error fetching user from API:", apiError);
+          }
         }
       } catch (error) {
         console.error("Error fetching auth user:", error);
@@ -65,6 +120,11 @@ const ProjectWorkspace = ({ id }: ProjectWorkspaceProps) => {
       if (session?.user?.id && isMounted) {
         console.log("Setting auth ID from auth state change:", session.user.id);
         setAuthId(session.user.id);
+        localStorage.setItem('authId', session.user.id);
+      } else if (event === 'SIGNED_OUT' && isMounted) {
+        // Clear stored auth when signing out
+        localStorage.removeItem('authId');
+        setAuthId(null);
       }
     });
     

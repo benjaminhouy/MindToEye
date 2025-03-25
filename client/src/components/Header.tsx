@@ -201,6 +201,8 @@ const Header = () => {
                          (user?.user_metadata?.converted && typeof window !== 'undefined' && window.sessionStorage.getItem('savedEmail')) || 
                          /* Then check regular email field */
                          user?.email || 
+                         /* Check if we have a session user_id from localStorage */
+                         (typeof window !== 'undefined' && localStorage.getItem('userEmail')) ||
                          /* Fallback to anonymous label */
                          'Anonymous User'}
                       </p>
