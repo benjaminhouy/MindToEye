@@ -144,6 +144,7 @@ export const getQueryFn: <T>(options: {
     return await res.json();
   };
 
+// Export the queryClient for use throughout the application
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
