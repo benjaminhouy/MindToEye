@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from './supabase';
 import { useToast } from '@/hooks/use-toast';
@@ -38,6 +38,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isDemo, setIsDemo] = useState(false);
+  const refreshTimerRef = useRef<NodeJS.Timeout | null>(null);
   const { toast } = useToast();
 
   // Register a new user with our own API
@@ -71,32 +72,190 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Function to refresh the session token before it expires
+  const setupSessionRefresh = (currentSession: Session | null) => {
+    // Clear any existing refresh timer
+    if (refreshTimerRef.current) {
+      clearTimeout(refreshTimerRef.current);
+      refreshTimerRef.current = null;
+    }
+    
+    // If no session or it's our custom local auth, don't set up refresh
+    if (!currentSession || currentSession.access_token.startsWith('local-auth-')) {
+      return;
+    }
+    
+    try {
+      // Calculate when to refresh - aim for 5 minutes before expiry
+      const expiresAt = currentSession.expires_at;
+      if (!expiresAt) {
+        console.warn('Session has no expires_at timestamp, cannot schedule refresh');
+        return;
+      }
+      
+      const expiresAtMs = expiresAt * 1000; // Convert to milliseconds
+      const refreshTimeMs = expiresAtMs - Date.now() - (5 * 60 * 1000); // 5 minutes before expiry
+      
+      // If token is already expired or will expire soon, refresh immediately
+      if (refreshTimeMs <= 0) {
+        console.log('Session token expired or expiring soon, refreshing immediately');
+        refreshSession();
+        return;
+      }
+      
+      console.log(`Scheduling session refresh in ${Math.round(refreshTimeMs/1000/60)} minutes`);
+      
+      // Set timer to refresh the token
+      refreshTimerRef.current = setTimeout(() => {
+        refreshSession();
+      }, refreshTimeMs);
+    } catch (error) {
+      console.error('Error setting up session refresh:', error);
+    }
+  };
+  
+  // Function to refresh the session token
+  const refreshSession = async () => {
+    try {
+      console.log('Refreshing auth session token');
+      const { data, error } = await supabase.auth.refreshSession();
+      
+      if (error) {
+        console.error('Error refreshing session:', error);
+        
+        // If refresh fails, try to get the current session
+        const { data: currentData } = await supabase.auth.getSession();
+        if (currentData.session) {
+          console.log('Retrieved current session after refresh failure');
+          setSession(currentData.session);
+          setUser(currentData.session.user);
+          setupSessionRefresh(currentData.session);
+        } else {
+          console.error('No session available after refresh failure, user may need to re-authenticate');
+          // Keep the current session for now, it's better than nothing
+        }
+      } else if (data.session) {
+        console.log('Session refreshed successfully');
+        setSession(data.session);
+        setUser(data.session.user);
+        
+        // Store credentials for API authentication
+        if (data.session.user?.id) {
+          localStorage.setItem('authId', data.session.user.id);
+        }
+        
+        // Persist auth credentials
+        const userEmail = data.session.user?.email || 
+                        data.session.user?.user_metadata?.email;
+        if (userEmail) {
+          localStorage.setItem('userEmail', userEmail);
+        }
+        
+        // Set up the next refresh
+        setupSessionRefresh(data.session);
+      }
+    } catch (error) {
+      console.error('Unexpected error during session refresh:', error);
+    }
+  };
+  
   // Effect to set up the auth state listener
   useEffect(() => {
     async function getInitialSession() {
       try {
         setLoading(true);
         
-        // Get the initial session
-        const { data: { session: initialSession } } = await supabase.auth.getSession();
-        setSession(initialSession);
+        // First try to use values from localStorage to avoid auth flicker
+        const storedAuthId = localStorage.getItem('authId');
+        const storedEmail = localStorage.getItem('userEmail');
         
-        if (initialSession?.user) {
+        if (storedAuthId && storedEmail) {
+          // We have stored credentials - make an API call to validate them
+          try {
+            const response = await fetch('/api/user', {
+              headers: {
+                'x-auth-id': storedAuthId,
+                'Authorization': `Bearer local-auth-${storedAuthId}`
+              }
+            });
+            
+            if (response.ok) {
+              const userData = await response.json();
+              console.log('Restored session from localStorage:', userData);
+              
+              // Create a temporary session with the stored data
+              const now = new Date();
+              const tempSession: Session = {
+                access_token: `local-auth-${userData.id}`,
+                refresh_token: '',
+                token_type: 'bearer',
+                expires_in: 86400,
+                expires_at: now.getTime() + 86400 * 1000,
+                user: {
+                  id: userData.id,
+                  app_metadata: { provider: userData.isDemo ? 'anonymous' : 'email' },
+                  user_metadata: { 
+                    email: userData.email,
+                    converted: !userData.isDemo
+                  },
+                  aud: 'authenticated',
+                  email: userData.email,
+                  created_at: now.toISOString(),
+                  updated_at: now.toISOString(),
+                  role: 'authenticated',
+                  identities: [],
+                  confirmed_at: now.toISOString(),
+                  last_sign_in_at: now.toISOString(),
+                  factors: null,
+                  phone: ''
+                }
+              };
+              
+              setSession(tempSession);
+              setUser(tempSession.user);
+              setIsDemo(userData.isDemo);
+              setLoading(false);
+              
+              // We'll still get the Supabase session below, but this prevents a flash of login state
+              return;
+            }
+          } catch (storageError) {
+            console.warn('Error restoring from localStorage:', storageError);
+            // Continue to get Supabase session
+          }
+        }
+        
+        // Get the session from Supabase
+        const { data: { session: initialSession } } = await supabase.auth.getSession();
+        
+        if (initialSession) {
+          console.log('Retrieved session from Supabase');
+          setSession(initialSession);
           setUser(initialSession.user);
           
+          // Set up token refresh
+          setupSessionRefresh(initialSession);
+          
           // Check if this is a demo user
-          const isAnonymous = initialSession.user.app_metadata.provider === 'anonymous';
-          const isConverted = initialSession.user.user_metadata.converted === true;
+          const isAnonymous = initialSession.user?.app_metadata?.provider === 'anonymous';
+          const isConverted = initialSession.user?.user_metadata?.converted === true;
           setIsDemo(isAnonymous && !isConverted);
           
+          // Store credentials for API authentication
+          if (initialSession.user?.id) {
+            localStorage.setItem('authId', initialSession.user.id);
+          }
+          
           // Store email in localStorage for persistence across the app
-          const userEmail = initialSession.user.email || 
-                          initialSession.user.user_metadata?.email;
+          const userEmail = initialSession.user?.email || 
+                          initialSession.user?.user_metadata?.email;
           
           if (userEmail) {
             localStorage.setItem('userEmail', userEmail);
             console.log('Stored user email in localStorage:', userEmail);
           }
+        } else {
+          console.log('No active session found');
         }
       } catch (error) {
         console.error('Error getting initial session:', error);
@@ -108,36 +267,72 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Set up auth change listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        setLoading(false);
+      async (event, newSession) => {
+        console.log('Auth state changed:', event);
+        
+        // Update our state
+        setSession(newSession);
+        setUser(newSession?.user ?? null);
         
         // Handle demo detection on auth state change
-        if (session?.user) {
-          const isAnonymous = session.user.app_metadata.provider === 'anonymous';
-          const isConverted = session.user.user_metadata.converted === true;
+        if (newSession?.user) {
+          const isAnonymous = newSession.user.app_metadata.provider === 'anonymous';
+          const isConverted = newSession.user.user_metadata.converted === true;
           setIsDemo(isAnonymous && !isConverted);
+          
+          // If this is a new user or a token refresh, set up the refresh timer
+          if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+            setupSessionRefresh(newSession);
+            
+            // Store auth ID for persistence
+            localStorage.setItem('authId', newSession.user.id);
+            
+            // Store email if available
+            const userEmail = newSession.user.email || 
+                             newSession.user.user_metadata?.email;
+            if (userEmail) {
+              localStorage.setItem('userEmail', userEmail);
+            }
+          }
           
           // If this is a new user, register them with our API
           if (event === 'SIGNED_IN') {
             try {
-              await registerUserWithApi(session.user);
+              await registerUserWithApi(newSession.user);
             } catch (error) {
               console.error('Error during API registration:', error);
               // Don't treat this as a fatal error, user might already be registered
             }
           }
         }
+        
+        if (event === 'SIGNED_OUT') {
+          // Clear stored auth data
+          localStorage.removeItem('authId');
+          localStorage.removeItem('userEmail');
+          
+          // Clear any refresh timer
+          if (refreshTimerRef.current) {
+            clearTimeout(refreshTimerRef.current);
+            refreshTimerRef.current = null;
+          }
+        }
+        
+        setLoading(false);
       }
     );
 
     // Get the initial session
     getInitialSession();
 
-    // Clean up the subscription on unmount
+    // Clean up on unmount
     return () => {
       subscription.unsubscribe();
+      
+      if (refreshTimerRef.current) {
+        clearTimeout(refreshTimerRef.current);
+        refreshTimerRef.current = null;
+      }
     };
   }, []);
 
@@ -161,15 +356,44 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           const result = await response.json();
           
           // Set user and session from our server response
-          setUser(result.user);
-          setSession({
+          const now = new Date();
+          
+          // Create a proper User object with all required fields
+          const userWithRequiredFields: User = {
+            ...result.user,
+            created_at: result.user.created_at || now.toISOString(),
+            updated_at: result.user.updated_at || now.toISOString(),
+            role: result.user.role || 'authenticated',
+            aud: result.user.aud || 'authenticated',
+            app_metadata: result.user.app_metadata || {},
+            user_metadata: result.user.user_metadata || {},
+            identities: result.user.identities || [],
+            confirmed_at: result.user.confirmed_at || now.toISOString(),
+            last_sign_in_at: result.user.last_sign_in_at || now.toISOString(),
+            factors: result.user.factors || null,
+            phone: result.user.phone || ''
+          };
+          
+          // Create a complete session object
+          const localSession: Session = {
             access_token: `local-auth-${result.user.id}`, // Simplified token
             refresh_token: '',
             token_type: 'bearer', // Required by Session type
             expires_in: 86400,
-            expires_at: new Date().getTime() + 86400 * 1000,
-            user: result.user
-          });
+            expires_at: now.getTime() + 86400 * 1000,
+            user: userWithRequiredFields
+          };
+          
+          setUser(result.user);
+          setSession(localSession);
+          
+          // Store authentication data in localStorage
+          localStorage.setItem('authId', result.user.id);
+          localStorage.setItem('authToken', localSession.access_token);
+          
+          if (result.user.email) {
+            localStorage.setItem('userEmail', result.user.email);
+          }
           
           // Success message
           toast({
