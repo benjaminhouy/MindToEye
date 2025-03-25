@@ -157,8 +157,8 @@ export default function LandingPage() {
           />
           <FeatureCard 
             icon={<PenTool className="h-8 w-8 text-violet-600" />}
-            title="Create in Minutes, Not Days"
-            description="Develop compelling logos and brand identities in minutes that would take a designer days to craft."
+            title="Accelerate Your Creative Process"
+            description="Jump-start your design workflow with professional-quality concepts that you can refine and customize to perfection."
           />
           <FeatureCard 
             icon={<Palette className="h-8 w-8 text-violet-600" />}
@@ -172,8 +172,8 @@ export default function LandingPage() {
           />
           <FeatureCard 
             icon={<Lightbulb className="h-8 w-8 text-violet-600" />}
-            title="Beat Creative Blocks"
-            description="Never start from a blank canvas again—generate multiple professional-grade directions in seconds."
+            title="Inspire Your Design Team"
+            description="Generate starting points and creative directions that your design team can use as inspiration for client work."
           />
         </div>
       </section>
@@ -284,8 +284,8 @@ export default function LandingPage() {
               "Doubled our branding project capacity"
             </h4>
             <p className="text-muted-foreground mb-4">
-              "Our senior designers used to be bogged down with initial concept work. MindToEye handles the first 
-              80% of the process, letting our team focus on high-value refinement and strategic applications."
+              "Our senior designers can now focus on strategic applications and refinement. MindToEye provides 
+              inspiration and initial concepts, letting our team add their expertise where it matters most."
             </p>
             <p className="text-sm font-medium">
               <Clock className="inline-block h-4 w-4 mr-1 text-violet-600" /> 
@@ -333,7 +333,7 @@ export default function LandingPage() {
               </div>
               <h3 className="font-bold text-lg mb-2">Marketing Teams</h3>
               <p className="text-muted-foreground text-sm">
-                Generate brand assets for campaigns and product launches without hiring additional designers.
+                Empower your existing marketing team with AI-assisted brand assets for campaigns and product launches.
               </p>
             </div>
             
