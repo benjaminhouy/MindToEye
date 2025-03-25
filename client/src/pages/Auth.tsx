@@ -11,6 +11,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 
+// Extend Window interface to make TypeScript happy
+interface WindowWithTurnstile extends Window {
+  turnstile?: any;
+  onTurnstileLoaded?: () => void;
+}
+
 export default function AuthPage() {
   // Get authentication context
   const { user, session, signIn, signUp, startDemoSession, loading, error } = useAuth();
@@ -39,39 +45,25 @@ export default function AuthPage() {
   // Add a fallback solution when CAPTCHA doesn't load
   const [captchaFailed, setCaptchaFailed] = useState(false);
 
-  // Initialize Turnstile when the tab is selected
-  useEffect(() => {
+  // Add state to track active tab
+  const [activeTab, setActiveTab] = useState<string>("login");
+  
+  // Handle tab change
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    if (value === "register") {
+      // Add a small delay to ensure DOM is updated
+      setTimeout(() => {
+        initTurnstile();
+      }, 100);
+    }
+  };
+  
+  // Initialize Turnstile - function definition
+  const initTurnstile = useCallback(() => {
     console.log('Turnstile initialization started');
     
-    // Extend Window interface to make TypeScript happy
-    interface WindowWithTurnstile extends Window {
-      turnstile?: any;
-      onTurnstileLoaded?: () => void;
-    }
-    
     const windowWithTurnstile = window as WindowWithTurnstile;
-    
-    // Create a script element and load it manually
-    const loadTurnstileScript = () => {
-      // Remove any existing script to avoid duplicates
-      const existingScript = document.getElementById('turnstile-script');
-      if (existingScript) {
-        existingScript.remove();
-      }
-      
-      const script = document.createElement('script');
-      script.id = 'turnstile-script';
-      script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?onload=onTurnstileLoaded';
-      script.async = true;
-      
-      // Define the callback function that will be called when Turnstile is loaded
-      windowWithTurnstile.onTurnstileLoaded = () => {
-        console.log('Turnstile script loaded successfully');
-        renderTurnstile();
-      };
-      
-      document.head.appendChild(script);
-    };
     
     // Function to render the Turnstile widget
     const renderTurnstile = () => {
@@ -115,8 +107,18 @@ export default function AuthPage() {
       }
     };
     
-    // Start loading the script
-    loadTurnstileScript();
+    // If Turnstile is already loaded, render it immediately
+    if (typeof windowWithTurnstile.turnstile !== 'undefined') {
+      console.log('Turnstile already loaded, rendering immediately');
+      renderTurnstile();
+      return;
+    }
+    
+    // Otherwise, set up callback and load the script
+    windowWithTurnstile.onTurnstileLoaded = () => {
+      console.log('Turnstile script loaded successfully');
+      renderTurnstile();
+    };
     
     // Set a timeout to mark the CAPTCHA as failed if it doesn't load within 5 seconds
     const failureTimeout = setTimeout(() => {
@@ -129,10 +131,20 @@ export default function AuthPage() {
     
     return () => {
       clearTimeout(failureTimeout);
-      // Delete the global callback to prevent memory leaks
+    };
+  }, [turnstileRef, turnstileToken]);
+  
+  // Initialize Turnstile on component mount
+  useEffect(() => {
+    // Script is loaded in index.html, so we only need to initialize the widget
+    initTurnstile();
+    
+    return () => {
+      // Cleanup
+      const windowWithTurnstile = window as any;
       delete windowWithTurnstile.onTurnstileLoaded;
     };
-  }, []);
+  }, [initTurnstile]);
   
   // Handle demo session
   const handleDemoClick = useCallback(async () => {
@@ -208,11 +220,10 @@ export default function AuthPage() {
       console.error("Error during sign up:", error);
       
       // Reset Turnstile widget if there was an error
-      // @ts-ignore - Turnstile is loaded from external script
-      if (window.turnstile && turnstileRef.current) {
+      const windowWithTurnstile = window as WindowWithTurnstile;
+      if (windowWithTurnstile.turnstile && turnstileRef.current) {
         console.log("Resetting Turnstile widget after error");
-        // @ts-ignore - Turnstile is loaded from external script
-        window.turnstile.reset(turnstileRef.current);
+        windowWithTurnstile.turnstile.reset(turnstileRef.current);
         setTurnstileToken(null);
       }
     }
@@ -242,7 +253,7 @@ export default function AuthPage() {
           </p>
         </div>
 
-        <Tabs defaultValue="login" className="w-full">
+        <Tabs defaultValue="login" className="w-full" onValueChange={handleTabChange}>
           <TabsList className="grid w-full grid-cols-2 mb-6">
             <TabsTrigger value="login">Login</TabsTrigger>
             <TabsTrigger value="register">Register</TabsTrigger>
