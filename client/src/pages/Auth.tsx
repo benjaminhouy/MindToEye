@@ -188,26 +188,19 @@ export default function AuthPage() {
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Sign up attempt with:", email);
     
-    // Handle the case where turnstile has failed to load
-    if (captchaFailed) {
-      console.log("Turnstile failed to load, attempting to bypass CAPTCHA verification");
-      
-      try {
-        // Try to sign up without CAPTCHA token (will rely on server-side bypass for dev environments)
-        await signUp(email, password, "bypass_dev_environment_only");
-        console.log("Sign up completed successfully with CAPTCHA bypass");
-      } catch (error) {
-        console.error("Error during sign up with CAPTCHA bypass:", error);
-        alert("CAPTCHA verification is required but failed to load. Please try again later or use the demo option.");
-      }
+    // Basic validation
+    if (!email || !password) {
+      alert("Please enter both email and password");
       return;
     }
     
+    console.log("Sign up attempt with:", email);
+    
+    // Strictly require Turnstile token
     if (!turnstileToken) {
       console.error("Turnstile verification required");
-      alert("Please complete the verification challenge");
+      alert("Please complete the CAPTCHA verification challenge");
       return;
     }
     
@@ -215,6 +208,7 @@ export default function AuthPage() {
       console.log("Attempting signup with token:", turnstileToken?.substring(0, 20) + "...(truncated)");
       await signUp(email, password, turnstileToken);
       console.log("Sign up completed successfully");
+      alert("Account created successfully! Please check your email for verification instructions.");
       // Stay on the auth page after signup to show verification message
     } catch (error) {
       console.error("Error during sign up:", error);
@@ -347,8 +341,8 @@ export default function AuthPage() {
                     {captchaFailed && (
                       <div className="border border-amber-600 rounded-md p-3 mt-2 bg-amber-50">
                         <p className="text-xs text-amber-800">
-                          <strong>Captcha verification could not be loaded.</strong> You can still create an account 
-                          by completing the form and clicking "Create Account" - we'll use an alternative verification method.
+                          <strong>CAPTCHA verification could not be loaded.</strong> The CAPTCHA verification is required
+                          to create an account. Please try refreshing the page or check your connection.
                         </p>
                       </div>
                     )}
