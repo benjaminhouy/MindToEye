@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useAuth } from '@/lib/auth-context';
 import { useLocation } from 'wouter';
 import { Loader2 } from 'lucide-react';
@@ -23,6 +23,8 @@ export default function AuthPage() {
   const [password, setPassword] = useState('');
   const [demoLoading, setDemoLoading] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const turnstileRef = useRef<HTMLDivElement>(null);
   
   // If user is already authenticated, redirect to dashboard
   useEffect(() => {
@@ -33,6 +35,25 @@ export default function AuthPage() {
       setPageLoading(false);
     }
   }, [user, session, navigate]);
+  
+  // Initialize Turnstile when component mounts
+  useEffect(() => {
+    // @ts-ignore - Turnstile is loaded from external script
+    if (window.turnstile && turnstileRef.current) {
+      // @ts-ignore - Turnstile is loaded from external script
+      window.turnstile.render(turnstileRef.current, {
+        sitekey: '0x4AAAAAAAFQxxhlRF-GG8qb', // Replace with your actual Cloudflare Turnstile site key
+        callback: (token: string) => {
+          console.log('Turnstile token received:', token);
+          setTurnstileToken(token);
+        },
+        'expired-callback': () => {
+          console.log('Turnstile token expired');
+          setTurnstileToken(null);
+        }
+      });
+    }
+  }, []);
   
   // Handle demo session
   const handleDemoClick = useCallback(async () => {
@@ -77,12 +98,25 @@ export default function AuthPage() {
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     console.log("Sign up attempt with:", email);
+    
+    if (!turnstileToken) {
+      console.error("Turnstile verification required");
+      return;
+    }
+    
     try {
-      await signUp(email, password);
+      await signUp(email, password, turnstileToken);
       console.log("Sign up completed successfully");
       // Stay on the auth page after signup to show verification message
     } catch (error) {
       console.error("Error during sign up:", error);
+      
+      // Reset Turnstile widget if there was an error
+      // @ts-ignore - Turnstile is loaded from external script
+      if (window.turnstile) {
+        // @ts-ignore - Turnstile is loaded from external script
+        window.turnstile.reset();
+      }
     }
   };
 
@@ -193,6 +227,14 @@ export default function AuthPage() {
                       onChange={(e) => setPassword(e.target.value)}
                       required
                     />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label>Verification</Label>
+                    <div ref={turnstileRef} className="cf-turnstile"></div>
+                    {!turnstileToken && (
+                      <p className="text-xs text-amber-600 mt-1">Please complete the verification</p>
+                    )}
                   </div>
                 </CardContent>
                 <CardFooter>
