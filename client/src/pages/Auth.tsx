@@ -52,6 +52,10 @@ export default function AuthPage() {
   const handleTabChange = (value: string) => {
     setActiveTab(value);
     if (value === "register") {
+      // Reset any previous token and failed state when switching to register tab
+      setTurnstileToken(null);
+      setCaptchaFailed(false);
+      
       // Add a small delay to ensure DOM is updated
       setTimeout(() => {
         initTurnstile();
@@ -61,12 +65,26 @@ export default function AuthPage() {
   
   // Initialize Turnstile - function definition
   const initTurnstile = useCallback(() => {
+    // Skip initialization if we already have a token
+    if (turnstileToken) {
+      console.log('Already have a Turnstile token, skipping initialization');
+      return;
+    }
+    
     console.log('Turnstile initialization started');
     
     const windowWithTurnstile = window as WindowWithTurnstile;
     
+    // Keep track of whether we've rendered the widget
+    let widgetRendered = false;
+    
     // Function to render the Turnstile widget
     const renderTurnstile = () => {
+      // If we already have a token or have rendered the widget, don't render again
+      if (turnstileToken || widgetRendered) {
+        return;
+      }
+      
       if (!turnstileRef.current) {
         console.warn('Turnstile container not found');
         return;
@@ -86,10 +104,13 @@ export default function AuthPage() {
               console.log('Turnstile token received:', token.substring(0, 20) + '...(truncated)');
               setTurnstileToken(token);
               setCaptchaFailed(false);
+              // Mark that we have a token so we don't re-render
+              widgetRendered = true;
             },
             'expired-callback': () => {
               console.log('Turnstile token expired');
               setTurnstileToken(null);
+              widgetRendered = false; // Allow re-rendering if token expires
             },
             'error-callback': (error: any) => {
               console.error('Turnstile error:', error);
@@ -97,6 +118,7 @@ export default function AuthPage() {
             }
           });
           console.log('Turnstile widget initialized with ID:', widgetId);
+          widgetRendered = true;
         } else {
           console.error('Turnstile not available');
           setCaptchaFailed(true);
