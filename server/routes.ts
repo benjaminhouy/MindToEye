@@ -59,15 +59,22 @@ async function verifyProjectOwnership(req: Request, res: Response, next: NextFun
       authId = req.headers['x-auth-id'] as string;
       console.log("Auth ID from header in verifyProjectOwnership:", authId);
       
-      // Look up the user by authId
-      if (authId) {
+      // Try to parse as numeric ID first (for backward compatibility)
+      const numericId = parseInt(authId);
+      
+      if (!isNaN(numericId)) {
+        // If authId is a valid number, use it directly as userId
+        userId = numericId;
+        console.log("Using numeric authId directly as userId in verifyProjectOwnership:", userId);
+      } else {
+        // Otherwise, look up the user by Supabase authId (UUID)
         try {
           const user = await storage.getUserByAuthId(authId);
           if (user) {
             userId = user.id;
-            console.log("Found user by authId in verifyProjectOwnership:", userId);
+            console.log("Found user by Supabase authId in verifyProjectOwnership:", userId);
           } else {
-            console.log("User not found for authId:", authId);
+            console.log("User not found for Supabase authId:", authId);
           }
         } catch (err) {
           console.error("Error looking up user by authId:", err);
@@ -842,15 +849,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         authId = req.headers['x-auth-id'] as string;
         console.log("Auth ID from header in GET projects:", authId);
         
-        // Look up the user by authId
-        if (authId) {
+        // Try to parse as numeric ID first (for backward compatibility)
+        const numericId = parseInt(authId);
+        
+        if (!isNaN(numericId)) {
+          // If authId is a valid number, use it directly as userId
+          userId = numericId;
+          console.log("Using numeric authId directly as userId:", userId);
+        } else {
+          // Otherwise, look up the user by Supabase authId (UUID)
           try {
             const user = await storage.getUserByAuthId(authId);
             if (user) {
               userId = user.id;
-              console.log("Found user by authId in GET projects:", userId);
+              console.log("Found user by Supabase authId in GET projects:", userId);
             } else {
-              console.log("User not found for authId:", authId);
+              console.log("User not found for Supabase authId:", authId);
             }
           } catch (err) {
             console.error("Error looking up user by authId:", err);
@@ -922,15 +936,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         authId = req.headers['x-auth-id'] as string;
         console.log("Auth ID from header:", authId);
         
-        // Look up the user by authId
-        if (authId) {
+        // Try to parse as numeric ID first (for backward compatibility)
+        const numericId = parseInt(authId);
+        
+        if (!isNaN(numericId)) {
+          // If authId is a valid number, use it directly as userId
+          userId = numericId;
+          console.log("Using numeric authId directly as userId for project creation:", userId);
+        } else {
+          // Otherwise, look up the user by Supabase authId (UUID)
           try {
             const user = await storage.getUserByAuthId(authId);
             if (user) {
               userId = user.id;
-              console.log("Found user by authId for project creation:", userId);
+              console.log("Found user by Supabase authId for project creation:", userId);
             } else {
-              console.log("User not found for authId:", authId);
+              console.log("User not found for Supabase authId:", authId);
             }
           } catch (err) {
             console.error("Error looking up user by authId:", err);
