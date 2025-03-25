@@ -281,14 +281,24 @@ const Header = () => {
               )}
             </div>
 
-            {/* For demo users */}
-            {isDemo && (
+            {/* For demo users - with more robust checking */}
+            {(isDemo || (!user?.email && user?.app_metadata?.provider === 'anonymous')) && (
               <DemoSaveWorkDialog>
                 <Button size="sm" className="ml-4" variant="secondary">
                   <ZapIcon className="-ml-0.5 mr-2 h-4 w-4" />
                   Save Your Work
                 </Button>
               </DemoSaveWorkDialog>
+            )}
+            
+            {/* Debug info - only shown in development */}
+            {process.env.NODE_ENV === 'development' && (
+              <div className="hidden">
+                Demo: {String(isDemo)}, 
+                Provider: {String(user?.app_metadata?.provider)},
+                Email: {String(user?.email)},
+                Converted: {String(user?.user_metadata?.converted)}
+              </div>
             )}
             
             {/* For anonymous users who have saved email but not set password yet */}

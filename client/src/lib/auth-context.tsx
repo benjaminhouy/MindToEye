@@ -98,10 +98,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (initialSession?.user) {
           setUser(initialSession.user);
           
-          // Check if this is a demo user
-          const isAnonymous = initialSession.user.app_metadata.provider === 'anonymous';
-          const isConverted = initialSession.user.user_metadata.converted === true;
-          setIsDemo(isAnonymous && !isConverted);
+          // Check if this is a demo user - with improved logging and more robust checks
+          console.log("Auth metadata check:", 
+            "UID:", initialSession.user.id,
+            "Provider:", initialSession.user.app_metadata?.provider,
+            "Email:", initialSession.user.email,
+            "Converted:", initialSession.user.user_metadata?.converted
+          );
+          
+          // More robust check for anonymous users - handle undefined metadata cases
+          const isAnonymous = initialSession.user.app_metadata?.provider === 'anonymous' ||
+                             (!initialSession.user.email && initialSession.user.app_metadata?.provider !== 'email');
+          
+          // Check for converted flag - handle undefined metadata cases
+          const isConverted = initialSession.user.user_metadata?.converted === true;
+          
+          // For anonymous users with no metadata, check the database to confirm status
+          if (isAnonymous) {
+            // Clear any incorrect flags that might exist in sessionStorage
+            if (typeof window !== 'undefined' && !isConverted) {
+              window.sessionStorage.removeItem('pendingPasswordSetup');
+            }
+          }
+          
+          // Set isDemo flag based on our checks
+          const newDemoState = isAnonymous && !isConverted;
+          console.log(`Demo user status: ${newDemoState ? 'IS DEMO' : 'NOT DEMO'}`);
+          setIsDemo(newDemoState);
         }
       } catch (error) {
         console.error('Error getting initial session:', error);
@@ -118,11 +141,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(session?.user ?? null);
         setLoading(false);
         
-        // Handle demo detection on auth state change
+        // Handle demo detection on auth state change using the same enhanced logic
         if (session?.user) {
-          const isAnonymous = session.user.app_metadata.provider === 'anonymous';
-          const isConverted = session.user.user_metadata.converted === true;
-          setIsDemo(isAnonymous && !isConverted);
+          console.log("Auth state change metadata check:", 
+            "UID:", session.user.id,
+            "Provider:", session.user.app_metadata?.provider,
+            "Email:", session.user.email,
+            "Converted:", session.user.user_metadata?.converted
+          );
+          
+          // More robust check for anonymous users - handle undefined metadata cases
+          const isAnonymous = session.user.app_metadata?.provider === 'anonymous' ||
+                             (!session.user.email && session.user.app_metadata?.provider !== 'email');
+          
+          // Check for converted flag - handle undefined metadata cases
+          const isConverted = session.user.user_metadata?.converted === true;
+          
+          // For anonymous users with no metadata, check the database to confirm status
+          if (isAnonymous) {
+            // Clear any incorrect flags that might exist in sessionStorage
+            if (typeof window !== 'undefined' && !isConverted) {
+              window.sessionStorage.removeItem('pendingPasswordSetup');
+            }
+          }
+          
+          // Set isDemo flag based on our checks
+          const newDemoState = isAnonymous && !isConverted;
+          console.log(`Auth change: Demo user status: ${newDemoState ? 'IS DEMO' : 'NOT DEMO'}`);
+          setIsDemo(newDemoState);
           
           // If this is a new user, register them with our API
           if (event === 'SIGNED_IN') {
