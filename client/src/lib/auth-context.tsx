@@ -206,7 +206,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                   identities: [],
                   confirmed_at: now.toISOString(),
                   last_sign_in_at: now.toISOString(),
-                  factors: null,
+                  factors: [],
                   phone: ''
                 }
               };
@@ -370,7 +370,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             identities: result.user.identities || [],
             confirmed_at: result.user.confirmed_at || now.toISOString(),
             last_sign_in_at: result.user.last_sign_in_at || now.toISOString(),
-            factors: result.user.factors || null,
+            factors: result.user.factors || [],
             phone: result.user.phone || ''
           };
           

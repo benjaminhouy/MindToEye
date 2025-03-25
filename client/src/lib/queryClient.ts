@@ -18,25 +18,48 @@ export async function apiRequest(
   let authHeaders: Record<string, string> = {};
   
   try {
-    // Use Supabase auth session if available 
-    if (!customHeaders || !customHeaders['x-auth-id']) {
-      // Get the current session which includes the JWT token
-      const { data: { session } } = await supabase?.auth.getSession() || { data: { session: null } };
-      const { data: { user } } = await supabase?.auth.getUser() || { data: { user: null } };
+    // If custom headers already include auth info, use them
+    if (customHeaders && customHeaders['x-auth-id']) {
+      // Use the custom headers as provided
+      // We don't need to do anything else in this block
+    } else {
+      // First try Supabase auth
+      try {
+        // Get the current session which includes the JWT token
+        const { data: { session } } = await supabase?.auth.getSession() || { data: { session: null } };
+        const { data: { user } } = await supabase?.auth.getUser() || { data: { user: null } };
 
-      if (user?.id) {
-        authHeaders['x-auth-id'] = user.id;
+        if (user?.id) {
+          authHeaders['x-auth-id'] = user.id;
+          
+          // If we have a valid JWT token, include it for Supabase RLS policies
+          if (session?.access_token) {
+            // Use standard Authorization header with Bearer token format
+            authHeaders['Authorization'] = `Bearer ${session.access_token}`;
+            console.log("Including JWT token in Authorization header from Supabase");
+          }
+        }
+      } catch (supabaseError) {
+        console.warn("Could not get auth from Supabase, trying localStorage:", supabaseError);
+      }
+      
+      // Fallback to localStorage if Supabase auth fails or is unavailable
+      if (!authHeaders['x-auth-id']) {
+        const storedAuthId = localStorage.getItem('authId');
+        const storedToken = localStorage.getItem('authToken');
         
-        // If we have a valid JWT token, include it for Supabase RLS policies
-        if (session?.access_token) {
-          // Use standard Authorization header with Bearer token format
-          authHeaders['Authorization'] = `Bearer ${session.access_token}`;
-          console.log("Including JWT token in Authorization header for Supabase RLS");
+        if (storedAuthId) {
+          authHeaders['x-auth-id'] = storedAuthId;
+          
+          if (storedToken) {
+            authHeaders['Authorization'] = `Bearer ${storedToken}`;
+            console.log("Including stored token in Authorization header from localStorage");
+          }
         }
       }
     }
   } catch (err) {
-    console.error("Error getting auth user for API request:", err);
+    console.error("Error setting up auth headers for API request:", err);
   }
   
   const res = await fetch(url, {
@@ -65,26 +88,47 @@ export const getQueryFn: <T>(options: {
     let authHeaders: Record<string, string> = {};
     
     try {
-      // Import Supabase directly from lib if global instance not available
-      const supabaseLib = supabase || ((await import('./supabase')).supabase);
-      
-      // Use Supabase auth session if available
-      const { data: { session } } = await supabaseLib?.auth.getSession() || { data: { session: null } };
-      const { data: { user } } = await supabaseLib?.auth.getUser() || { data: { user: null } };
-      
-      if (user?.id) {
-        authHeaders['x-auth-id'] = user.id;
-        console.log("Including auth ID in fetch request:", user.id);
+      // First try Supabase auth
+      try {
+        // Import Supabase directly from lib if global instance not available
+        const supabaseLib = supabase || ((await import('./supabase')).supabase);
         
-        // If we have a valid JWT token, include it for Supabase RLS policies
-        if (session?.access_token) {
-          // Use standard Authorization header with Bearer token format
-          authHeaders['Authorization'] = `Bearer ${session.access_token}`;
-          console.log("Including JWT token in Authorization header for Supabase RLS");
+        // Use Supabase auth session if available
+        const { data: { session } } = await supabaseLib?.auth.getSession() || { data: { session: null } };
+        const { data: { user } } = await supabaseLib?.auth.getUser() || { data: { user: null } };
+        
+        if (user?.id) {
+          authHeaders['x-auth-id'] = user.id;
+          console.log("Including auth ID in fetch request:", user.id);
+          
+          // If we have a valid JWT token, include it for Supabase RLS policies
+          if (session?.access_token) {
+            // Use standard Authorization header with Bearer token format
+            authHeaders['Authorization'] = `Bearer ${session.access_token}`;
+            console.log("Including JWT token in Authorization header from Supabase");
+          }
+        }
+      } catch (supabaseError) {
+        console.warn("Could not get auth from Supabase for fetch request, trying localStorage:", supabaseError);
+      }
+      
+      // Fallback to localStorage if Supabase auth fails or is unavailable
+      if (!authHeaders['x-auth-id']) {
+        const storedAuthId = localStorage.getItem('authId');
+        const storedToken = localStorage.getItem('authToken');
+        
+        if (storedAuthId) {
+          authHeaders['x-auth-id'] = storedAuthId;
+          console.log("Including stored auth ID in fetch request:", storedAuthId);
+          
+          if (storedToken) {
+            authHeaders['Authorization'] = `Bearer ${storedToken}`;
+            console.log("Including stored token in Authorization header from localStorage");
+          }
         }
       }
     } catch (err) {
-      console.error("Error getting auth user for fetch request:", err);
+      console.error("Error setting up auth headers for fetch request:", err);
     }
     
     const res = await fetch(queryKey[0] as string, {
